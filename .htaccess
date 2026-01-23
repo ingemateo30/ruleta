@@ -1,0 +1,49 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Permitir acceso directo a archivos y directorios existentes
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Permitir acceso directo a las rutas de API (archivos PHP)
+  RewriteCond %{REQUEST_URI} ^/api/.*\.php$
+  RewriteRule ^ - [L]
+
+  # Redirigir todas las demás rutas al index.html para React Router
+  # Esto permite que las rutas de React Router funcionen correctamente
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Configuración de seguridad
+<IfModule mod_headers.c>
+  # Habilitar CORS para las APIs si es necesario
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
+
+# Configuración de tipos MIME
+<IfModule mod_mime.c>
+  AddType application/javascript js
+  AddType text/css css
+  AddType image/png png
+  AddType image/jpeg jpg jpeg
+  AddType image/svg+xml svg
+</IfModule>
+
+# Compresión para mejorar el rendimiento
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Cache para archivos estáticos
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
