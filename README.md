@@ -1,4 +1,21 @@
-# Welcome to your Lovable project
+# Lotto Animal - Sistema de Gestión de Apuestas
+
+Sistema web para la gestión de apuestas de ruleta con animales, desarrollado con React, TypeScript y Vite.
+
+## 🚀 Inicio Rápido
+
+**Para instrucciones detalladas de inicialización y configuración, consulta [SETUP.md](./SETUP.md)**
+
+```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Construir para producción
+npm run build
+```
 
 ## Project info
 
