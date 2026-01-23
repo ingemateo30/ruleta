@@ -57,11 +57,10 @@ const menuItems: MenuItem[] = [
     icon: <Settings className="h-4 w-4" />,
     children: [
       { title: "Seguridad", icon: <Shield className="h-4 w-4" />, href: "/config/seguridad" },
-      { title: "Asociar Sucursal", icon: <Building className="h-4 w-4" />, href: "/config/sucursal" },
-      { title: "Parámetros", icon: <SlidersHorizontal className="h-4 w-4" />, href: "/config/parametros" },
-      { title: "Asignar Ruleta", icon: <Target className="h-4 w-4" />, href: "/config/ruleta" },
-      { title: "Horarios de Juego", icon: <Clock className="h-4 w-4" />, href: "/config/horarios" },
       { title: "Sucursales", icon: <Building className="h-4 w-4" />, href: "/config/sucursales" },
+      { title: "Parámetros", icon: <SlidersHorizontal className="h-4 w-4" />, href: "/config/parametros" },
+      { title: "Asignar Ruleta", icon: <Target className="h-4 w-4" />, href: "/config/asignar-ruleta" },
+      { title: "Horarios de Juego", icon: <Clock className="h-4 w-4" />, href: "/config/horarios" },
     ],
   },
   {
@@ -73,7 +72,7 @@ const menuItems: MenuItem[] = [
       { title: "Listar Jugadas", icon: <List className="h-4 w-4" />, href: "/operativo/listar-jugadas" },
       { title: "Ver Resultados", icon: <Eye className="h-4 w-4" />, href: "/operativo/resultados" },
       { title: "Realizar Pagos", icon: <CreditCard className="h-4 w-4" />, href: "/operativo/pagos" },
-      { title: "Cerrar Juego", icon: <StopCircle className="h-4 w-4" />, href: "/operativo/cerrar" },
+      { title: "Cerrar Juego", icon: <StopCircle className="h-4 w-4" />, href: "/operativo/cerrar-juego" },
     ],
   },
   {
@@ -81,7 +80,6 @@ const menuItems: MenuItem[] = [
     icon: <ClipboardList className="h-4 w-4" />,
     children: [
       { title: "Ingresar Resultados", icon: <Edit className="h-4 w-4" />, href: "/admin/ingresar-resultados" },
-      { title: "Listar Jugadas", icon: <List className="h-4 w-4" />, href: "/admin/listar-jugadas" },
     ],
   },
   {
@@ -97,11 +95,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Estadísticas",
     icon: <TrendingUp className="h-4 w-4" />,
-    children: [
-      { title: "Informe de Cierres", icon: <BarChart className="h-4 w-4" />, href: "/estadisticas/cierres" },
-      { title: "Informe de Ingresos", icon: <TrendingUp className="h-4 w-4" />, href: "/estadisticas/ingresos" },
-      { title: "Informe de Utilidad", icon: <PieChart className="h-4 w-4" />, href: "/estadisticas/utilidad" },
-    ],
+    href: "/estadisticas",
   },
 ];
 
@@ -151,49 +145,64 @@ const SidebarContent = ({
         <ScrollArea className="flex-1">
           <nav className="space-y-1 pr-2">
             {menuItems.map((item, idx) => (
-              <Collapsible
-                key={item.title}
-                open={openMenus.includes(item.title)}
-                onOpenChange={() => toggleMenu(item.title)}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-between hover:bg-accent/30 text-foreground",
-                      openMenus.includes(item.title) && "bg-accent/20"
-                    )}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      {item.icon}
-                      <span className="font-medium text-sm">{item.title}</span>
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform duration-200",
-                        openMenus.includes(item.title) && "rotate-180"
-                      )}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-3 mt-1 space-y-0.5">
-                  {item.children?.map((child) => (
+              item.children ? (
+                <Collapsible
+                  key={item.title}
+                  open={openMenus.includes(item.title)}
+                  onOpenChange={() => toggleMenu(item.title)}
+                >
+                  <CollapsibleTrigger asChild>
                     <Button
-                      key={child.href}
                       variant="ghost"
-                      size="sm"
                       className={cn(
-                        "w-full justify-start gap-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-all",
-                        location.pathname === child.href && "bg-primary/10 text-primary font-medium"
+                        "w-full justify-between hover:bg-accent/30 text-foreground",
+                        openMenus.includes(item.title) && "bg-accent/20"
                       )}
-                      onClick={() => onNavigate(child.href)}
                     >
-                      {child.icon}
-                      <span>{child.title}</span>
+                      <span className="flex items-center gap-2.5">
+                        {item.icon}
+                        <span className="font-medium text-sm">{item.title}</span>
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform duration-200",
+                          openMenus.includes(item.title) && "rotate-180"
+                        )}
+                      />
                     </Button>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-3 mt-1 space-y-0.5">
+                    {item.children?.map((child) => (
+                      <Button
+                        key={child.href}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "w-full justify-start gap-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-all",
+                          location.pathname === child.href && "bg-primary/10 text-primary font-medium"
+                        )}
+                        onClick={() => onNavigate(child.href)}
+                      >
+                        {child.icon}
+                        <span>{child.title}</span>
+                      </Button>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <Button
+                  key={item.title}
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-2.5 hover:bg-accent/30 text-foreground font-medium text-sm",
+                    location.pathname === item.href && "bg-primary/10 text-primary"
+                  )}
+                  onClick={() => item.href && onNavigate(item.href)}
+                >
+                  {item.icon}
+                  <span>{item.title}</span>
+                </Button>
+              )
             ))}
           </nav>
         </ScrollArea>

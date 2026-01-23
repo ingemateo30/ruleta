@@ -10,7 +10,19 @@ import RealizarJugadas from "./pages/operativo/RealizarJugadas";
 import VerResultados from "./pages/operativo/VerResultados";
 import AnularJugada from "./pages/operativo/AnularJugada";
 import ListarJugadas from "./pages/operativo/ListarJugadas";
+import RealizarPagos from "./pages/operativo/RealizarPagos";
+import CerrarJuego from "./pages/operativo/CerrarJuego";
 import IngresarResultado from "./pages/admin/IngresarResultado";
+import Usuarios from "./pages/config/Usuarios";
+import Sucursales from "./pages/config/Sucursales";
+import Parametros from "./pages/config/Parametros";
+import Horarios from "./pages/config/Horarios";
+import AsignarRuleta from "./pages/config/AsignarRuleta";
+import InformeJuegos from "./pages/informes/InformeJuegos";
+import InformeVentas from "./pages/informes/InformeVentas";
+import InformeResultados from "./pages/informes/InformeResultados";
+import InformePagos from "./pages/informes/InformePagos";
+import Estadisticas from "./pages/Estadisticas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,11 +42,34 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Operativo */}
             <Route path="/operativo/jugadas" element={<RealizarJugadas />} />
             <Route path="/operativo/anular" element={<AnularJugada />} />
             <Route path="/operativo/listar-jugadas" element={<ListarJugadas />} />
             <Route path="/operativo/resultados" element={<VerResultados />} />
+            <Route path="/operativo/pagos" element={<RealizarPagos />} />
+            <Route path="/operativo/cerrar-juego" element={<CerrarJuego />} />
+
+            {/* Administración */}
             <Route path="/admin/ingresar-resultados" element={<IngresarResultado />} />
+
+            {/* Configuración */}
+            <Route path="/config/seguridad" element={<Usuarios />} />
+            <Route path="/config/sucursales" element={<Sucursales />} />
+            <Route path="/config/parametros" element={<Parametros />} />
+            <Route path="/config/horarios" element={<Horarios />} />
+            <Route path="/config/asignar-ruleta" element={<AsignarRuleta />} />
+
+            {/* Informes */}
+            <Route path="/informes/juegos" element={<InformeJuegos />} />
+            <Route path="/informes/ventas" element={<InformeVentas />} />
+            <Route path="/informes/resultados" element={<InformeResultados />} />
+            <Route path="/informes/pagos" element={<InformePagos />} />
+
+            {/* Estadísticas */}
+            <Route path="/estadisticas" element={<Estadisticas />} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
