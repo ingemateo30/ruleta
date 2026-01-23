@@ -36,7 +36,7 @@ if (file_exists($envPath)) {
 $host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_NAME') ?: 'if0_40919233_lottoa';
 $dbuser = getenv('DB_USER') ?: 'root';
-$dbpass = getenv('DB_PASS') ?: '123';
+$dbpass = getenv('DB_PASS') ?: '';
 $port = getenv('DB_PORT') ?: '3306';
 
 /**
