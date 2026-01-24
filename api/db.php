@@ -2,6 +2,7 @@
 /**
  * Archivo de conexión a la base de datos
  * Carga las variables de entorno desde .env y crea la conexión PDO
+ * Soporta tanto getDBConnection() como Database::getInstance()
  */
 
 // Cargar variables de entorno desde .env (misma carpeta)
@@ -14,16 +15,16 @@ if (file_exists($envPath)) {
         if (empty($line) || strpos($line, '#') === 0) {
             continue;
         }
-        
+
         // Separar clave y valor
         if (strpos($line, '=') !== false) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
-            
+
             // Remover comillas si existen
             $value = trim($value, '"\'');
-            
+
             $_ENV[$key] = $value;
             putenv($key . '=' . $value);
         }
@@ -40,49 +41,68 @@ $dbpass = getenv('DB_PASS') ?: '';
 $port = getenv('DB_PORT') ?: '3306';
 
 /**
- * Obtiene la conexión PDO a la base de datos
- * 
- * @return PDO|null Retorna la conexión PDO o null si hay error
- * @throws PDOException Si hay un error de conexión
+ * Clase Singleton para conexión a base de datos
+ * Permite usar Database::getInstance()->getConnection()
  */
-function getDBConnection() {
-    global $host, $port, $dbname, $dbuser, $dbpass;
-    
-    static $pdo = null;
-    
-    // Si ya existe una conexión, reutilizarla
-    if ($pdo !== null) {
-        return $pdo;
+class Database {
+    private static $instance = null;
+    private $connection = null;
+
+    private function __construct() {
+        global $host, $port, $dbname, $dbuser, $dbpass;
+
+        try {
+            $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_TIMEOUT => 5,
+                PDO::ATTR_PERSISTENT => false
+            ];
+
+            $this->connection = new PDO($dsn, $dbuser, $dbpass, $options);
+
+        } catch (PDOException $e) {
+            error_log("Error de conexión a la base de datos: " . $e->getMessage());
+            throw $e;
+        }
     }
-    
-    try {
-        // Construir el DSN
-        $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
-        
-        // Opciones de PDO
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::ATTR_TIMEOUT => 5,
-            PDO::ATTR_PERSISTENT => false
-        ];
-        
-        // Crear la conexión
-        $pdo = new PDO($dsn, $dbuser, $dbpass, $options);
-        
-        return $pdo;
-        
-    } catch (PDOException $e) {
-        // Log del error (en producción, usar un sistema de logging apropiado)
-        error_log("Error de conexión a la base de datos: " . $e->getMessage());
-        throw $e;
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function getConnection() {
+        return $this->connection;
+    }
+
+    // Prevenir clonación
+    private function __clone() {}
+
+    // Prevenir deserialización
+    public function __wakeup() {
+        throw new Exception("Cannot unserialize singleton");
     }
 }
 
 /**
+ * Obtiene la conexión PDO a la base de datos (función legacy)
+ *
+ * @return PDO|null Retorna la conexión PDO o null si hay error
+ * @throws PDOException Si hay un error de conexión
+ */
+function getDBConnection() {
+    return Database::getInstance()->getConnection();
+}
+
+/**
  * Prueba la conexión a la base de datos
- * 
+ *
  * @return bool True si la conexión es exitosa, false en caso contrario
  */
 function testDBConnection() {

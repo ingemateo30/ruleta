@@ -103,7 +103,7 @@ function buscarJuego($conn, $radicado, $fecha) {
 /**
  * Anula un juego cambiando su estado
  */
-function ejecutarAnulacion($conn, $radicado, $fecha) {
+function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = null) {
     try {
         if (empty($radicado) || empty($fecha)) {
             return [
@@ -112,16 +112,31 @@ function ejecutarAnulacion($conn, $radicado, $fecha) {
             ];
         }
 
+        if (empty($motivo)) {
+            return [
+                'success' => false,
+                'error' => 'El motivo de anulación es requerido'
+            ];
+        }
+
         // Iniciar transacción
         $conn->beginTransaction();
 
-        // 1. Actualizar jugarlotto
+        // 1. Actualizar jugarlotto con motivo de anulación
         $stmtUpdJuego = $conn->prepare(
-            "UPDATE jugarlotto 
-             SET ESTADO = 'I' 
+            "UPDATE jugarlotto
+             SET ESTADO = 'I',
+                 MOTIVO_ANULACION = :motivo,
+                 FECHA_ANULACION = NOW(),
+                 USUARIO_ANULACION = :usuario
              WHERE RADICADO = :radicado AND FECHA = :fecha AND ESTADO = 'A'"
         );
-        $stmtUpdJuego->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+        $stmtUpdJuego->execute([
+            'radicado' => $radicado,
+            'fecha' => $fecha,
+            'motivo' => $motivo,
+            'usuario' => $usuario
+        ]);
 
         if ($stmtUpdJuego->rowCount() === 0) {
             $conn->rollBack();
@@ -133,8 +148,8 @@ function ejecutarAnulacion($conn, $radicado, $fecha) {
 
         // 2. Actualizar hislottojuego
         $stmtUpdHis = $conn->prepare(
-            "UPDATE hislottojuego 
-             SET ESTADOP = 'I', ESTADOC = 'I' 
+            "UPDATE hislottojuego
+             SET ESTADOP = 'I', ESTADOC = 'I'
              WHERE RADICADO = :radicado AND FECHA = :fecha"
         );
         $stmtUpdHis->execute(['radicado' => $radicado, 'fecha' => $fecha]);
@@ -143,7 +158,12 @@ function ejecutarAnulacion($conn, $radicado, $fecha) {
 
         return [
             'success' => true,
-            'message' => "Juego con Radicado: $radicado ha sido anulado correctamente"
+            'message' => "Juego con Radicado: $radicado ha sido anulado correctamente",
+            'data' => [
+                'radicado' => $radicado,
+                'motivo' => $motivo,
+                'usuario' => $usuario
+            ]
         ];
 
     } catch (PDOException $e) {
@@ -183,11 +203,13 @@ try {
     elseif ($method === 'POST' && $action === 'ejecutar') {
         $input = file_get_contents('php://input');
         $data = json_decode($input, true);
-        
+
         $radicado = $data['radicado'] ?? null;
         $fecha = $data['fecha'] ?? null;
-        
-        $result = ejecutarAnulacion($conn, $radicado, $fecha);
+        $motivo = $data['motivo'] ?? null;
+        $usuario = $data['usuario'] ?? null;
+
+        $result = ejecutarAnulacion($conn, $radicado, $fecha, $motivo, $usuario);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
     

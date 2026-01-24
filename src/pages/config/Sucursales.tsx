@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, MapPin, Phone, Mail, FileText, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Sucursales() {
@@ -33,6 +33,11 @@ export default function Sucursales() {
   const [editingSucursal, setEditingSucursal] = useState<any>(null);
   const [formData, setFormData] = useState({
     bodega: '',
+    direccion: '',
+    telefono: '',
+    email: '',
+    nit: '',
+    responsable: '',
   });
 
   useEffect(() => {
@@ -69,12 +74,22 @@ export default function Sucursales() {
     if (sucursal) {
       setEditingSucursal(sucursal);
       setFormData({
-        bodega: sucursal.BODEGA,
+        bodega: sucursal.BODEGA || '',
+        direccion: sucursal.DIRECCION || '',
+        telefono: sucursal.TELEFONO || '',
+        email: sucursal.EMAIL || '',
+        nit: sucursal.NIT || '',
+        responsable: sucursal.RESPONSABLE || '',
       });
     } else {
       setEditingSucursal(null);
       setFormData({
         bodega: '',
+        direccion: '',
+        telefono: '',
+        email: '',
+        nit: '',
+        responsable: '',
       });
     }
     setIsDialogOpen(true);
@@ -86,6 +101,11 @@ export default function Sucursales() {
     try {
       const data = {
         bodega: formData.bodega,
+        direccion: formData.direccion || undefined,
+        telefono: formData.telefono || undefined,
+        email: formData.email || undefined,
+        nit: formData.nit || undefined,
+        responsable: formData.responsable || undefined,
       };
 
       if (editingSucursal) {
@@ -177,7 +197,10 @@ export default function Sucursales() {
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Total Usuarios</TableHead>
+                  <TableHead>Dirección</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Responsable</TableHead>
+                  <TableHead>Usuarios</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -185,7 +208,12 @@ export default function Sucursales() {
                 {sucursales.map((sucursal) => (
                   <TableRow key={sucursal.CODIGO}>
                     <TableCell className="font-medium">{sucursal.CODIGO}</TableCell>
-                    <TableCell>{sucursal.BODEGA}</TableCell>
+                    <TableCell className="font-semibold">{sucursal.BODEGA}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {sucursal.DIRECCION || '-'}
+                    </TableCell>
+                    <TableCell className="text-sm">{sucursal.TELEFONO || '-'}</TableCell>
+                    <TableCell className="text-sm">{sucursal.RESPONSABLE || '-'}</TableCell>
                     <TableCell>
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                         {getUsuariosPorSucursal(sucursal.CODIGO)} usuarios
@@ -216,7 +244,7 @@ export default function Sucursales() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
               {editingSucursal ? 'Editar Sucursal' : 'Nueva Sucursal'}
@@ -228,9 +256,12 @@ export default function Sucursales() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
               <div className="grid gap-2">
-                <Label htmlFor="bodega">Nombre de la Sucursal</Label>
+                <Label htmlFor="bodega" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Nombre de la Sucursal *
+                </Label>
                 <Input
                   id="bodega"
                   value={formData.bodega}
@@ -239,6 +270,84 @@ export default function Sucursales() {
                   }
                   placeholder="Ej: Sucursal Centro"
                   required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="direccion" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Direccion
+                </Label>
+                <Input
+                  id="direccion"
+                  value={formData.direccion}
+                  onChange={(e) =>
+                    setFormData({ ...formData, direccion: e.target.value })
+                  }
+                  placeholder="Ej: Calle 123 #45-67"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="telefono" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Telefono
+                  </Label>
+                  <Input
+                    id="telefono"
+                    value={formData.telefono}
+                    onChange={(e) =>
+                      setFormData({ ...formData, telefono: e.target.value })
+                    }
+                    placeholder="Ej: 3001234567"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="nit" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    NIT / RUT
+                  </Label>
+                  <Input
+                    id="nit"
+                    value={formData.nit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nit: e.target.value })
+                    }
+                    placeholder="Ej: 900123456-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  placeholder="Ej: sucursal@empresa.com"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="responsable" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Responsable
+                </Label>
+                <Input
+                  id="responsable"
+                  value={formData.responsable}
+                  onChange={(e) =>
+                    setFormData({ ...formData, responsable: e.target.value })
+                  }
+                  placeholder="Ej: Juan Perez"
                 />
               </div>
             </div>

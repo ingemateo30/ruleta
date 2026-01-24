@@ -97,7 +97,7 @@ try {
         ]);
     }
 
-    // POST /api/cerrar-juego.php/ejecutar - Cerrar un juego
+    // POST /api/cerrar-juego.php/ejecutar - Cerrar un juego (por sucursal o global)
     elseif ($method === 'POST' && end($uriParts) === 'ejecutar') {
         $data = json_decode(file_get_contents('php://input'), true);
 
@@ -114,22 +114,26 @@ try {
         $codigoHorario = $data['codigo_horario'];
         $fecha = $data['fecha'];
         $usuario = $data['usuario'];
+        $codigoSucursal = $data['codigo_sucursal'] ?? null; // Opcional: cierre por sucursal
 
         $db->beginTransaction();
 
         try {
-            // Verificar si ya está cerrado
-            $stmt = $db->prepare("
-                SELECT ID FROM cierrejuego
-                WHERE CODIGOH = ? AND FECHA = ?
-            ");
-            $stmt->execute([$codigoHorario, $fecha]);
+            // Verificar si ya está cerrado (considerando sucursal si aplica)
+            $sqlCheck = "SELECT ID FROM cierrejuego WHERE CODIGOH = ? AND FECHA = ?";
+            $paramsCheck = [$codigoHorario, $fecha];
+            if ($codigoSucursal) {
+                $sqlCheck .= " AND CODIGO_SUCURSAL = ?";
+                $paramsCheck[] = $codigoSucursal;
+            }
+            $stmt = $db->prepare($sqlCheck);
+            $stmt->execute($paramsCheck);
             if ($stmt->fetch()) {
                 $db->rollBack();
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Este juego ya fue cerrado'
+                    'message' => 'Este juego ya fue cerrado' . ($codigoSucursal ? ' para esta sucursal' : '')
                 ]);
                 exit;
             }
@@ -167,8 +171,8 @@ try {
                 exit;
             }
 
-            // Calcular total apostado
-            $stmt = $db->prepare("
+            // Calcular total apostado (por sucursal si aplica)
+            $sqlTotal = "
                 SELECT COALESCE(SUM(h.VALOR), 0) as total
                 FROM hislottojuego h
                 JOIN jugarlotto j ON h.RADICADO = j.RADICADO
@@ -176,12 +180,18 @@ try {
                 AND DATE(j.FECHA) = ?
                 AND h.ESTADOP = 'A'
                 AND h.ESTADOC = 'A'
-            ");
-            $stmt->execute([$codigoHorario, $fecha]);
-            $totalApostado = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+            ";
+            $paramsTotal = [$codigoHorario, $fecha];
+            if ($codigoSucursal) {
+                $sqlTotal .= " AND j.SUCURSAL = ?";
+                $paramsTotal[] = $codigoSucursal;
+            }
+            $stmt = $db->prepare($sqlTotal);
+            $stmt->execute($paramsTotal);
+            $totalApostado = (float) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-            // Calcular total pagado (apuestas al animal ganador * puntos de pago)
-            $stmt = $db->prepare("
+            // Calcular total apostado al animal ganador (para calcular pagos)
+            $sqlGanador = "
                 SELECT COALESCE(SUM(h.VALOR), 0) as total
                 FROM hislottojuego h
                 JOIN jugarlotto j ON h.RADICADO = j.RADICADO
@@ -190,51 +200,90 @@ try {
                 AND h.CODANIMAL = ?
                 AND h.ESTADOP = 'A'
                 AND h.ESTADOC = 'A'
-            ");
-            $stmt->execute([$codigoHorario, $fecha, $ganador['CODIGOA']]);
-            $totalApostadoGanador = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+            ";
+            $paramsGanador = [$codigoHorario, $fecha, $ganador['CODIGOA']];
+            if ($codigoSucursal) {
+                $sqlGanador .= " AND j.SUCURSAL = ?";
+                $paramsGanador[] = $codigoSucursal;
+            }
+            $stmt = $db->prepare($sqlGanador);
+            $stmt->execute($paramsGanador);
+            $totalApostadoGanador = (float) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
             // Obtener parámetros
             $stmt = $db->query("SELECT NOMBRE, VALOR FROM parametros");
             $parametros = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            $puntosPago = $parametros['PUNTOSPAGO'] ?? 30;
-            $comisionAdmin = $parametros['COMISIONADMINISTRACION'] ?? 80;
-            $comisionSistema = $parametros['COMISIONSISTEMATIZACION'] ?? 20;
-            $porcentajeGanancia = $parametros['PORCENTAJEGANANCIA'] ?? 7;
+            $puntosPago = (float) ($parametros['PUNTOSPAGO'] ?? 30);
+            $porcentajeAdminSucursal = (float) ($parametros['PORCENTAJEADMINSUCURSAL'] ?? 7); // 7% para admin sucursal
+            $porcentajeSistematizacion = (float) ($parametros['COMISIONSISTEMATIZACION'] ?? 20); // 20% sistemas
+            $porcentajeAdministracion = (float) ($parametros['COMISIONADMINISTRACION'] ?? 80); // 80% administración
 
-            // Cálculos
-            $totalPagado = $totalApostadoGanador * $puntosPago;
-            $utilidad = $totalApostado - $totalPagado;
+            /**
+             * CÁLCULOS SEGÚN REQUISITOS:
+             * 1. Total de ventas diarias (total apostado)
+             * 2. Pago admin sucursal = total apostado * 7%
+             * 3. Pago a ganadores = apostado al ganador * puntos de pago
+             * 4. Total de ingresos = Total ventas - Pago admin sucursal - Pagos a ganadores
+             * 5. Del total de ingresos: 20% sistemas, 80% administración
+             */
 
-            // Comisiones sobre la utilidad
-            $montoComisionAdmin = ($utilidad * $comisionAdmin) / 100;
-            $montoComisionSistema = ($utilidad * $comisionSistema) / 100;
+            // Pago a ganadores (apostado al animal ganador * puntos de pago)
+            $totalPagoGanadores = $totalApostadoGanador * $puntosPago;
 
-            // Ganancia de la sucursal sobre el total apostado
-            $gananciaSucursal = ($totalApostado * $porcentajeGanancia) / 100;
+            // Pago admin sucursal (7% del total apostado)
+            $pagoAdminSucursal = ($totalApostado * $porcentajeAdminSucursal) / 100;
+
+            // Total de ingresos netos (después de pagar admin sucursal y ganadores)
+            $totalIngresosNetos = $totalApostado - $pagoAdminSucursal - $totalPagoGanadores;
+
+            // Si los ingresos netos son negativos, ajustar a 0
+            if ($totalIngresosNetos < 0) {
+                $totalIngresosNetos = 0;
+            }
+
+            // Del total de ingresos: 20% sistemas, 80% administración
+            $comisionSistemas = ($totalIngresosNetos * $porcentajeSistematizacion) / 100;
+            $comisionAdministracion = ($totalIngresosNetos * $porcentajeAdministracion) / 100;
+
+            // Utilidad bruta (antes de distribución)
+            $utilidadBruta = $totalApostado - $totalPagoGanadores;
+
+            // Obtener nombre de sucursal si aplica
+            $nombreSucursal = null;
+            if ($codigoSucursal) {
+                $stmt = $db->prepare("SELECT BODEGA FROM bodegas WHERE CODIGO = ?");
+                $stmt->execute([$codigoSucursal]);
+                $sucursalData = $stmt->fetch(PDO::FETCH_ASSOC);
+                $nombreSucursal = $sucursalData['BODEGA'] ?? 'Sucursal ' . $codigoSucursal;
+            }
 
             // Insertar cierre
             $stmt = $db->prepare("
                 INSERT INTO cierrejuego (
                     CODIGOH, HORAJUEGO, FECHA,
+                    CODIGO_SUCURSAL, NOMBRE_SUCURSAL,
                     TOTAL_APOSTADO, TOTAL_PAGADO, UTILIDAD,
-                    COMISION_ADMIN, COMISION_SISTEMA, GANANCIA_SUCURSAL,
+                    PAGO_ADMIN_SUCURSAL, COMISION_SISTEMA, COMISION_ADMIN,
+                    TOTAL_INGRESOS_NETOS,
                     CODANIMAL_GANADOR, ANIMAL_GANADOR,
                     ESTADO, FECHA_CIERRE, USUARIO_CIERRE, OBSERVACIONES
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'C', NOW(), ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'C', NOW(), ?, ?)
             ");
 
             $stmt->execute([
                 $codigoHorario,
                 $horario['DESCRIPCION'],
                 $fecha,
+                $codigoSucursal,
+                $nombreSucursal,
                 $totalApostado,
-                $totalPagado,
-                $utilidad,
-                $montoComisionAdmin,
-                $montoComisionSistema,
-                $gananciaSucursal,
+                $totalPagoGanadores,
+                $utilidadBruta,
+                $pagoAdminSucursal,
+                $comisionSistemas,
+                $comisionAdministracion,
+                $totalIngresosNetos,
                 $ganador['CODIGOA'],
                 $ganador['ANIMAL'],
                 $usuario,
@@ -247,15 +296,17 @@ try {
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Juego cerrado exitosamente',
+                'message' => 'Juego cerrado exitosamente' . ($nombreSucursal ? " para $nombreSucursal" : ''),
                 'data' => [
                     'cierre_id' => $cierreId,
+                    'sucursal' => $nombreSucursal,
                     'total_apostado' => $totalApostado,
-                    'total_pagado' => $totalPagado,
-                    'utilidad' => $utilidad,
-                    'comision_admin' => $montoComisionAdmin,
-                    'comision_sistema' => $montoComisionSistema,
-                    'ganancia_sucursal' => $gananciaSucursal,
+                    'total_pagado_ganadores' => $totalPagoGanadores,
+                    'pago_admin_sucursal_7_porciento' => $pagoAdminSucursal,
+                    'total_ingresos_netos' => $totalIngresosNetos,
+                    'comision_sistemas_20_porciento' => $comisionSistemas,
+                    'comision_administracion_80_porciento' => $comisionAdministracion,
+                    'utilidad_bruta' => $utilidadBruta,
                     'animal_ganador' => $ganador['ANIMAL']
                 ]
             ]);
