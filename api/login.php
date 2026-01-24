@@ -48,7 +48,7 @@ try {
     $stmt = $pdo->prepare("SELECT s.ID, s.NOMBRE, s.NICK, s.CLAVE, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO, b.BODEGA as SUCURSAL
                            FROM seguridad s
                            LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO
-                           WHERE s.NICK = :nick AND s.CLAVE = :clave AND s.ESTADO = 1");
+                           WHERE s.NICK = :nick AND s.CLAVE = :clave AND (s.ESTADO = '1' OR s.ESTADO = 'A')");
     
     $stmt->bindParam(':nick', $username, PDO::PARAM_STR);
     $stmt->bindParam(':clave', $password, PDO::PARAM_STR);
@@ -69,7 +69,7 @@ try {
                 'tipo' => $user['TIPO'],
                 'caja' => $user['CAJA'],
                 'codigoSucursal' => $user['CODBODEGA'],
-                'nombreSucursal' => $user['SUCURSAL'] ?? 'Sin sucursal',
+                'sucursal' => $user['SUCURSAL'] ?? 'Sin sucursal',
                 'estado' => $user['ESTADO']
             ]
         ]);
