@@ -13,13 +13,11 @@ interface UserData {
 // ============= USUARIOS =============
 export const usuariosAPI = {
   listar: async () => {
-    const response = await apiClient.get('/usuarios.php/listar')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/usuarios.php/listar');
   },
 
   obtener: async (id: number) => {
-    const response = await apiClient.get(`/usuarios.php/obtener/${id}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/usuarios.php/obtener/${id}`);
   },
 
   crear: async (data: {
@@ -30,79 +28,62 @@ export const usuariosAPI = {
     codbodega?: number;
     estado?: string;
   }) => {
-    const response = await apiClient.post('/usuarios.php/crear', data)as ApiResponse;
-    return response.data;
+    return await apiClient.post<ApiResponse>('/usuarios.php/crear', data);
   },
 
   actualizar: async (id: number, data: UserData) => {
-    const response = await apiClient.put(`/usuarios.php/actualizar/${id}`, data)as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>(`/usuarios.php/actualizar/${id}`, data);
   },
 
   eliminar: async (id: number) => {
-    const response = await apiClient.delete(`/usuarios.php/eliminar/${id}`)as ApiResponse;
-    return response.data;
+    return await apiClient.delete<ApiResponse>(`/usuarios.php/eliminar/${id}`);
   },
 };
 
 // ============= SUCURSALES =============
 export interface SucursalData {
   bodega: string;
-  direccion?: string;
-  telefono?: string;
-  email?: string;
-  nit?: string;
-  responsable?: string;
 }
 
 export const sucursalesAPI = {
   listar: async () => {
-    const response = await apiClient.get('/sucursales.php/listar')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/sucursales.php/listar');
   },
 
   obtener: async (codigo: number) => {
-    const response = await apiClient.get(`/sucursales.php/obtener/${codigo}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/sucursales.php/obtener/${codigo}`);
   },
 
   crear: async (data: SucursalData) => {
-    const response = await apiClient.post('/sucursales.php/crear', data)as ApiResponse;
-    return response.data;
+    return await apiClient.post<ApiResponse>('/sucursales.php/crear', data);
   },
 
   actualizar: async (codigo: number, data: SucursalData) => {
-    const response = await apiClient.put(`/sucursales.php/actualizar/${codigo}`, data)as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>(`/sucursales.php/actualizar/${codigo}`, data);
   },
 
   eliminar: async (codigo: number) => {
-    const response = await apiClient.delete(`/sucursales.php/eliminar/${codigo}`)as ApiResponse;
-    return response.data;
+    return await apiClient.delete<ApiResponse>(`/sucursales.php/eliminar/${codigo}`);
   },
 };
 
 // ============= PARÁMETROS =============
 export const parametrosAPI = {
   listar: async () => {
-    const response = await apiClient.get('/parametros.php/listar')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/parametros.php/listar');
   },
 
   obtener: async (codigo: number) => {
-    const response = await apiClient.get(`/parametros.php/obtener/${codigo}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/parametros.php/obtener/${codigo}`);
   },
 
- actualizar: async (codigo: number, data: { valor: string }) => {
-  const response = await apiClient.put(`/parametros.php/actualizar/${codigo}`, data)as ApiResponse;
-  return response.data;
-},
+  actualizar: async (codigo: number, data: { valor: string }) => {
+    return await apiClient.put<ApiResponse>(`/parametros.php/actualizar/${codigo}`, data);
+  },
 
-crear: async (data: { nombre: string; valor: string }) => {
-  const response = await apiClient.post('/parametros.php/crear', data)as ApiResponse;
-  return response.data;
-},
+  crear: async (data: { nombre: string; valor: string }) => {
+    return await apiClient.post<ApiResponse>('/parametros.php/crear', data);
+  },
 };
 
 interface horarioData {
@@ -114,18 +95,15 @@ interface horarioData {
 // ============= HORARIOS =============
 export const horariosAPI = {
   listar: async () => {
-    const response = await apiClient.get('/horarios.php/listar')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/horarios.php/listar');
   },
 
   activos: async () => {
-    const response = await apiClient.get('/horarios.php/activos')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/horarios.php/activos');
   },
 
   obtener: async (num: number) => {
-    const response = await apiClient.get(`/horarios.php/obtener/${num}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/horarios.php/obtener/${num}`);
   },
 
   crear: async (data: {
@@ -133,82 +111,63 @@ export const horariosAPI = {
     hora: string;
     estado?: string;
   }) => {
-    const response = await apiClient.post('/horarios.php/crear', data)as ApiResponse;
-    return response.data;
+    return await apiClient.post<ApiResponse>('/horarios.php/crear', data);
   },
 
   actualizar: async (num: number, data: horarioData) => {
-    const response = await apiClient.put(`/horarios.php/actualizar/${num}`, data)as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>(`/horarios.php/actualizar/${num}`, data);
   },
 
   eliminar: async (num: number) => {
-    const response = await apiClient.delete(`/horarios.php/eliminar/${num}`)as ApiResponse;
-    return response.data;
+    return await apiClient.delete<ApiResponse>(`/horarios.php/eliminar/${num}`);
   },
 };
 
 // ============= RULETA (ANIMALES) =============
 export const ruletaAPI = {
   listar: async () => {
-    const response = await apiClient.get('/ruleta.php/listar')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/ruleta.php/listar');
   },
 
   activos: async () => {
-    const response = await apiClient.get('/ruleta.php/activos')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/ruleta.php/activos');
   },
 
   obtener: async (num: number) => {
-    const response = await apiClient.get(`/ruleta.php/obtener/${num}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/ruleta.php/obtener/${num}`);
   },
 
-  /*
-  actualizar: async (num: number, data: any) => {
-    const response = await apiClient.put(`/ruleta.php/actualizar/${num}`, data)as ApiResponse;
-    return response.data;
-  },
-*/
   activar: async (num: number) => {
-    const response = await apiClient.put(`/ruleta.php/activar/${num}`)as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>(`/ruleta.php/activar/${num}`);
   },
 
   desactivar: async (num: number) => {
-    const response = await apiClient.put(`/ruleta.php/desactivar/${num}`)as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>(`/ruleta.php/desactivar/${num}`);
   },
 
   activarTodos: async () => {
-    const response = await apiClient.put('/ruleta.php/activar-todos')as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>('/ruleta.php/activar-todos');
   },
 
   desactivarTodos: async () => {
-    const response = await apiClient.put('/ruleta.php/desactivar-todos')as ApiResponse;
-    return response.data;
+    return await apiClient.put<ApiResponse>('/ruleta.php/desactivar-todos');
   },
 
   estadisticas: async () => {
-    const response = await apiClient.get('/ruleta.php/estadisticas')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/ruleta.php/estadisticas');
   },
 };
 
 // ============= PAGOS =============
 export const pagosAPI = {
   buscarGanadores: async (params: { radicado?: string; fecha?: string }) => {
-    const response = await apiClient.get('/pagos.php/buscar-ganadores', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/pagos.php/buscar-ganadores', { params });
   },
 
   verificarGanador: async (radicado: string) => {
-    const response = await apiClient.get('/pagos.php/verificar-ganador', {
+    return await apiClient.get<ApiResponse>('/pagos.php/verificar-ganador', {
       params: { radicado },
-    })as ApiResponse;
-    return response.data;
+    });
   },
 
   realizarPago: async (data: {
@@ -216,8 +175,7 @@ export const pagosAPI = {
     usuario: string;
     observaciones?: string;
   }) => {
-    const response = await apiClient.post('/pagos.php/realizar-pago', data)as ApiResponse;
-    return response.data;
+    return await apiClient.post<ApiResponse>('/pagos.php/realizar-pago', data);
   },
 
   listar: async (params?: {
@@ -225,23 +183,20 @@ export const pagosAPI = {
     fecha_fin?: string;
     sucursal?: string;
   }) => {
-    const response = await apiClient.get('/pagos.php/listar', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/pagos.php/listar', { params });
   },
 
   estadisticas: async (fecha?: string) => {
-    const response = await apiClient.get('/pagos.php/estadisticas', {
+    return await apiClient.get<ApiResponse>('/pagos.php/estadisticas', {
       params: { fecha },
-    })as ApiResponse;
-    return response.data;
+    });
   },
 };
 
 // ============= CERRAR JUEGO =============
 export const cerrarJuegoAPI = {
   verificar: async (params: { codigo_horario: number; fecha?: string }) => {
-    const response = await apiClient.get('/cerrar-juego.php/verificar', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/cerrar-juego.php/verificar', { params });
   },
 
   ejecutar: async (data: {
@@ -250,25 +205,21 @@ export const cerrarJuegoAPI = {
     usuario: string;
     observaciones?: string;
   }) => {
-    const response = await apiClient.post('/cerrar-juego.php/ejecutar', data)as ApiResponse;
-    return response.data;
+    return await apiClient.post<ApiResponse>('/cerrar-juego.php/ejecutar', data);
   },
 
   listar: async (params?: { fecha_inicio?: string; fecha_fin?: string }) => {
-    const response = await apiClient.get('/cerrar-juego.php/listar', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/cerrar-juego.php/listar', { params });
   },
 
   estadisticas: async (fecha?: string) => {
-    const response = await apiClient.get('/cerrar-juego.php/estadisticas', {
+    return await apiClient.get<ApiResponse>('/cerrar-juego.php/estadisticas', {
       params: { fecha },
-    })as ApiResponse;
-    return response.data;
+    });
   },
 
   detalle: async (id: number) => {
-    const response = await apiClient.get(`/cerrar-juego.php/detalle/${id}`)as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>(`/cerrar-juego.php/detalle/${id}`);
   },
 };
 
@@ -280,8 +231,7 @@ export const informesAPI = {
     sucursal?: string;
     horario?: string;
   }) => {
-    const response = await apiClient.get('/informes.php/juegos', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/juegos', { params });
   },
 
   ventas: async (params: {
@@ -289,13 +239,11 @@ export const informesAPI = {
     fecha_fin: string;
     sucursal?: string;
   }) => {
-    const response = await apiClient.get('/informes.php/ventas', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/ventas', { params });
   },
 
   resultados: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/informes.php/resultados', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/resultados', { params });
   },
 
   pagos: async (params: {
@@ -303,54 +251,45 @@ export const informesAPI = {
     fecha_fin: string;
     sucursal?: string;
   }) => {
-    const response = await apiClient.get('/informes.php/pagos', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/pagos', { params });
   },
 
   animales: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/informes.php/animales', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/animales', { params });
   },
 
   cierres: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/informes.php/cierres', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/informes.php/cierres', { params });
   },
 };
 
 // ============= ESTADÍSTICAS =============
 export const estadisticasAPI = {
   dashboard: async (fecha?: string) => {
-    const response = await apiClient.get('/estadisticas.php/dashboard', {
+    return await apiClient.get<ApiResponse>('/estadisticas.php/dashboard', {
       params: { fecha },
-    })as ApiResponse;
-    return response.data;
+    });
   },
 
   tendencias: async (dias?: number) => {
-    const response = await apiClient.get('/estadisticas.php/tendencias', {
+    return await apiClient.get<ApiResponse>('/estadisticas.php/tendencias', {
       params: { dias },
-    })as ApiResponse;
-    return response.data;
+    });
   },
 
   animales: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/estadisticas.php/animales', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/estadisticas.php/animales', { params });
   },
 
   horarios: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/estadisticas.php/horarios', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/estadisticas.php/horarios', { params });
   },
 
   sucursales: async (params: { fecha_inicio: string; fecha_fin: string }) => {
-    const response = await apiClient.get('/estadisticas.php/sucursales', { params })as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/estadisticas.php/sucursales', { params });
   },
 
   resumenGeneral: async () => {
-    const response = await apiClient.get('/estadisticas.php/resumen-general')as ApiResponse;
-    return response.data;
+    return await apiClient.get<ApiResponse>('/estadisticas.php/resumen-general');
   },
 };
