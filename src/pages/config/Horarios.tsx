@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { horariosAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -139,21 +140,24 @@ export default function Horarios() {
 
   if (String(user?.tipo) !== '1') {
     return (
-      <div className="p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Acceso Denegado</CardTitle>
-            <CardDescription>
-              Solo los administradores pueden acceder a esta sección.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <DashboardLayout>
+        <div className="p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Acceso Denegado</CardTitle>
+              <CardDescription>
+                Solo los administradores pueden acceder a esta sección.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -315,6 +319,7 @@ export default function Horarios() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

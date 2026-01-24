@@ -21,11 +21,11 @@ try {
     // GET /api/sucursales.php/listar - Listar todas las sucursales
     if ($method === 'GET' && (end($uriParts) === 'listar' || end($uriParts) === 'sucursales.php')) {
         $stmt = $db->query("
-            SELECT b.CODIGO, b.BODEGA, b.DIRECCION, b.TELEFONO, b.EMAIL, b.NIT, b.RESPONSABLE, b.ESTADO,
+            SELECT b.CODIGO, b.BODEGA,
                    COUNT(DISTINCT s.ID) as TOTAL_USUARIOS
             FROM bodegas b
             LEFT JOIN seguridad s ON b.CODIGO = s.CODBODEGA AND s.ESTADO = 'A'
-            GROUP BY b.CODIGO, b.BODEGA, b.DIRECCION, b.TELEFONO, b.EMAIL, b.NIT, b.RESPONSABLE, b.ESTADO
+            GROUP BY b.CODIGO, b.BODEGA
             ORDER BY b.CODIGO ASC
         ");
 
@@ -88,19 +88,14 @@ try {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $nuevoCodigo = ($result['max_codigo'] ?? 0) + 1;
 
-        // Insertar sucursal con todos los campos
+        // Insertar sucursal
         $stmt = $db->prepare("
-            INSERT INTO bodegas (CODIGO, BODEGA, DIRECCION, TELEFONO, EMAIL, NIT, RESPONSABLE, ESTADO)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'A')
+            INSERT INTO bodegas (CODIGO, BODEGA)
+            VALUES (?, ?)
         ");
         $result = $stmt->execute([
             $nuevoCodigo,
-            $data['bodega'],
-            $data['direccion'] ?? null,
-            $data['telefono'] ?? null,
-            $data['email'] ?? null,
-            $data['nit'] ?? null,
-            $data['responsable'] ?? null
+            $data['bodega']
         ]);
 
         if ($result) {
@@ -134,21 +129,11 @@ try {
 
         $stmt = $db->prepare("
             UPDATE bodegas
-            SET BODEGA = ?,
-                DIRECCION = ?,
-                TELEFONO = ?,
-                EMAIL = ?,
-                NIT = ?,
-                RESPONSABLE = ?
+            SET BODEGA = ?
             WHERE CODIGO = ?
         ");
         $result = $stmt->execute([
             $data['bodega'],
-            $data['direccion'] ?? null,
-            $data['telefono'] ?? null,
-            $data['email'] ?? null,
-            $data['nit'] ?? null,
-            $data['responsable'] ?? null,
             $codigo
         ]);
 
