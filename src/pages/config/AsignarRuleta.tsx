@@ -94,7 +94,7 @@ export default function AsignarRuleta() {
     return `https://via.placeholder.com/150/000000/FFFFFF/?text=Animal+${num}`;
   };
 
-  if (user?.tipo !== 1) {
+  if (String(user?.tipo) !== '1') {
     return (
       <div className="p-6">
         <Card>
