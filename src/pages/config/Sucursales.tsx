@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { sucursalesAPI, usuariosAPI } from '@/api/admin';
+import { sucursalesAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -21,23 +22,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Building2, MapPin, Phone, Mail, FileText, User } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Sucursales() {
   const { user } = useAuth();
   const [sucursales, setSucursales] = useState<any[]>([]);
-  const [usuarios, setUsuarios] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSucursal, setEditingSucursal] = useState<any>(null);
   const [formData, setFormData] = useState({
     bodega: '',
-    direccion: '',
-    telefono: '',
-    email: '',
-    nit: '',
-    responsable: '',
   });
 
   useEffect(() => {
@@ -47,17 +42,10 @@ export default function Sucursales() {
   const cargarDatos = async () => {
     try {
       setIsLoading(true);
-      const [sucursalesRes, usuariosRes] = await Promise.all([
-        sucursalesAPI.listar(),
-        usuariosAPI.listar(),
-      ]);
+      const sucursalesRes = await sucursalesAPI.listar();
 
       if (sucursalesRes.success) {
         setSucursales(sucursalesRes.data);
-      }
-
-      if (usuariosRes.success) {
-        setUsuarios(usuariosRes.data);
       }
     } catch (error: any) {
       toast.error('Error al cargar datos: ' + error.message);
@@ -66,30 +54,16 @@ export default function Sucursales() {
     }
   };
 
-  const getUsuariosPorSucursal = (codigo: number) => {
-    return usuarios.filter((u) => u.CODBODEGA === codigo).length;
-  };
-
   const handleOpenDialog = (sucursal?: any) => {
     if (sucursal) {
       setEditingSucursal(sucursal);
       setFormData({
         bodega: sucursal.BODEGA || '',
-        direccion: sucursal.DIRECCION || '',
-        telefono: sucursal.TELEFONO || '',
-        email: sucursal.EMAIL || '',
-        nit: sucursal.NIT || '',
-        responsable: sucursal.RESPONSABLE || '',
       });
     } else {
       setEditingSucursal(null);
       setFormData({
         bodega: '',
-        direccion: '',
-        telefono: '',
-        email: '',
-        nit: '',
-        responsable: '',
       });
     }
     setIsDialogOpen(true);
@@ -101,11 +75,6 @@ export default function Sucursales() {
     try {
       const data = {
         bodega: formData.bodega,
-        direccion: formData.direccion || undefined,
-        telefono: formData.telefono || undefined,
-        email: formData.email || undefined,
-        nit: formData.nit || undefined,
-        responsable: formData.responsable || undefined,
       };
 
       if (editingSucursal) {
@@ -128,13 +97,6 @@ export default function Sucursales() {
   };
 
   const handleEliminar = async (codigo: number) => {
-    const usuariosCount = getUsuariosPorSucursal(codigo);
-
-    if (usuariosCount > 0) {
-      toast.error(`No se puede eliminar. Hay ${usuariosCount} usuarios asignados a esta sucursal`);
-      return;
-    }
-
     if (!confirm('¿Está seguro de eliminar esta sucursal?')) return;
 
     try {
@@ -150,21 +112,24 @@ export default function Sucursales() {
 
   if (String(user?.tipo) !== '1') {
     return (
-      <div className="p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Acceso Denegado</CardTitle>
-            <CardDescription>
-              Solo los administradores pueden acceder a esta sección.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <DashboardLayout>
+        <div className="p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Acceso Denegado</CardTitle>
+              <CardDescription>
+                Solo los administradores pueden acceder a esta sección.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -197,9 +162,6 @@ export default function Sucursales() {
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Dirección</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Responsable</TableHead>
                   <TableHead>Usuarios</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -209,14 +171,9 @@ export default function Sucursales() {
                   <TableRow key={sucursal.CODIGO}>
                     <TableCell className="font-medium">{sucursal.CODIGO}</TableCell>
                     <TableCell className="font-semibold">{sucursal.BODEGA}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                      {sucursal.DIRECCION || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">{sucursal.TELEFONO || '-'}</TableCell>
-                    <TableCell className="text-sm">{sucursal.RESPONSABLE || '-'}</TableCell>
                     <TableCell>
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        {getUsuariosPorSucursal(sucursal.CODIGO)} usuarios
+                        {sucursal.TOTAL_USUARIOS || 0} usuarios
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
@@ -244,19 +201,19 @@ export default function Sucursales() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>
               {editingSucursal ? 'Editar Sucursal' : 'Nueva Sucursal'}
             </DialogTitle>
             <DialogDescription>
               {editingSucursal
-                ? 'Modifica los datos de la sucursal'
-                : 'Ingresa los datos de la nueva sucursal'}
+                ? 'Modifica el nombre de la sucursal'
+                : 'Ingresa el nombre de la nueva sucursal'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="bodega" className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
@@ -272,84 +229,6 @@ export default function Sucursales() {
                   required
                 />
               </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="direccion" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Direccion
-                </Label>
-                <Input
-                  id="direccion"
-                  value={formData.direccion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, direccion: e.target.value })
-                  }
-                  placeholder="Ej: Calle 123 #45-67"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="telefono" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Telefono
-                  </Label>
-                  <Input
-                    id="telefono"
-                    value={formData.telefono}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telefono: e.target.value })
-                    }
-                    placeholder="Ej: 3001234567"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="nit" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    NIT / RUT
-                  </Label>
-                  <Input
-                    id="nit"
-                    value={formData.nit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nit: e.target.value })
-                    }
-                    placeholder="Ej: 900123456-1"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="Ej: sucursal@empresa.com"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="responsable" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Responsable
-                </Label>
-                <Input
-                  id="responsable"
-                  value={formData.responsable}
-                  onChange={(e) =>
-                    setFormData({ ...formData, responsable: e.target.value })
-                  }
-                  placeholder="Ej: Juan Perez"
-                />
-              </div>
             </div>
 
             <DialogFooter>
@@ -363,6 +242,7 @@ export default function Sucursales() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

@@ -97,18 +97,25 @@ try {
             exit;
         }
 
+        // Generar ID único
+        $stmt = $db->query("SELECT MAX(CAST(ID AS UNSIGNED)) as max_id FROM seguridad");
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $nuevoId = ($result['max_id'] ?? 0) + 1;
+
         // Insertar usuario
         $stmt = $db->prepare("
-            INSERT INTO seguridad (NICK, CLAVE, TIPO, CAJA, CODBODEGA, ESTADO)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO seguridad (ID, NOMBRE, NICK, CLAVE, TIPO, CAJA, CODBODEGA, ESTADO)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $result = $stmt->execute([
+            $nuevoId,
+            $data['nombre'] ?? $data['nick'],
             $data['nick'],
-            $data['clave'], // En producción debería hashearse
+            $data['clave'],
             $data['tipo'],
-            $data['caja'] ?? '',
-            $data['codbodega'] ?? null,
+            $data['caja'] ?? 1,
+            $data['codbodega'] ?? 1,
             $data['estado'] ?? 'A'
         ]);
 
@@ -116,7 +123,7 @@ try {
             echo json_encode([
                 'success' => true,
                 'message' => 'Usuario creado exitosamente',
-                'id' => $db->lastInsertId()
+                'id' => $nuevoId
             ]);
         } else {
             http_response_code(500);
