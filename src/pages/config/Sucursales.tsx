@@ -148,7 +148,7 @@ export default function Sucursales() {
     }
   };
 
-  if (user?.tipo !== 1) {
+  if (String(user?.tipo) !== '1') {
     return (
       <div className="p-6">
         <Card>
