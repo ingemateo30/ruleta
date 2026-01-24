@@ -46,6 +46,15 @@ export const usuariosAPI = {
 };
 
 // ============= SUCURSALES =============
+export interface SucursalData {
+  bodega: string;
+  direccion?: string;
+  telefono?: string;
+  email?: string;
+  nit?: string;
+  responsable?: string;
+}
+
 export const sucursalesAPI = {
   listar: async () => {
     const response = await apiClient.get('/sucursales.php/listar')as ApiResponse;
@@ -57,12 +66,12 @@ export const sucursalesAPI = {
     return response.data;
   },
 
-  crear: async (data: { bodega: string }) => {
+  crear: async (data: SucursalData) => {
     const response = await apiClient.post('/sucursales.php/crear', data)as ApiResponse;
     return response.data;
   },
 
-  actualizar: async (codigo: number, data: { bodega: string }) => {
+  actualizar: async (codigo: number, data: SucursalData) => {
     const response = await apiClient.put(`/sucursales.php/actualizar/${codigo}`, data)as ApiResponse;
     return response.data;
   },

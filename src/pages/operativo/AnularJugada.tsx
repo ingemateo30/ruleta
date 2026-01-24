@@ -5,15 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Search, Trash2, Loader2, Calendar, Clock, Building } from "lucide-react";
-import { anularJuegoService } from "@/api";
+import { Search, Trash2, Loader2, Calendar, Clock, Building, AlertTriangle } from "lucide-react";
+import { anularJuegoService, authService } from "@/api";
 import type { CabeceraJuego, DetalleJuego } from "@/api";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const AnularJugada = () => {
   const [radicado, setRadicado] = useState("");
   const [fechaBusqueda, setFechaBusqueda] = useState("");
+  const [motivoAnulacion, setMotivoAnulacion] = useState("");
   const [juegoEncontrado, setJuegoEncontrado] = useState<{
     cabecera: CabeceraJuego;
     detalles: DetalleJuego[];
@@ -70,11 +72,32 @@ const AnularJugada = () => {
   const handleAnularJuego = async () => {
     if (!juegoEncontrado) return;
 
+    if (!motivoAnulacion.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe ingresar el motivo de la anulación",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (motivoAnulacion.trim().length < 10) {
+      toast({
+        title: "Error",
+        description: "El motivo debe tener al menos 10 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setAnulando(true);
     try {
+      const usuarioActual = authService.getCurrentUser();
       const response = await anularJuegoService.ejecutarAnulacion({
         radicado: juegoEncontrado.cabecera.RADICADO,
         fecha: juegoEncontrado.cabecera.FECHA,
+        motivo: motivoAnulacion.trim(),
+        usuario: usuarioActual?.nick || 'Sistema',
       });
 
       if (response.success) {
@@ -84,6 +107,7 @@ const AnularJugada = () => {
         });
         setJuegoEncontrado(null);
         setRadicado("");
+        setMotivoAnulacion("");
       } else {
         toast({
           title: "Error",
@@ -238,46 +262,69 @@ const AnularJugada = () => {
                 </div>
 
                 {juegoEncontrado.cabecera.ESTADO === 'A' ? (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        className="w-full"
-                        disabled={anulando}
-                      >
-                        {anulando ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Anulando...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Anular Juego
-                          </>
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Confirmar anulación?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. El juego con radicado{" "}
-                          <strong>{juegoEncontrado.cabecera.RADICADO}</strong> será anulado
-                          permanentemente.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleAnularJuego}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  <>
+                    <div className="space-y-2 border-t pt-4">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        Motivo de Anulación (Requerido)
+                      </Label>
+                      <Textarea
+                        placeholder="Ingrese el motivo detallado de la anulación (mínimo 10 caracteres)..."
+                        value={motivoAnulacion}
+                        onChange={(e) => setMotivoAnulacion(e.target.value)}
+                        className="min-h-[80px]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {motivoAnulacion.length}/10 caracteres mínimo
+                      </p>
+                    </div>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          disabled={anulando || motivoAnulacion.trim().length < 10}
                         >
-                          Sí, Anular
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          {anulando ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Anulando...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Anular Juego
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Confirmar anulación?</AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2">
+                            <p>
+                              Esta acción no se puede deshacer. El juego con radicado{" "}
+                              <strong>{juegoEncontrado.cabecera.RADICADO}</strong> será anulado
+                              permanentemente.
+                            </p>
+                            <p className="mt-2">
+                              <strong>Motivo:</strong> {motivoAnulacion}
+                            </p>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleAnularJuego}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Sí, Anular
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
                 ) : (
                   <Button variant="outline" className="w-full" disabled>
                     Juego ya anulado

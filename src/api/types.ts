@@ -160,6 +160,8 @@ export interface BuscarJuegoResponse {
 export interface AnularJuegoRequest {
   radicado: string;
   fecha: string;
+  motivo: string;
+  usuario?: string;
 }
 
 export interface AnularJuegoResponse {
