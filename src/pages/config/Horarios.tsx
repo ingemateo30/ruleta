@@ -64,20 +64,31 @@ export default function Horarios() {
   };
 
   const validateHora = (hora: string): boolean => {
-    const horaRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
+    // Aceptar formato HH:MM o HH:MM:SS
+    const horaRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/;
     if (!horaRegex.test(hora)) {
-      toast.error('El formato de hora debe ser HH:MM (ejemplo: 14:30)');
+      toast.error('El formato de hora debe ser HH:MM o HH:MM:SS (ejemplo: 14:30 o 14:30:00)');
       return false;
     }
     return true;
   };
 
+  // Normalizar hora a formato HH:MM:SS
+  const normalizarHora = (hora: string): string => {
+    if (hora.split(':').length === 2) {
+      return hora + ':00';
+    }
+    return hora;
+  };
+
   const handleOpenDialog = (horario?: any) => {
     if (horario) {
       setEditingHorario(horario);
+      // Mostrar solo HH:MM para edición más fácil
+      const horaCorta = horario.HORA ? horario.HORA.substring(0, 5) : '';
       setFormData({
         descripcion: horario.DESCRIPCION,
-        hora: horario.HORA,
+        hora: horaCorta,
         estado: horario.ESTADO,
       });
     } else {
@@ -101,7 +112,7 @@ export default function Horarios() {
     try {
       const data = {
         descripcion: formData.descripcion,
-        hora: formData.hora,
+        hora: normalizarHora(formData.hora),
         estado: formData.estado,
       };
 

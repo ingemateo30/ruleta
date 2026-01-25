@@ -24,7 +24,7 @@ try {
             SELECT b.CODIGO, b.BODEGA,
                    COUNT(DISTINCT s.ID) as TOTAL_USUARIOS
             FROM bodegas b
-            LEFT JOIN seguridad s ON b.CODIGO = s.CODBODEGA AND s.ESTADO = 'A'
+            LEFT JOIN seguridad s ON b.CODIGO = s.CODBODEGA AND (s.ESTADO = 'A' OR s.ESTADO = '1')
             GROUP BY b.CODIGO, b.BODEGA
             ORDER BY b.CODIGO ASC
         ");

@@ -21,7 +21,7 @@ try {
     // GET /api/usuarios.php/listar - Listar todos los usuarios
     if ($method === 'GET' && (end($uriParts) === 'listar' || end($uriParts) === 'usuarios.php')) {
         $stmt = $db->query("
-            SELECT s.ID, s.NICK, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
+            SELECT s.ID, s.NOMBRE, s.NICK, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
                    b.BODEGA as NOMBRE_SUCURSAL
             FROM seguridad s
             LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO

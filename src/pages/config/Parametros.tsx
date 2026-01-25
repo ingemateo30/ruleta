@@ -52,51 +52,22 @@ export default function Parametros() {
     setEditingValue('');
   };
 
-  const validateValue = (codigo: number, value: string): boolean => {
-    const parametro = parametros.find((p) => p.CODIGO === codigo);
-    if (!parametro) return false;
-
-    const numValue = parseFloat(value);
-
-    // Validar según el tipo de parámetro
-    if (parametro.CODIGO === 1) { // MAX_JUGADAS_DIA
-      if (numValue < 1 || numValue > 10000) {
-        toast.error('El valor debe estar entre 1 y 10000');
-        return false;
-      }
-    } else if (parametro.CODIGO === 2) { // COMISION_PORCENTAJE
-      if (numValue < 0 || numValue > 100) {
-        toast.error('El valor debe estar entre 0 y 100');
-        return false;
-      }
-    } else if (parametro.CODIGO === 3) { // PREMIO_MULTIPLICADOR
-      if (numValue < 1 || numValue > 1000) {
-        toast.error('El valor debe estar entre 1 y 1000');
-        return false;
-      }
-    } else if (parametro.CODIGO === 4) { // APUESTA_MINIMA
-      if (numValue < 100 || numValue > 1000000) {
-        toast.error('El valor debe estar entre 100 y 1000000');
-        return false;
-      }
-    } else if (parametro.CODIGO === 5) { // APUESTA_MAXIMA
-      if (numValue < 1000 || numValue > 10000000) {
-        toast.error('El valor debe estar entre 1000 y 10000000');
-        return false;
-      }
+  const validateValue = (value: string): boolean => {
+    if (value === '' || value === null || value === undefined) {
+      toast.error('El valor no puede estar vacío');
+      return false;
     }
-
     return true;
   };
 
   const handleSave = async (codigo: number) => {
-    if (!validateValue(codigo, editingValue)) {
+    if (!validateValue(editingValue)) {
       return;
     }
 
     try {
       const result = await parametrosAPI.actualizar(codigo, {
-        valor: parseFloat(editingValue),
+        valor: editingValue,
       });
 
       if (result.success) {
@@ -221,30 +192,6 @@ export default function Parametros() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Información de Rangos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 text-sm">
-            <div>
-              <strong>MAX_JUGADAS_DIA:</strong> Rango permitido: 1 - 10,000
-            </div>
-            <div>
-              <strong>COMISION_PORCENTAJE:</strong> Rango permitido: 0% - 100%
-            </div>
-            <div>
-              <strong>PREMIO_MULTIPLICADOR:</strong> Rango permitido: 1x - 1,000x
-            </div>
-            <div>
-              <strong>APUESTA_MINIMA:</strong> Rango permitido: $100 - $1,000,000
-            </div>
-            <div>
-              <strong>APUESTA_MAXIMA:</strong> Rango permitido: $1,000 - $10,000,000
-            </div>
-          </div>
-        </CardContent>
-      </Card>
       </div>
     </DashboardLayout>
   );
