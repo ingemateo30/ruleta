@@ -81,6 +81,7 @@ try {
         // Últimos ganadores
         $stmt = $db->prepare("
             SELECT
+                g.CODIGOA,
                 g.ANIMAL,
                 g.FECHA,
                 h.DESCRIPCION as horario,

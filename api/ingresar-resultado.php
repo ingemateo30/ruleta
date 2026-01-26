@@ -151,56 +151,138 @@ function guardarResultado($conn, $data) {
     }
 }
 
+/**
+ * Lista los resultados históricos (ganadores) agrupados por fecha
+ */
+function listarResultados($conn, $fecha_inicio = null, $fecha_fin = null) {
+    try {
+        $sql = "
+            SELECT
+                g.CODIGOA,
+                g.ANIMAL,
+                g.CODIGOH,
+                g.DESCRIOCIONH,
+                g.FECHA,
+                h.HORA,
+                l.NUM as NUMERO_ANIMAL,
+                l.COLOR
+            FROM ingresarganadores g
+            LEFT JOIN horariojuego h ON g.CODIGOH = h.NUM
+            LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
+            WHERE g.ESTADO = 'A'
+        ";
+
+        $params = [];
+
+        if ($fecha_inicio) {
+            $sql .= " AND g.FECHA >= :fecha_inicio";
+            $params['fecha_inicio'] = $fecha_inicio;
+        }
+
+        if ($fecha_fin) {
+            $sql .= " AND g.FECHA <= :fecha_fin";
+            $params['fecha_fin'] = $fecha_fin;
+        }
+
+        $sql .= " ORDER BY g.FECHA DESC, h.HORA DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Agrupar por fecha
+        $agrupados = [];
+        foreach ($resultados as $r) {
+            $fecha = $r['FECHA'];
+            if (!isset($agrupados[$fecha])) {
+                $agrupados[$fecha] = [
+                    'fecha' => $fecha,
+                    'sorteos' => []
+                ];
+            }
+            $agrupados[$fecha]['sorteos'][] = [
+                'hora' => $r['HORA'],
+                'animal' => $r['ANIMAL'],
+                'numero' => (int)$r['NUMERO_ANIMAL'],
+                'color' => $r['COLOR'],
+                'codigoHorario' => $r['CODIGOH'],
+                'descripcionHorario' => $r['DESCRIOCIONH']
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => array_values($agrupados),
+            'count' => count($resultados)
+        ];
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Error al listar resultados',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
 // ==================== RUTEO DE PETICIONES ====================
 
 try {
     $conn = getDBConnection();
-    
+
     if (!$conn) {
         sendError('Error de conexión a la base de datos', 500);
     }
-    
+
     $method = $_SERVER['REQUEST_METHOD'];
     $path = $_SERVER['PATH_INFO'] ?? '/';
-    
+
     $segments = array_filter(explode('/', $path));
     $action = $segments[1] ?? '';
-    
+
     // GET: Listar animales
     if ($method === 'GET' && $action === 'animales') {
         $result = listarAnimales($conn);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
     // GET: Listar horarios
     elseif ($method === 'GET' && $action === 'horarios') {
         $result = listarHorarios($conn);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
+    // GET: Listar resultados históricos
+    elseif ($method === 'GET' && $action === 'listar') {
+        $fecha_inicio = $_GET['fecha_inicio'] ?? null;
+        $fecha_fin = $_GET['fecha_fin'] ?? null;
+        $result = listarResultados($conn, $fecha_inicio, $fecha_fin);
+        sendResponse($result, $result['success'] ? 200 : 400);
+    }
+
     // POST: Guardar resultado
     elseif ($method === 'POST' && $action === 'guardar') {
         $input = file_get_contents('php://input');
         $data = json_decode($input, true);
-        
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             sendError('JSON inválido', 400);
         }
-        
+
         $result = guardarResultado($conn, $data);
         sendResponse($result, $result['success'] ? 201 : 400);
     }
-    
+
     else {
         sendError('Endpoint no encontrado', 404, [
             'available_endpoints' => [
                 'GET /ingresar-resultado/animales',
                 'GET /ingresar-resultado/horarios',
+                'GET /ingresar-resultado/listar',
                 'POST /ingresar-resultado/guardar'
             ]
         ]);
     }
-    
+
 } catch (Exception $e) {
     sendError('Error interno del servidor', 500, $e->getMessage());
 }

@@ -23,6 +23,7 @@ import InformeVentas from "./pages/informes/InformeVentas";
 import InformeResultados from "./pages/informes/InformeResultados";
 import InformePagos from "./pages/informes/InformePagos";
 import Estadisticas from "./pages/Estadisticas";
+import RuletaPublica from "./pages/RuletaPublica";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
+            <Route path="/ruleta" element={<RuletaPublica />} />
             <Route path="/dashboard" element={<Dashboard />} />
 
             {/* Operativo */}
