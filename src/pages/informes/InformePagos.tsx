@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { informesAPI, sucursalesAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -19,9 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Receipt, Download } from 'lucide-react';
+import { Receipt, Download, Loader2, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { getAnimalByNumero } from '@/constants/animals';
 
 export default function InformePagos() {
   const [datos, setDatos] = useState<any>(null);
@@ -70,25 +73,33 @@ export default function InformePagos() {
   };
 
   const exportarCSV = () => {
-    if (!datos) {
+    if (!datos || !datos.pagos || datos.pagos.length === 0) {
       toast.error('No hay datos para exportar');
       return;
     }
 
     const headers = [
+      'ID',
       'Radicado',
-      'Fecha Pago',
-      'Sucursal',
+      'Fecha',
+      'Animal',
+      'Valor Apostado',
       'Valor Pagado',
+      'Sucursal',
       'Usuario',
+      'Fecha Pago',
     ];
-    const rows = datos.pagos?.map((item: any) => [
-      item.radicado,
-      item.fecha_pago,
-      item.sucursal,
-      item.valor_pagado,
-      item.usuario,
-    ]) || [];
+    const rows = datos.pagos.map((item: any) => [
+      item.ID,
+      item.RADICADO,
+      item.FECHA,
+      item.ANIMAL,
+      item.VALOR_APOSTADO,
+      item.VALOR_GANADO,
+      item.NOMBRE_SUCURSAL,
+      item.USUARIO,
+      item.FECHA_PAGO,
+    ]);
 
     const csvContent = [
       headers.join(','),
@@ -109,24 +120,25 @@ export default function InformePagos() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Receipt className="h-8 w-8" />
-            Informe de Pagos
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Consulta de pagos realizados
-          </p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Receipt className="h-8 w-8 text-primary" />
+              Informe de Pagos
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Consulta de pagos realizados a ganadores
+            </p>
+          </div>
+          {datos && datos.pagos?.length > 0 && (
+            <Button onClick={exportarCSV} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+          )}
         </div>
-        {datos && (
-          <Button onClick={exportarCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        )}
-      </div>
 
       <Card>
         <CardHeader>
@@ -212,7 +224,7 @@ export default function InformePagos() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-blue-600">
-                  ${(datos.totales?.promedio || 0).toLocaleString(undefined, {
+                  ${(datos.totales?.promedio_pago || 0).toLocaleString(undefined, {
                     maximumFractionDigits: 0,
                   })}
                 </div>
@@ -225,7 +237,7 @@ export default function InformePagos() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600">
-                  {(datos.totales?.cantidad || 0).toLocaleString()}
+                  {(datos.totales?.total_pagos || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -239,7 +251,7 @@ export default function InformePagos() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {datos.por_sucursal && datos.por_sucursal.length > 0 ? (
+              {datos.resumen_por_sucursal && datos.resumen_por_sucursal.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -250,19 +262,19 @@ export default function InformePagos() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {datos.por_sucursal.map((sucursal: any, index: number) => (
+                    {datos.resumen_por_sucursal.map((sucursal: any, index: number) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">
-                          {sucursal.sucursal}
+                          {sucursal.SUCURSAL}
                         </TableCell>
                         <TableCell className="text-right">
-                          {(sucursal.cantidad || 0).toLocaleString()}
+                          {(sucursal.TOTAL_PAGOS || 0).toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ${(sucursal.total_pagado || 0).toLocaleString()}
+                        <TableCell className="text-right font-semibold text-green-600">
+                          ${(parseFloat(sucursal.TOTAL_PAGADO) || 0).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          ${(sucursal.promedio || 0).toLocaleString(undefined, {
+                          ${(parseFloat(sucursal.PROMEDIO_PAGO) || 0).toLocaleString(undefined, {
                             maximumFractionDigits: 0,
                           })}
                         </TableCell>
@@ -287,47 +299,80 @@ export default function InformePagos() {
             </CardHeader>
             <CardContent>
               {datos.pagos && datos.pagos.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Radicado</TableHead>
-                      <TableHead>Fecha Pago</TableHead>
-                      <TableHead>Sucursal</TableHead>
-                      <TableHead>Horario</TableHead>
-                      <TableHead className="text-right">Valor Pagado</TableHead>
-                      <TableHead>Usuario</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {datos.pagos.map((pago: any, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono font-medium">
-                          {pago.radicado}
-                        </TableCell>
-                        <TableCell>
-                          {pago.fecha_pago
-                            ? format(new Date(pago.fecha_pago), 'dd/MM/yyyy HH:mm')
-                            : '-'}
-                        </TableCell>
-                        <TableCell>{pago.sucursal || '-'}</TableCell>
-                        <TableCell className="font-mono">{pago.horario || '-'}</TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">
-                          ${(pago.valor_pagado || 0).toLocaleString()}
-                        </TableCell>
-                        <TableCell>{pago.usuario || '-'}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Radicado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Animal</TableHead>
+                        <TableHead>Sucursal</TableHead>
+                        <TableHead className="text-right">Apostado</TableHead>
+                        <TableHead className="text-right">Pagado</TableHead>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Fecha Pago</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {datos.pagos.map((pago: any, index: number) => {
+                        const animalData = getAnimalByNumero(parseInt(pago.CODANIMAL));
+                        return (
+                          <TableRow key={pago.ID || index}>
+                            <TableCell className="font-mono font-medium">
+                              {pago.RADICADO}
+                            </TableCell>
+                            <TableCell>
+                              {pago.FECHA ? format(new Date(pago.FECHA + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {animalData && (
+                                  <img src={animalData.imagen} alt={pago.ANIMAL} className="w-6 h-6 object-contain" />
+                                )}
+                                <span>{pago.ANIMAL}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{pago.NOMBRE_SUCURSAL || '-'}</TableCell>
+                            <TableCell className="text-right">
+                              ${(parseFloat(pago.VALOR_APOSTADO) || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-green-600">
+                              ${(parseFloat(pago.VALOR_GANADO) || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell>{pago.USUARIO || '-'}</TableCell>
+                            <TableCell>
+                              {pago.FECHA_PAGO
+                                ? format(new Date(pago.FECHA_PAGO), 'dd/MM/yyyy HH:mm')
+                                : '-'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No hay pagos para mostrar
+                  <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No hay pagos para mostrar</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </>
       )}
-    </div>
+
+      {!datos && !isLoading && (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Seleccione los filtros y presione "Generar Informe"</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      </div>
+    </DashboardLayout>
   );
 }

@@ -277,6 +277,7 @@ const RealizarJugadas = () => {
         fecha,
         hora,
         sucursal: codigoSucursal.toString(), // Código de sucursal del usuario
+        usuario: usuarioActual?.nick || usuarioActual?.nombre || 'Sistema', // Usuario que realiza la jugada
         total: total,
         juegos: jugadas.map(jugada => {
           // Validar que el código de animal exista
