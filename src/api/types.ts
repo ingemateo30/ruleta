@@ -15,14 +15,28 @@ export interface User {
   id: string;
   nombre: string;
   nick: string;
-  tipo: string;
+  tipo: string; // 0 = SuperAdmin, 1 = Admin, 2 = Operario
   caja: number;
   codBodega?: number; // Mantener por compatibilidad
   codigoSucursal?: number; // Campo que devuelve el API
   nombreSucursal?: string; // Campo que devuelve el API
   sucursal: string;
   estado: number;
+  bloqueado?: boolean; // Si el admin esta bloqueado por el superadmin
 }
+
+// Constantes de tipos de usuario
+export const USER_TYPES = {
+  SUPER_ADMIN: '0',
+  ADMIN: '1',
+  OPERARIO: '2',
+} as const;
+
+export const USER_TYPE_NAMES: Record<string, string> = {
+  '0': 'Super Administrador',
+  '1': 'Administrador',
+  '2': 'Operario',
+};
 
 export interface LoginResponse {
   success: boolean;

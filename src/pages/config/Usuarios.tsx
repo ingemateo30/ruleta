@@ -29,8 +29,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ShieldAlert, ShieldCheck, Ban, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { USER_TYPES, USER_TYPE_NAMES } from '@/api/types';
+import { Badge } from '@/components/ui/badge';
 
 export default function Usuarios() {
   const { user } = useAuth();
@@ -47,6 +49,9 @@ export default function Usuarios() {
     codbodega: '',
     estado: 'A',
   });
+
+  const isSuperAdmin = String(user?.tipo) === USER_TYPES.SUPER_ADMIN;
+  const isAdmin = String(user?.tipo) === USER_TYPES.ADMIN;
 
   useEffect(() => {
     cargarDatos();
@@ -102,6 +107,12 @@ export default function Usuarios() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Solo superadmin puede crear otros superadmin o admins
+    if (!isSuperAdmin && formData.tipo === USER_TYPES.SUPER_ADMIN) {
+      toast.error('Solo el Super Administrador puede crear usuarios de este tipo');
+      return;
+    }
+
     try {
       const data = {
         nick: formData.nick,
@@ -132,7 +143,7 @@ export default function Usuarios() {
   };
 
   const handleEliminar = async (id: number) => {
-    if (!confirm('¿Está seguro de desactivar este usuario?')) return;
+    if (!confirm('Esta seguro de desactivar este usuario?')) return;
 
     try {
       const result = await usuariosAPI.eliminar(id);
@@ -145,7 +156,48 @@ export default function Usuarios() {
     }
   };
 
-  if (String(user?.tipo) !== '1') {
+  const handleToggleBloqueo = async (usuario: any) => {
+    if (!isSuperAdmin) {
+      toast.error('Solo el Super Administrador puede bloquear/desbloquear usuarios');
+      return;
+    }
+
+    const nuevoEstado = usuario.BLOQUEADO === 1 ? 0 : 1;
+    const accion = nuevoEstado === 1 ? 'bloquear' : 'desbloquear';
+
+    if (!confirm(`Esta seguro de ${accion} a ${usuario.NICK}?`)) return;
+
+    try {
+      const result = await usuariosAPI.actualizar(usuario.ID, {
+        ...usuario,
+        nick: usuario.NICK,
+        clave: '',
+        tipo: usuario.TIPO,
+        bloqueado: nuevoEstado,
+      });
+
+      if (result.success) {
+        toast.success(`Usuario ${accion === 'bloquear' ? 'bloqueado' : 'desbloqueado'} exitosamente`);
+        cargarDatos();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || `Error al ${accion} usuario`);
+    }
+  };
+
+  const getTipoBadgeClass = (tipo: number) => {
+    switch (tipo) {
+      case 0:
+        return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+      case 1:
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300';
+      default:
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
+    }
+  };
+
+  // Solo admins y superadmins pueden acceder
+  if (!isSuperAdmin && !isAdmin) {
     return (
       <DashboardLayout>
         <div className="p-6">
@@ -153,7 +205,7 @@ export default function Usuarios() {
             <CardHeader>
               <CardTitle>Acceso Denegado</CardTitle>
               <CardDescription>
-                Solo los administradores pueden acceder a esta sección.
+                Solo los administradores pueden acceder a esta seccion.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -165,222 +217,291 @@ export default function Usuarios() {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Gestión de Usuarios
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Administra los usuarios del sistema
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              {isSuperAdmin ? (
+                <ShieldAlert className="h-8 w-8 text-red-500" />
+              ) : (
+                <Users className="h-8 w-8" />
+              )}
+              Gestion de Usuarios
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isSuperAdmin
+                ? 'Panel de Super Administrador - Control total de usuarios'
+                : 'Administra los usuarios del sistema'}
+            </p>
+          </div>
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Usuario
+          </Button>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Usuario
-        </Button>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Usuarios</CardTitle>
-          <CardDescription>
-            Total: {usuarios.length} usuarios registrados
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Cargando...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead>Caja</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usuarios.map((usuario) => (
-                  <TableRow key={usuario.ID}>
-                    <TableCell>{usuario.ID}</TableCell>
-                    <TableCell className="font-medium">{usuario.NICK}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          usuario.TIPO === 1
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                        }`}
-                      >
-                        {usuario.TIPO_NOMBRE}
-                      </span>
-                    </TableCell>
-                    <TableCell>{usuario.NOMBRE_SUCURSAL || '-'}</TableCell>
-                    <TableCell>{usuario.CAJA || '-'}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          usuario.ESTADO === 'A'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                        }`}
-                      >
-                        {usuario.ESTADO === 'A' ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleOpenDialog(usuario)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleEliminar(usuario.ID)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+        {/* Info para Super Admin */}
+        {isSuperAdmin && (
+          <Card className="border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5" />
+                Modo Super Administrador
+              </CardTitle>
+              <CardDescription className="text-red-600/80 dark:text-red-400/80">
+                Tienes control total sobre todos los usuarios. Puedes bloquear/desbloquear
+                administradores para controlar su acceso al sistema.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Usuarios</CardTitle>
+            <CardDescription>
+              Total: {usuarios.length} usuarios registrados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8">Cargando...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Sucursal</TableHead>
+                    <TableHead>Caja</TableHead>
+                    <TableHead>Estado</TableHead>
+                    {isSuperAdmin && <TableHead>Acceso</TableHead>}
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {usuarios.map((usuario) => (
+                    <TableRow
+                      key={usuario.ID}
+                      className={usuario.BLOQUEADO === 1 ? 'opacity-60 bg-red-50 dark:bg-red-950/20' : ''}
+                    >
+                      <TableCell>{usuario.ID}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {usuario.NICK}
+                          {usuario.BLOQUEADO === 1 && (
+                            <Ban className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoBadgeClass(usuario.TIPO)}`}>
+                          {USER_TYPE_NAMES[usuario.TIPO.toString()] || usuario.TIPO_NOMBRE}
+                        </span>
+                      </TableCell>
+                      <TableCell>{usuario.NOMBRE_SUCURSAL || '-'}</TableCell>
+                      <TableCell>{usuario.CAJA || '-'}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            usuario.ESTADO === 'A'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          }`}
+                        >
+                          {usuario.ESTADO === 'A' ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </TableCell>
+                      {isSuperAdmin && (
+                        <TableCell>
+                          {usuario.TIPO === 1 && (
+                            <Badge
+                              variant={usuario.BLOQUEADO === 1 ? 'destructive' : 'outline'}
+                              className="cursor-pointer"
+                              onClick={() => handleToggleBloqueo(usuario)}
+                            >
+                              {usuario.BLOQUEADO === 1 ? (
+                                <>
+                                  <Ban className="h-3 w-3 mr-1" />
+                                  Bloqueado
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Permitido
+                                </>
+                              )}
+                            </Badge>
+                          )}
+                          {usuario.TIPO === 0 && (
+                            <Badge variant="secondary">
+                              <ShieldCheck className="h-3 w-3 mr-1" />
+                              Super Admin
+                            </Badge>
+                          )}
+                          {usuario.TIPO === 2 && (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleOpenDialog(usuario)}
+                          disabled={usuario.TIPO === 0 && !isSuperAdmin}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleEliminar(usuario.ID)}
+                          disabled={usuario.TIPO === 0}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingUser
-                ? 'Modifica los datos del usuario'
-                : 'Ingresa los datos del nuevo usuario'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="nick">Usuario (Nick)</Label>
-                <Input
-                  id="nick"
-                  value={formData.nick}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nick: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="clave">
-                  Contraseña {editingUser && '(dejar vacío para mantener)'}
-                </Label>
-                <Input
-                  id="clave"
-                  type="password"
-                  value={formData.clave}
-                  onChange={(e) =>
-                    setFormData({ ...formData, clave: e.target.value })
-                  }
-                  required={!editingUser}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="tipo">Tipo de Usuario</Label>
-                <Select
-                  value={formData.tipo}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, tipo: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Administrador</SelectItem>
-                    <SelectItem value="2">Operario</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="sucursal">Sucursal</Label>
-                <Select
-                  value={formData.codbodega}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, codbodega: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione sucursal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin sucursal</SelectItem>
-                    {sucursales.map((suc) => (
-                      <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
-                        {suc.BODEGA}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="caja">Caja</Label>
-                <Input
-                  id="caja"
-                  value={formData.caja}
-                  onChange={(e) =>
-                    setFormData({ ...formData, caja: e.target.value })
-                  }
-                />
-              </div>
-
-              {editingUser && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingUser
+                  ? 'Modifica los datos del usuario'
+                  : 'Ingresa los datos del nuevo usuario'}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="estado">Estado</Label>
+                  <Label htmlFor="nick">Usuario (Nick)</Label>
+                  <Input
+                    id="nick"
+                    value={formData.nick}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nick: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="clave">
+                    Contrasena {editingUser && '(dejar vacio para mantener)'}
+                  </Label>
+                  <Input
+                    id="clave"
+                    type="password"
+                    value={formData.clave}
+                    onChange={(e) =>
+                      setFormData({ ...formData, clave: e.target.value })
+                    }
+                    required={!editingUser}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="tipo">Tipo de Usuario</Label>
                   <Select
-                    value={formData.estado}
+                    value={formData.tipo}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, estado: value })
+                      setFormData({ ...formData, tipo: value })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="A">Activo</SelectItem>
-                      <SelectItem value="I">Inactivo</SelectItem>
+                      {isSuperAdmin && (
+                        <SelectItem value="0">
+                          <span className="flex items-center gap-2">
+                            <ShieldAlert className="h-4 w-4 text-red-500" />
+                            Super Administrador
+                          </span>
+                        </SelectItem>
+                      )}
+                      <SelectItem value="1">Administrador</SelectItem>
+                      <SelectItem value="2">Operario</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-            </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {editingUser ? 'Actualizar' : 'Crear'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <div className="grid gap-2">
+                  <Label htmlFor="sucursal">Sucursal</Label>
+                  <Select
+                    value={formData.codbodega}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, codbodega: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione sucursal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin sucursal</SelectItem>
+                      {sucursales.map((suc) => (
+                        <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
+                          {suc.BODEGA}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="caja">Caja</Label>
+                  <Input
+                    id="caja"
+                    value={formData.caja}
+                    onChange={(e) =>
+                      setFormData({ ...formData, caja: e.target.value })
+                    }
+                  />
+                </div>
+
+                {editingUser && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="estado">Estado</Label>
+                    <Select
+                      value={formData.estado}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, estado: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A">Activo</SelectItem>
+                        <SelectItem value="I">Inactivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  {editingUser ? 'Actualizar' : 'Crear'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
