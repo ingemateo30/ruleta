@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,36 +9,72 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Clock, CheckCircle, Timer, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle, Timer, AlertCircle, Loader2 } from "lucide-react";
+import { apiClient } from "@/api/client";
 
-const mockSchedules = [
-  { id: 1, descripcion: "Sorteo Matutino 1", hora: "09:00", estado: "completado" },
-  { id: 2, descripcion: "Sorteo Matutino 2", hora: "10:00", estado: "completado" },
-  { id: 3, descripcion: "Sorteo Mediodía", hora: "12:00", estado: "activo" },
-  { id: 4, descripcion: "Sorteo Tarde 1", hora: "15:00", estado: "pendiente" },
-  { id: 5, descripcion: "Sorteo Tarde 2", hora: "17:00", estado: "pendiente" },
-  { id: 6, descripcion: "Sorteo Nocturno", hora: "20:00", estado: "pendiente" },
-];
+interface HorarioConEstado {
+  NUM: number;
+  DESCRIPCION: string;
+  HORA: string;
+  CODIGOA?: number;
+  ANIMAL?: string;
+  COLOR?: string;
+  estado: 'JUGADO' | 'PENDIENTE' | 'PROXIMO';
+}
 
 const estadoBadges: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; text: string }> = {
-  completado: {
+  JUGADO: {
     variant: "secondary",
     icon: <CheckCircle className="h-3 w-3" />,
-    text: "Listo",
+    text: "Completado",
   },
-  activo: {
-    variant: "default",
-    icon: <Timer className="h-3 w-3 animate-pulse" />,
-    text: "En Curso",
-  },
-  pendiente: {
-    variant: "outline",
+  PENDIENTE: {
+    variant: "destructive",
     icon: <AlertCircle className="h-3 w-3" />,
     text: "Pendiente",
+  },
+  PROXIMO: {
+    variant: "default",
+    icon: <Timer className="h-3 w-3 animate-pulse" />,
+    text: "Próximo",
   },
 };
 
 const ScheduleTable = () => {
+  const [horarios, setHorarios] = useState<HorarioConEstado[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    cargarHorarios();
+    // Actualizar cada 30 segundos
+    const interval = setInterval(cargarHorarios, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const cargarHorarios = async () => {
+    try {
+      const response = await apiClient.get('/ruleta-publica.php/horarios');
+      if (response.success && response.data) {
+        setHorarios(response.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar horarios:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatHora = (hora: string): string => {
+    if (!hora) return "";
+    const partes = hora.split(":");
+    if (partes.length < 2) return hora;
+    const horas = parseInt(partes[0], 10);
+    const minutos = partes[1];
+    const ampm = horas >= 12 ? "PM" : "AM";
+    const horas12 = horas % 12 || 12;
+    return `${horas12}:${minutos} ${ampm}`;
+  };
+
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
@@ -47,40 +84,70 @@ const ScheduleTable = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-muted-foreground text-xs sm:text-sm">Sorteo</TableHead>
-              <TableHead className="text-muted-foreground text-xs sm:text-sm">Hora</TableHead>
-              <TableHead className="text-muted-foreground text-right text-xs sm:text-sm">Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockSchedules.map((schedule, index) => {
-              const estadoConfig = estadoBadges[schedule.estado];
-              return (
-                <TableRow 
-                  key={schedule.id} 
-                  className={`${schedule.estado === "activo" ? "bg-primary/5" : ""} animate-fade-in`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <TableCell className="font-medium text-foreground text-xs sm:text-sm">
-                    {schedule.descripcion}
-                  </TableCell>
-                  <TableCell className="font-mono text-base sm:text-lg font-bold text-foreground">
-                    {schedule.hora}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={estadoConfig.variant} className="gap-1 text-[10px] sm:text-xs">
-                      {estadoConfig.icon}
-                      <span className="hidden sm:inline">{estadoConfig.text}</span>
-                    </Badge>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Sorteo</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Hora</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Ganador</TableHead>
+                <TableHead className="text-muted-foreground text-right text-xs sm:text-sm">Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {horarios.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    No hay horarios configurados
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ) : (
+                horarios.map((horario) => {
+                  const estadoConfig = estadoBadges[horario.estado];
+                  return (
+                    <TableRow 
+                      key={horario.NUM} 
+                      className={`${horario.estado === "PROXIMO" ? "bg-primary/5" : ""}`}
+                    >
+                      <TableCell className="font-medium text-xs sm:text-sm">
+                        {horario.DESCRIPCION}
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        {formatHora(horario.HORA)}
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        {horario.ANIMAL ? (
+                          <span className="flex items-center gap-1">
+                            <span 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: horario.COLOR || '#gray' }}
+                            />
+                            {horario.ANIMAL}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge 
+                          variant={estadoConfig.variant}
+                          className="text-[10px] sm:text-xs flex items-center gap-1 w-fit ml-auto"
+                        >
+                          {estadoConfig.icon}
+                          {estadoConfig.text}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

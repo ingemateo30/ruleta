@@ -200,7 +200,7 @@ export default function InformeVentas() {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="0">Todas</SelectItem>
                   {sucursales.map((suc) => (
                     <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
                       {suc.BODEGA}
