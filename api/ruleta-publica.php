@@ -42,7 +42,8 @@ try {
     if ($method === 'GET' && $action === 'proximo-sorteo') {
         $ahora = date('H:i:s');
         $hoy = date('Y-m-d');
-
+ $esManana = false;
+ 
         // Buscar el próximo horario que aún no ha pasado
         $stmt = $conn->prepare("
             SELECT
@@ -58,9 +59,10 @@ try {
         ");
         $stmt->execute(['fecha' => $hoy, 'ahora' => $ahora]);
         $proximo = $stmt->fetch(PDO::FETCH_ASSOC);
-
+ 
         // Si no hay más sorteos hoy, obtener el primero de mañana
         if (!$proximo) {
+            $esManana = true;
             $manana = date('Y-m-d', strtotime('+1 day'));
             $stmt = $conn->prepare("
                 SELECT
@@ -76,7 +78,7 @@ try {
             $stmt->execute(['fecha' => $manana]);
             $proximo = $stmt->fetch(PDO::FETCH_ASSOC);
         }
-
+ 
         // Verificar si ya hay un resultado para el horario actual (el más reciente ya jugado)
         $stmt = $conn->prepare("
             SELECT
@@ -94,18 +96,19 @@ try {
         ");
         $stmt->execute(['fecha' => $hoy]);
         $ultimoResultado = $stmt->fetch(PDO::FETCH_ASSOC);
-
+ 
         sendResponse([
             'success' => true,
             'data' => [
                 'proximo_sorteo' => $proximo ? [
-                    'codigo' => $proximo['NUM'],
+                    'codigo' => (int)$proximo['NUM'],
                     'descripcion' => $proximo['DESCRIPCION'],
                     'hora' => $proximo['HORA'],
-                    'segundos_faltantes' => max(0, (int)$proximo['segundos_faltantes'])
+                    'segundos_faltantes' => max(0, (int)$proximo['segundos_faltantes']),
+                    'es_manana' => $esManana
                 ] : null,
                 'ultimo_resultado' => $ultimoResultado ? [
-                    'codigo_animal' => $ultimoResultado['CODIGOA'],
+                    'codigo_animal' => (int)$ultimoResultado['CODIGOA'],
                     'animal' => $ultimoResultado['ANIMAL'],
                     'horario' => $ultimoResultado['horario'],
                     'hora' => $ultimoResultado['HORA']
