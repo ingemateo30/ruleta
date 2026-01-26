@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Timer, Trophy, Clock, Loader2 } from "lucide-react";
 import { apiClient } from "@/api/client";
-import { getAnimalByNumero, ANIMALS } from "@/constants/animals";
+import { getAnimalByNumero, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
 
 interface ProximoSorteo {
