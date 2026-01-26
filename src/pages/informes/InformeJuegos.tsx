@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { informesAPI, sucursalesAPI, horariosAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -67,8 +68,10 @@ export default function InformeJuegos() {
       const response = await informesAPI.juegos(params);
 
       if (response.success) {
-        setJugadas(response.data);
-        toast.success(`Se encontraron ${response.data.length} jugadas`);
+        // API devuelve { juegos: [...], resumen: {...} }
+        const juegosData = response.data?.juegos || response.data || [];
+        setJugadas(juegosData);
+        toast.success(`Se encontraron ${juegosData.length} jugadas`);
       }
     } catch (error: any) {
       toast.error('Error al generar informe: ' + error.message);
@@ -79,7 +82,7 @@ export default function InformeJuegos() {
 
   const calcularResumen = () => {
     const totalJugadas = jugadas.length;
-    const totalApostado = jugadas.reduce((sum, j) => sum + (j.TOTAL_APOSTADO || 0), 0);
+    const totalApostado = jugadas.reduce((sum, j) => sum + parseFloat(j.TOTALJUEGO || j.TOTAL_APOSTADO || 0), 0);
     const promedio = totalJugadas > 0 ? totalApostado / totalJugadas : 0;
 
     return { totalJugadas, totalApostado, promedio };
@@ -96,9 +99,9 @@ export default function InformeJuegos() {
       j.RADICADO,
       j.FECHA ? format(new Date(j.FECHA), 'dd/MM/yyyy') : '',
       j.NOMBRE_SUCURSAL || '',
-      j.HORA || '',
-      j.ANIMALES || '',
-      j.TOTAL_APOSTADO || 0,
+      j.HORARIO || j.HORA || '',
+      j.DETALLE_ANIMALES || j.ANIMALES || '',
+      j.TOTALJUEGO || j.TOTAL_APOSTADO || 0,
     ]);
 
     const csvContent = [
@@ -122,7 +125,8 @@ export default function InformeJuegos() {
   const resumen = calcularResumen();
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -288,13 +292,13 @@ export default function InformeJuegos() {
                         {jugada.RADICADO}
                       </TableCell>
                       <TableCell>
-                        {jugada.FECHA ? format(new Date(jugada.FECHA), 'dd/MM/yyyy') : '-'}
+                        {jugada.FECHA ? format(new Date(jugada.FECHA + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
                       </TableCell>
                       <TableCell>{jugada.NOMBRE_SUCURSAL || '-'}</TableCell>
-                      <TableCell className="font-mono">{jugada.HORA || '-'}</TableCell>
-                      <TableCell>{jugada.ANIMALES || '-'}</TableCell>
+                      <TableCell className="font-mono">{jugada.HORARIO || jugada.HORA || '-'}</TableCell>
+                      <TableCell className="max-w-xs truncate">{jugada.DETALLE_ANIMALES || jugada.ANIMALES || '-'}</TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${(jugada.TOTAL_APOSTADO || 0).toLocaleString()}
+                        ${parseFloat(jugada.TOTALJUEGO || jugada.TOTAL_APOSTADO || 0).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -305,5 +309,6 @@ export default function InformeJuegos() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
