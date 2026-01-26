@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,25 +9,75 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trophy, TrendingUp } from "lucide-react";
+import { Trophy, TrendingUp, Loader2 } from "lucide-react";
 import { getAnimalByNumero } from "@/constants/animals";
+import { estadisticasAPI } from "@/api/admin";
 
-const mockWinners = [
-  { id: "RAD-001542", animal: "León", numero: 5, valor: 50000, hora: "09:30" },
-  { id: "RAD-001538", animal: "Caballo", numero: 12, valor: 25000, hora: "10:00" },
-  { id: "RAD-001525", animal: "Pescado", numero: 33, valor: 75000, hora: "10:30" },
-  { id: "RAD-001519", animal: "Burro", numero: 18, valor: 30000, hora: "11:00" },
-  { id: "RAD-001512", animal: "Perico", numero: 7, valor: 45000, hora: "11:30" },
-];
+interface Winner {
+  animal: string;
+  numero: number;
+  horario: string;
+  hora: string;
+  color?: string;
+}
 
 const WinnersTable = () => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(value);
+  const [winners, setWinners] = useState<Winner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    cargarGanadores();
+    // Actualizar cada 60 segundos
+    const interval = setInterval(cargarGanadores, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const cargarGanadores = async () => {
+    try {
+      const response = await estadisticasAPI.dashboard();
+      if (response.success && response.data?.ultimos_ganadores) {
+        const ganadoresFormateados = response.data.ultimos_ganadores.map((g: any) => ({
+          animal: g.ANIMAL,
+          numero: parseInt(g.CODIGOA || g.numero || '0'),
+          horario: g.horario || g.DESCRIPCION,
+          hora: g.HORA,
+          color: g.COLOR
+        }));
+        setWinners(ganadoresFormateados);
+      }
+    } catch (error) {
+      console.error('Error al cargar ganadores:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const formatHora = (hora: string): string => {
+    if (!hora) return "";
+    const partes = hora.split(":");
+    if (partes.length < 2) return hora;
+    const horas = parseInt(partes[0], 10);
+    const minutos = partes[1];
+    const ampm = horas >= 12 ? "PM" : "AM";
+    const horas12 = horas % 12 || 12;
+    return `${horas12}:${minutos} ${ampm}`;
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Trophy className="h-5 w-5 text-chart-4" />
+            Lottos Ganadores
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full">
@@ -38,58 +89,61 @@ const WinnersTable = () => {
           </CardTitle>
           <Badge variant="outline" className="bg-accent text-accent-foreground text-xs">
             <TrendingUp className="h-3 w-3 mr-1" />
-            En tiempo real
+            Hoy
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-muted-foreground text-xs sm:text-sm">Radicado</TableHead>
-              <TableHead className="text-muted-foreground text-xs sm:text-sm">Animal</TableHead>
-              <TableHead className="text-muted-foreground text-right text-xs sm:text-sm">Valor</TableHead>
-              <TableHead className="text-muted-foreground text-right text-xs sm:text-sm hidden sm:table-cell">Hora</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockWinners.map((winner, index) => (
-              <TableRow 
-                key={winner.id} 
-                className={`${index === 0 ? "bg-accent/30" : ""} animate-fade-in`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <TableCell className="font-mono text-xs sm:text-sm text-foreground">
-                  {winner.id}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    {(() => {
-                      const animalData = getAnimalByNumero(winner.numero);
-                      return animalData ? (
-                        <img 
-                          src={animalData.imagen} 
-                          alt={winner.animal}
-                          className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                        />
-                      ) : null;
-                    })()}
-                    <span className="font-medium text-foreground text-xs sm:text-sm hidden sm:inline">{winner.animal}</span>
-                    <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                      #{winner.numero.toString().padStart(2, "0")}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right font-bold text-primary text-xs sm:text-sm">
-                  {formatCurrency(winner.valor)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
-                  {winner.hora}
-                </TableCell>
+        {winners.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No hay ganadores registrados hoy</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Horario</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Animal Ganador</TableHead>
+                <TableHead className="text-muted-foreground text-right text-xs sm:text-sm hidden sm:table-cell">Hora</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {winners.map((winner, index) => (
+                <TableRow
+                  key={`${winner.hora}-${index}`}
+                  className={`${index === 0 ? "bg-accent/30" : ""} animate-fade-in`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <TableCell className="font-medium text-xs sm:text-sm text-foreground">
+                    {winner.horario}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {(() => {
+                        const animalData = getAnimalByNumero(winner.numero);
+                        return animalData ? (
+                          <img
+                            src={animalData.imagen}
+                            alt={winner.animal}
+                            className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                          />
+                        ) : null;
+                      })()}
+                      <span className="font-medium text-foreground text-xs sm:text-sm hidden sm:inline">{winner.animal}</span>
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                        #{winner.numero.toString().padStart(2, "0")}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
+                    {formatHora(winner.hora)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
