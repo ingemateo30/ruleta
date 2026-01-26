@@ -309,7 +309,7 @@ function guardarJuego($conn, $data) {
                 'hora' => $data['hora'],
                 'sucursal' => $data['sucursal'],
                 'total' => floatval($data['total']),
-                'usuario' => $data['sucursal'] // Usando sucursal como usuario por compatibilidad
+                'usuario' => $data['usuario'] ?? $data['sucursal'] // Usuario que realiza la jugada
             ]);
             
             // 2. Insertar cada juego en hislottojuego (historial)

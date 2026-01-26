@@ -8,6 +8,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+// Importar el logo
+import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
+
 interface JugadaRecibo {
   codigo: string;
   animal: string;
@@ -37,49 +40,41 @@ const ReciboCaja = ({
   valorTotal,
 }: ReciboCajaProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [animalImages, setAnimalImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
 
-  // Cargar imágenes de animales para el encabezado
+  // Cargar el logo
   useEffect(() => {
-    const loadAnimalImages = async () => {
-      const images = new Map<string, HTMLImageElement>();
-      // Cargar algunos animales para el encabezado (tortuga, gato, tucán, mono)
-      const animalNames = ["11gato.png", "13mono.png"];
-      
-      for (const name of animalNames) {
-        try {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          const imageUrl = new URL(`../animalitos/${name}`, import.meta.url).href;
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = imageUrl;
-          });
-          images.set(name, img);
-        } catch (error) {
-          console.warn(`No se pudo cargar la imagen ${name}:`, error);
-        }
+    const loadLogo = async () => {
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = logoLottoAnimal;
+        });
+        setLogoImage(img);
+      } catch (error) {
+        console.warn("No se pudo cargar el logo:", error);
       }
-      setAnimalImages(images);
     };
 
     if (open) {
-      loadAnimalImages();
+      loadLogo();
     }
   }, [open]);
 
   // Dibujar el recibo en el canvas
   useEffect(() => {
     if (!open) return;
-    
+
     // Pequeño delay para asegurar que el canvas esté montado
     const timeoutId = setTimeout(() => {
       if (!canvasRef.current) {
         console.error('Canvas ref no está disponible');
         return;
       }
-      
+
       // Debug: Verificar que los datos estén disponibles
       console.log('ReciboCaja - Datos recibidos:', {
         radicado,
@@ -97,7 +92,7 @@ const ReciboCaja = ({
         console.error('No se pudo obtener el contexto 2D del canvas');
         return;
       }
-      
+
       // Validar que tengamos datos necesarios
       if (!radicado || !fecha || !hora || !sucursal || !jugadas || jugadas.length === 0) {
         console.error('Faltan datos necesarios para renderizar el recibo:', {
@@ -111,9 +106,10 @@ const ReciboCaja = ({
       }
 
       // 1. Calcular altura necesaria antes de establecer el tamaño
-      const headerHeight = 40 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
+      const logoHeight = logoImage ? 60 : 0; // Altura para el logo
+      const headerHeight = logoHeight + 20 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
       const jugadasHeight = jugadas.length * 18;
-      const footerHeight = 5 + 15 + 15 + 15 + 20; // Total, líneas, pie
+      const footerHeight = 5 + 15 + 15 + 15 + 40; // Total, líneas, pie
       const paddingTotal = 20;
       const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
 
@@ -121,7 +117,7 @@ const ReciboCaja = ({
       const width = 302;
       canvas.width = width;
       canvas.height = totalHeight;
-      
+
       const padding = 10;
       let y = padding;
 
@@ -135,13 +131,20 @@ const ReciboCaja = ({
       ctx.textAlign = "center";
       ctx.font = "bold 14px monospace";
 
-      // Dibujar iconos de animales o logo (simplificado)
-      y += 20;
-
-      // Título LOTTO ANIMAL
-      ctx.font = "bold 16px monospace";
-      ctx.fillText("LOTTO ANIMAL", width / 2, y);
-      y += 20;
+      // Dibujar el logo si está disponible
+      if (logoImage) {
+        const logoWidth = 120;
+        const logoDisplayHeight = 50;
+        const logoX = (width - logoWidth) / 2;
+        ctx.drawImage(logoImage, logoX, y, logoWidth, logoDisplayHeight);
+        y += logoDisplayHeight + 10;
+      } else {
+        // Título LOTTO ANIMAL como fallback
+        y += 10;
+        ctx.font = "bold 16px monospace";
+        ctx.fillText("LOTTO ANIMAL", width / 2, y);
+        y += 20;
+      }
 
       // Línea doble
       ctx.strokeStyle = "#000000";
@@ -237,7 +240,13 @@ const ReciboCaja = ({
 
       // Pie de página
       ctx.font = "10px monospace";
-      ctx.fillText("Condiciones....", padding, y);
+      ctx.textAlign = "center";
+      ctx.fillText("*** CONSERVE SU TICKET ***", width / 2, y);
+      y += 12;
+      ctx.fillText("Este es su comprobante de juego", width / 2, y);
+      y += 10;
+      ctx.font = "8px monospace";
+      ctx.fillText("Válido solo el día de la jugada", width / 2, y);
 
       console.log('Canvas renderizado correctamente:', {
         width: canvas.width,
@@ -245,9 +254,9 @@ const ReciboCaja = ({
         radicado
       });
     }, 100); // Delay de 100ms para asegurar que el DOM esté listo
-    
+
     return () => clearTimeout(timeoutId);
-  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal]);
+  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal, logoImage]);
 
   const formatearHora = (hora: string): string => {
     if (!hora) return "";
