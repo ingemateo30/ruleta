@@ -106,7 +106,7 @@ const ReciboCaja = ({
       }
 
       // 1. Calcular altura necesaria antes de establecer el tamaño
-      const logoHeight = logoImage ? 60 : 0; // Altura para el logo
+      const logoHeight = logoImage ? 80 : 0; // Altura para el logo
       const headerHeight = logoHeight + 20 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
       const jugadasHeight = jugadas.length * 18;
       const footerHeight = 5 + 15 + 15 + 15 + 40; // Total, líneas, pie
@@ -133,17 +133,17 @@ const ReciboCaja = ({
 
       // Dibujar el logo si está disponible
       if (logoImage) {
-        const logoWidth = 120;
-        const logoDisplayHeight = 50;
+        const logoWidth = 200;
+        const logoDisplayHeight = 70;
         const logoX = (width - logoWidth) / 2;
         ctx.drawImage(logoImage, logoX, y, logoWidth, logoDisplayHeight);
-        y += logoDisplayHeight + 10;
+        y += logoDisplayHeight + 8;
       } else {
         // Título LOTTO ANIMAL como fallback
-        y += 10;
-        ctx.font = "bold 16px monospace";
+        y += 15;
+        ctx.font = "bold 20px monospace";
         ctx.fillText("LOTTO ANIMAL", width / 2, y);
-        y += 20;
+        y += 25;
       }
 
       // Línea doble

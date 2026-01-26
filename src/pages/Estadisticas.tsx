@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { estadisticasAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { toast } from 'sonner';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart,
@@ -83,16 +84,18 @@ export default function Estadisticas() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="text-center py-12">
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <div className="text-xl font-semibold">Cargando estadísticas...</div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -358,5 +361,6 @@ export default function Estadisticas() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

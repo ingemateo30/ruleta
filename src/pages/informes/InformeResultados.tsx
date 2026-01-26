@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { informesAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -46,7 +47,24 @@ export default function InformeResultados() {
       });
 
       if (response.success) {
-        setDatos(response.data);
+        // Mapear datos de la API al formato esperado por el frontend
+        const apiData = response.data;
+        const mappedData = {
+          resultados: (apiData.resultados || []).map((r: any) => ({
+            fecha: r.FECHA,
+            horario: r.HORARIO || r.HORA,
+            animal_ganador: r.ANIMAL,
+            total_apostado: parseFloat(r.TOTAL_APOSTADO || 0),
+            total_pagar: parseFloat(r.TOTAL_A_PAGAR || 0),
+            utilidad: parseFloat(r.UTILIDAD || 0),
+          })),
+          top_ganadores: (apiData.animales_mas_ganadores || []).map((a: any) => ({
+            nombre: a.ANIMAL,
+            veces_ganador: parseInt(a.VECES_GANADOR || 0),
+            porcentaje: parseFloat(a.PORCENTAJE || 0),
+          })),
+        };
+        setDatos(mappedData);
         toast.success('Informe generado exitosamente');
       }
     } catch (error: any) {
@@ -90,7 +108,8 @@ export default function InformeResultados() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -270,5 +289,6 @@ export default function InformeResultados() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }

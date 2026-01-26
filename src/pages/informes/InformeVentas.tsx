@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { informesAPI, sucursalesAPI } from '@/api/admin';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -69,7 +70,30 @@ export default function InformeVentas() {
       const response = await informesAPI.ventas(params);
 
       if (response.success) {
-        setDatos(response.data);
+        // Mapear datos de la API al formato esperado por el frontend
+        const apiData = response.data;
+        const mappedData = {
+          por_sucursal: (apiData.ventas_por_sucursal || []).map((v: any) => ({
+            sucursal: v.SUCURSAL,
+            total_ventas: parseFloat(v.TOTAL_VENTAS || 0),
+            total_tickets: parseInt(v.TOTAL_TICKETS || 0),
+          })),
+          por_horario: (apiData.ventas_por_horario || []).map((h: any) => ({
+            hora: h.HORA,
+            descripcion: h.HORARIO,
+            total_tickets: parseInt(h.TOTAL_JUGADAS || 0),
+            total_ventas: parseFloat(h.TOTAL_APOSTADO || 0),
+            promedio: parseInt(h.TOTAL_JUGADAS || 0) > 0
+              ? parseFloat(h.TOTAL_APOSTADO || 0) / parseInt(h.TOTAL_JUGADAS || 1)
+              : 0,
+          })),
+          kpis: {
+            total_ventas: apiData.resumen?.total_ventas || 0,
+            total_tickets: apiData.resumen?.total_tickets || 0,
+            ventas_canceladas: apiData.resumen?.total_cancelado || 0,
+          }
+        };
+        setDatos(mappedData);
         toast.success('Informe generado exitosamente');
       }
     } catch (error: any) {
@@ -111,7 +135,8 @@ export default function InformeVentas() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -303,5 +328,6 @@ export default function InformeVentas() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
