@@ -75,11 +75,41 @@ export default function Estadisticas() {
         }),
       ]);
 
-      if (dashboardRes.success) setDashboard(dashboardRes.data);
-      if (tendenciasRes.success) setTendencias(tendenciasRes.data);
-      if (animalesRes.success) setAnimales(animalesRes.data.slice(0, 10));
-      if (horariosRes.success) setHorarios(horariosRes.data);
-      if (sucursalesRes.success) setSucursales(sucursalesRes.data);
+      if (dashboardRes.success) setDashboard(dashboardRes.data.kpis);
+      if (tendenciasRes.success) {
+        // Mapear los datos para que tengan los campos correctos del gráfico
+        const tendenciasFormateadas = (tendenciasRes.data.ventas_por_dia || []).map((t: any) => ({
+          ...t,
+          total_ventas: t.ventas || 0,
+          total_pagado: 0 // El endpoint de tendencias no incluye pagos por día, lo dejamos en 0
+        }));
+        setTendencias(tendenciasFormateadas);
+      }
+      if (animalesRes.success) {
+        // Mapear los datos para que tengan el campo 'nombre' que espera el gráfico
+        const animalesFormateados = (animalesRes.data || []).slice(0, 10).map((a: any) => ({
+          ...a,
+          nombre: a.animal || a.VALOR || 'Sin nombre'
+        }));
+        setAnimales(animalesFormateados);
+      }
+      if (horariosRes.success) {
+        // Mapear los datos para que tengan los campos correctos
+        const horariosFormateados = (horariosRes.data || []).map((h: any) => ({
+          ...h,
+          descripcion: h.horario || h.DESCRIPCION || 'Sin descripción',
+          total_ventas: h.total_apostado || 0
+        }));
+        setHorarios(horariosFormateados);
+      }
+      if (sucursalesRes.success) {
+        // Mapear los datos para que tengan el campo 'nombre'
+        const sucursalesFormateadas = (sucursalesRes.data || []).map((s: any) => ({
+          ...s,
+          nombre: s.sucursal || s.BODEGA || 'Sin nombre'
+        }));
+        setSucursales(sucursalesFormateadas);
+      }
     } catch (error: any) {
       toast.error('Error al cargar estadísticas: ' + error.message);
     } finally {
@@ -123,7 +153,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${(dashboard.ventas_hoy || 0).toLocaleString()}
+                ${(dashboard.total_ventas || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -131,12 +161,12 @@ export default function Estadisticas() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Jugadas Hoy
+                Total Tickets Hoy
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {(dashboard.jugadas_hoy || 0).toLocaleString()}
+                {(dashboard.total_tickets || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -149,7 +179,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                ${(dashboard.pagado_hoy || 0).toLocaleString()}
+                ${(dashboard.total_pagado || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -162,7 +192,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                ${(dashboard.utilidad_hoy || 0).toLocaleString()}
+                ${(dashboard.utilidad_neta || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>

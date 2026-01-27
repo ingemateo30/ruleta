@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Ticket, Trophy, TrendingUp, Loader2 } from "lucide-react";
+import { Ticket, Trophy, Clock, Users, Loader2 } from "lucide-react";
 import { estadisticasAPI } from '@/api/admin';
+import { useAuth } from '@/hooks/use-auth';
+import { USER_TYPES } from '@/api/types';
 
 const StatsCards = () => {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Determinar si es superadmin (solo superadmin ve datos financieros)
+  const isSuperAdmin = String(user?.tipo) === USER_TYPES.SUPER_ADMIN;
 
   useEffect(() => {
     cargarEstadisticas();
@@ -15,7 +21,7 @@ const StatsCards = () => {
     try {
       const result = await estadisticasAPI.dashboard();
       if (result.success) {
-        setStats(result.data.kpis);
+        setStats(result.data);
       }
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
@@ -24,65 +30,88 @@ const StatsCards = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const statsConfig = [
-    {
-      title: "Ventas del Día",
-      getValue: () => stats?.total_ventas || 0,
-      getChange: () => {
-        const total = stats?.total_ventas || 0;
-        const cancelado = stats?.total_cancelado || 0;
-        return total > 0 ? `${((total - cancelado) / total * 100).toFixed(1)}%` : '0%';
-      },
-      icon: <DollarSign className="h-5 w-5" />,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
-      format: formatCurrency,
-    },
+  // Configuración para SuperAdmin (con datos financieros)
+  const superAdminStatsConfig = [
     {
       title: "Tickets Emitidos",
-      getValue: () => stats?.total_tickets || 0,
-      getChange: () => `${stats?.total_tickets || 0} hoy`,
+      getValue: () => stats?.kpis?.total_tickets || 0,
+      getChange: () => `${stats?.kpis?.total_tickets || 0} hoy`,
       icon: <Ticket className="h-5 w-5" />,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
       format: (val: number) => val.toString(),
     },
     {
-      title: "Premios Pagados",
-      getValue: () => stats?.total_pagado || 0,
-      getChange: () => {
-        const ventas = stats?.total_ventas || 0;
-        const pagado = stats?.total_pagado || 0;
-        return ventas > 0 ? `${((pagado / ventas) * 100).toFixed(1)}%` : '0%';
-      },
+      title: "Sorteos Realizados",
+      getValue: () => stats?.ultimos_ganadores?.length || 0,
+      getChange: () => `de ${stats?.proximos_horarios?.length || 0} programados`,
       icon: <Trophy className="h-5 w-5" />,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",
-      format: formatCurrency,
+      format: (val: number) => val.toString(),
     },
     {
-      title: "Utilidad",
-      getValue: () => stats?.utilidad_neta || 0,
-      getChange: () => {
-        const ventas = stats?.total_ventas || 0;
-        const utilidad = stats?.utilidad_neta || 0;
-        return ventas > 0 ? `${((utilidad / ventas) * 100).toFixed(1)}%` : '0%';
-      },
-      icon: <TrendingUp className="h-5 w-5" />,
+      title: "Horarios Activos",
+      getValue: () => stats?.proximos_horarios?.length || 0,
+      getChange: () => 'configurados',
+      icon: <Clock className="h-5 w-5" />,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+      format: (val: number) => val.toString(),
+    },
+    {
+      title: "Sucursales Activas",
+      getValue: () => stats?.ventas_por_sucursal?.filter((s: any) => s.tickets > 0)?.length || 0,
+      getChange: () => `de ${stats?.ventas_por_sucursal?.length || 0} total`,
+      icon: <Users className="h-5 w-5" />,
       color: "text-chart-2",
       bgColor: "bg-chart-2/10",
-      format: formatCurrency,
+      format: (val: number) => val.toString(),
     },
   ];
+
+  // Configuración para Admin y Operario (sin datos financieros)
+  const adminStatsConfig = [
+    {
+      title: "Tickets Emitidos",
+      getValue: () => stats?.kpis?.total_tickets || 0,
+      getChange: () => `${stats?.kpis?.total_tickets || 0} hoy`,
+      icon: <Ticket className="h-5 w-5" />,
+      color: "text-chart-3",
+      bgColor: "bg-chart-3/10",
+      format: (val: number) => val.toString(),
+    },
+    {
+      title: "Sorteos Realizados",
+      getValue: () => stats?.ultimos_ganadores?.length || 0,
+      getChange: () => `de ${stats?.proximos_horarios?.length || 0} programados`,
+      icon: <Trophy className="h-5 w-5" />,
+      color: "text-chart-4",
+      bgColor: "bg-chart-4/10",
+      format: (val: number) => val.toString(),
+    },
+    {
+      title: "Horarios Activos",
+      getValue: () => stats?.proximos_horarios?.length || 0,
+      getChange: () => 'configurados',
+      icon: <Clock className="h-5 w-5" />,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+      format: (val: number) => val.toString(),
+    },
+    {
+      title: "Sucursales Activas",
+      getValue: () => stats?.ventas_por_sucursal?.filter((s: any) => s.tickets > 0)?.length || 0,
+      getChange: () => `de ${stats?.ventas_por_sucursal?.length || 0} total`,
+      icon: <Users className="h-5 w-5" />,
+      color: "text-chart-2",
+      bgColor: "bg-chart-2/10",
+      format: (val: number) => val.toString(),
+    },
+  ];
+
+  // Seleccionar la configuración según el rol
+  const statsConfig = isSuperAdmin ? superAdminStatsConfig : adminStatsConfig;
 
   if (isLoading) {
     return (
@@ -123,7 +152,7 @@ const StatsCards = () => {
               {stat.format(stat.getValue())}
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-              <span className="text-primary font-medium">{stat.getChange()}</span> de ventas
+              <span className="text-primary font-medium">{stat.getChange()}</span>
             </p>
           </CardContent>
         </Card>
