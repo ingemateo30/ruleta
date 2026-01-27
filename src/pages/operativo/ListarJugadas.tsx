@@ -81,9 +81,10 @@ const ListarJugadas = () => {
     cargarDatosIniciales();
   }, []);
 
-  // Establecer fecha actual por defecto
+  // Establecer fecha actual por defecto (usando fecha local, no UTC)
   useEffect(() => {
-    const hoy = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     setFechaConsulta(hoy);
   }, []);
 

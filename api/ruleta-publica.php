@@ -210,7 +210,8 @@ try {
 
     // GET: Horarios del día con estado
     elseif ($method === 'GET' && $action === 'horarios') {
-        $hoy = date('Y-m-d');
+        // Usar fecha del parámetro si se proporciona, sino usar fecha actual
+        $hoy = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : date('Y-m-d');
         $ahora = date('H:i:s');
 
         $stmt = $conn->prepare("
