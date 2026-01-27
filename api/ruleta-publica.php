@@ -40,42 +40,49 @@ try {
 
     // GET: Próximo sorteo
     if ($method === 'GET' && $action === 'proximo-sorteo') {
-        $ahora = date('H:i:s');
-        $hoy = date('Y-m-d');
- $esManana = false;
- 
-        // Buscar el próximo horario que aún no ha pasado
+        $esManana = false;
+
+        // Obtener hora actual del servidor de base de datos (más consistente)
+        $stmtHora = $conn->query("SELECT CURTIME() as hora_actual, CURDATE() as fecha_actual");
+        $tiempoServidor = $stmtHora->fetch(PDO::FETCH_ASSOC);
+        $horaActual = $tiempoServidor['hora_actual'];
+        $fechaActual = $tiempoServidor['fecha_actual'];
+
+        // Buscar el próximo horario que aún no ha pasado hoy
+        // Usamos TIME_TO_SEC para calcular segundos de forma precisa
         $stmt = $conn->prepare("
             SELECT
                 h.NUM,
                 h.DESCRIPCION,
                 h.HORA,
-                TIMESTAMPDIFF(SECOND, NOW(), CONCAT(:fecha, ' ', h.HORA)) as segundos_faltantes
+                TIME_TO_SEC(TIMEDIFF(h.HORA, CURTIME())) as segundos_faltantes
             FROM horariojuego h
             WHERE h.ESTADO = 'A'
-            AND h.HORA > :ahora
+            AND h.HORA > CURTIME()
             ORDER BY h.HORA ASC
             LIMIT 1
         ");
-        $stmt->execute(['fecha' => $hoy, 'ahora' => $ahora]);
+        $stmt->execute();
         $proximo = $stmt->fetch(PDO::FETCH_ASSOC);
- 
+
         // Si no hay más sorteos hoy, obtener el primero de mañana
         if (!$proximo) {
             $esManana = true;
-            $manana = date('Y-m-d', strtotime('+1 day'));
+
+            // Calcular segundos hasta el primer sorteo de mañana
+            // Segundos restantes del día actual + segundos hasta el horario de mañana
             $stmt = $conn->prepare("
                 SELECT
                     h.NUM,
                     h.DESCRIPCION,
                     h.HORA,
-                    TIMESTAMPDIFF(SECOND, NOW(), CONCAT(:fecha, ' ', h.HORA)) as segundos_faltantes
+                    (TIME_TO_SEC('24:00:00') - TIME_TO_SEC(CURTIME())) + TIME_TO_SEC(h.HORA) as segundos_faltantes
                 FROM horariojuego h
                 WHERE h.ESTADO = 'A'
                 ORDER BY h.HORA ASC
                 LIMIT 1
             ");
-            $stmt->execute(['fecha' => $manana]);
+            $stmt->execute();
             $proximo = $stmt->fetch(PDO::FETCH_ASSOC);
         }
  
@@ -89,14 +96,14 @@ try {
                 h.HORA
             FROM ingresarganadores g
             JOIN horariojuego h ON g.CODIGOH = h.NUM
-            WHERE g.FECHA = :fecha
+            WHERE g.FECHA = CURDATE()
             AND g.ESTADO = 'A'
             ORDER BY h.HORA DESC
             LIMIT 1
         ");
-        $stmt->execute(['fecha' => $hoy]);
+        $stmt->execute();
         $ultimoResultado = $stmt->fetch(PDO::FETCH_ASSOC);
- 
+
         sendResponse([
             'success' => true,
             'data' => [
@@ -113,8 +120,8 @@ try {
                     'horario' => $ultimoResultado['horario'],
                     'hora' => $ultimoResultado['HORA']
                 ] : null,
-                'hora_servidor' => date('H:i:s'),
-                'fecha_servidor' => $hoy
+                'hora_servidor' => $horaActual,
+                'fecha_servidor' => $fechaActual
             ]
         ]);
     }

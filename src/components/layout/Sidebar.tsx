@@ -87,11 +87,24 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Horarios de Juego", icon: <Clock className="h-4 w-4" />, href: "/config/horarios" },
       ],
     },
-    // Operativo - Todos
+    // Operativo - Solo para Operarios (sin Cerrar Juego)
     {
       title: "Operativo",
       icon: <Gamepad2 className="h-4 w-4" />,
-      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN, USER_TYPES.OPERARIO],
+      requiredRole: [USER_TYPES.OPERARIO],
+      children: [
+        { title: "Realizar Jugadas", icon: <Play className="h-4 w-4" />, href: "/operativo/jugadas" },
+        { title: "Anular Juego", icon: <XCircle className="h-4 w-4" />, href: "/operativo/anular" },
+        { title: "Listar Jugadas", icon: <List className="h-4 w-4" />, href: "/operativo/listar-jugadas" },
+        { title: "Ver Resultados", icon: <Eye className="h-4 w-4" />, href: "/operativo/resultados" },
+        { title: "Realizar Pagos", icon: <CreditCard className="h-4 w-4" />, href: "/operativo/pagos" },
+      ],
+    },
+    // Operativo - Para Admin y SuperAdmin (con Cerrar Juego)
+    {
+      title: "Operativo",
+      icon: <Gamepad2 className="h-4 w-4" />,
+      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
       children: [
         { title: "Realizar Jugadas", icon: <Play className="h-4 w-4" />, href: "/operativo/jugadas" },
         { title: "Anular Juego", icon: <XCircle className="h-4 w-4" />, href: "/operativo/anular" },
@@ -110,11 +123,11 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Ingresar Resultados", icon: <Edit className="h-4 w-4" />, href: "/admin/ingresar-resultados" },
       ],
     },
-    // Informes - Admin y SuperAdmin
+    // Informes - Solo SuperAdmin
     {
       title: "Informes",
       icon: <FileBarChart className="h-4 w-4" />,
-      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
+      requiredRole: [USER_TYPES.SUPER_ADMIN],
       children: [
         { title: "Informe de Juegos", icon: <FileText className="h-4 w-4" />, href: "/informes/juegos" },
         { title: "Ventas del Dia", icon: <DollarSign className="h-4 w-4" />, href: "/informes/ventas" },
@@ -122,12 +135,12 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Informe de Pagos", icon: <Wallet className="h-4 w-4" />, href: "/informes/pagos" },
       ],
     },
-    // Estadisticas - Admin y SuperAdmin
+    // Estadisticas - Solo SuperAdmin
     {
       title: "Estadisticas",
       icon: <TrendingUp className="h-4 w-4" />,
       href: "/estadisticas",
-      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
+      requiredRole: [USER_TYPES.SUPER_ADMIN],
     },
   ];
 
