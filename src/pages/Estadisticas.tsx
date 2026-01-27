@@ -25,6 +25,11 @@ const COLORS = [
   '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
 ];
 
+// Helper para obtener fecha local en formato YYYY-MM-DD
+const getLocalDateString = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 export default function Estadisticas() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [tendencias, setTendencias] = useState<any[]>([]);
@@ -41,6 +46,12 @@ export default function Estadisticas() {
     try {
       setIsLoading(true);
 
+      // Calcular fechas usando zona horaria local
+      const hoy = new Date();
+      const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const fechaFin = getLocalDateString(hoy);
+      const fechaInicio = getLocalDateString(hace30Dias);
+
       const [
         dashboardRes,
         tendenciasRes,
@@ -51,22 +62,16 @@ export default function Estadisticas() {
         estadisticasAPI.dashboard(),
         estadisticasAPI.tendencias(7),
         estadisticasAPI.animales({
-          fecha_inicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
-          fecha_fin: new Date().toISOString().split('T')[0],
+          fecha_inicio: fechaInicio,
+          fecha_fin: fechaFin,
         }),
         estadisticasAPI.horarios({
-          fecha_inicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
-          fecha_fin: new Date().toISOString().split('T')[0],
+          fecha_inicio: fechaInicio,
+          fecha_fin: fechaFin,
         }),
         estadisticasAPI.sucursales({
-          fecha_inicio: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
-          fecha_fin: new Date().toISOString().split('T')[0],
+          fecha_inicio: fechaInicio,
+          fecha_fin: fechaFin,
         }),
       ]);
 

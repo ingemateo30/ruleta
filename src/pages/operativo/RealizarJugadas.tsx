@@ -255,7 +255,8 @@ const RealizarJugadas = () => {
 
       const radicado = consecutivoRes.data.radicado;
       const ahora = new Date();
-      const fecha = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+      // Usar fecha local en formato YYYY-MM-DD (no UTC)
+      const fecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
       const hora = ahora.toTimeString().split(' ')[0]; // HH:MM:SS
 
       // Obtener código de sucursal del usuario logueado
