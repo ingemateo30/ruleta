@@ -1,15 +1,9 @@
 <?php
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
+require_once 'auth_middleware.php';
 require_once 'db.php';
+
+// Inicializar seguridad - Requiere autenticacion y rol Admin o SuperAdmin
+$currentUser = initApiSecurity(true, ['0', '1']);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
@@ -21,11 +15,15 @@ try {
     // GET /api/sucursales.php/listar - Listar todas las sucursales
     if ($method === 'GET' && (end($uriParts) === 'listar' || end($uriParts) === 'sucursales.php')) {
         $stmt = $db->query("
-            SELECT b.CODIGO, b.BODEGA,
+            SELECT b.CODIGO, b.BODEGA, b.DIRECCION, b.TELEFONO, b.CELULAR, b.EMAIL,
+                   b.RESPONSABLE, b.CIUDAD, b.HORARIO_APERTURA, b.HORARIO_CIERRE,
+                   b.OBSERVACIONES, b.ESTADO,
                    COUNT(DISTINCT s.ID) as TOTAL_USUARIOS
             FROM bodegas b
             LEFT JOIN seguridad s ON b.CODIGO = s.CODBODEGA AND (s.ESTADO = 'A' OR s.ESTADO = '1')
-            GROUP BY b.CODIGO, b.BODEGA
+            GROUP BY b.CODIGO, b.BODEGA, b.DIRECCION, b.TELEFONO, b.CELULAR, b.EMAIL,
+                     b.RESPONSABLE, b.CIUDAD, b.HORARIO_APERTURA, b.HORARIO_CIERRE,
+                     b.OBSERVACIONES, b.ESTADO
             ORDER BY b.CODIGO ASC
         ");
 
@@ -88,14 +86,24 @@ try {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $nuevoCodigo = ($result['max_codigo'] ?? 0) + 1;
 
-        // Insertar sucursal
+        // Insertar sucursal con todos los campos
         $stmt = $db->prepare("
-            INSERT INTO bodegas (CODIGO, BODEGA)
-            VALUES (?, ?)
+            INSERT INTO bodegas (CODIGO, BODEGA, DIRECCION, TELEFONO, CELULAR, EMAIL, RESPONSABLE, CIUDAD, HORARIO_APERTURA, HORARIO_CIERRE, OBSERVACIONES, ESTADO)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $result = $stmt->execute([
             $nuevoCodigo,
-            $data['bodega']
+            $data['bodega'],
+            $data['direccion'] ?? null,
+            $data['telefono'] ?? null,
+            $data['celular'] ?? null,
+            $data['email'] ?? null,
+            $data['responsable'] ?? null,
+            $data['ciudad'] ?? null,
+            $data['horario_apertura'] ?? null,
+            $data['horario_cierre'] ?? null,
+            $data['observaciones'] ?? null,
+            $data['estado'] ?? 'A'
         ]);
 
         if ($result) {
@@ -129,11 +137,31 @@ try {
 
         $stmt = $db->prepare("
             UPDATE bodegas
-            SET BODEGA = ?
+            SET BODEGA = ?,
+                DIRECCION = ?,
+                TELEFONO = ?,
+                CELULAR = ?,
+                EMAIL = ?,
+                RESPONSABLE = ?,
+                CIUDAD = ?,
+                HORARIO_APERTURA = ?,
+                HORARIO_CIERRE = ?,
+                OBSERVACIONES = ?,
+                ESTADO = ?
             WHERE CODIGO = ?
         ");
         $result = $stmt->execute([
             $data['bodega'],
+            $data['direccion'] ?? null,
+            $data['telefono'] ?? null,
+            $data['celular'] ?? null,
+            $data['email'] ?? null,
+            $data['responsable'] ?? null,
+            $data['ciudad'] ?? null,
+            $data['horario_apertura'] ?? null,
+            $data['horario_cierre'] ?? null,
+            $data['observaciones'] ?? null,
+            $data['estado'] ?? 'A',
             $codigo
         ]);
 

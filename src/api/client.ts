@@ -21,14 +21,23 @@ const axiosInstance: AxiosInstance = axios.create({
   headers: API_CONFIG.headers,
 });
 
-// Interceptor de solicitudes (opcional, para agregar tokens, etc.)
+// Interceptor de solicitudes - Agregar headers de autenticacion
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Aquí puedes agregar tokens de autenticación si es necesario
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    // Obtener usuario del localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.id) {
+          // Agregar headers de autenticacion
+          config.headers['X-Auth-Token'] = user.id;
+          config.headers['X-Auth-User'] = user.id;
+        }
+      } catch {
+        // Si hay error al parsear, ignorar
+      }
+    }
     return config;
   },
   (error) => {
@@ -44,21 +53,35 @@ axiosInstance.interceptors.response.use(
   (error: AxiosError) => {
     // Manejar errores de Axios
     if (error.response) {
-      // El servidor respondió con un código de estado fuera del rango 2xx
+      // El servidor respondio con un codigo de estado fuera del rango 2xx
       const status = error.response.status;
-      const data = error.response.data as { message?: string } | undefined;
+      const data = error.response.data as { message?: string; code?: string } | undefined;
       const message = data?.message || error.message || `Error ${status}`;
-      
+
+      // Si es error 401 (no autorizado), limpiar sesion y redirigir al login
+      if (status === 401) {
+        localStorage.removeItem('user');
+        // Solo redirigir si no estamos ya en la pagina de login
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
+
+      // Si es error 403 (prohibido), mostrar mensaje pero no cerrar sesion
+      if (status === 403) {
+        console.error('Acceso denegado:', message);
+      }
+
       throw new ApiError(message, status, error.response.data);
     } else if (error.request) {
-      // La solicitud se hizo pero no se recibió respuesta
+      // La solicitud se hizo pero no se recibio respuesta
       throw new ApiError(
-        'No se recibió respuesta del servidor',
+        'No se recibio respuesta del servidor',
         0,
         error.request
       );
     } else {
-      // Algo pasó al configurar la solicitud
+      // Algo paso al configurar la solicitud
       throw new ApiError(
         `Error al configurar la solicitud: ${error.message}`,
         0,
