@@ -1,23 +1,23 @@
 <?php
 /**
  * API Endpoint: Listar Jugadas de Lotto Animal
- * 
+ *
  * Replica la funcionalidad del formulario FrmDListarJugadas.java
  * Permite consultar el historial de jugadas por fecha y horario
- * 
+ *
  * Endpoints disponibles:
  * - GET  /listar-jugadas/horarios             - Listar horarios de juego para el filtro
  * - GET  /listar-jugadas/consultar            - Consultar jugadas por fecha y horario
- * - GET  /listar-jugadas/recientes            - Obtener las últimas jugadas del día actual
- * - GET  /listar-jugadas/voucher/{radicado}   - Obtener datos estructurados para reimpresión de voucher
+ * - GET  /listar-jugadas/recientes            - Obtener las ultimas jugadas del dia actual
+ * - GET  /listar-jugadas/voucher/{radicado}   - Obtener datos estructurados para reimpresion de voucher
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+require_once 'auth_middleware.php';
 
-// Manejo de peticiones OPTIONS (CORS preflight)
+// Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
+$currentUser = initApiSecurity(true, ['0', '1', '2']);
+
+// El middleware ya maneja OPTIONS, pero dejamos esto por compatibilidad
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();

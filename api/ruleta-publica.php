@@ -1,22 +1,17 @@
 <?php
 /**
- * API Pública para la Ruleta - No requiere autenticación
+ * API Publica para la Ruleta - No requiere autenticacion
  *
  * Endpoints disponibles:
- * - GET /api/ruleta-publica.php/proximo-sorteo - Obtener información del próximo sorteo
- * - GET /api/ruleta-publica.php/ultimo-resultado - Obtener el último resultado
+ * - GET /api/ruleta-publica.php/proximo-sorteo - Obtener informacion del proximo sorteo
+ * - GET /api/ruleta-publica.php/ultimo-resultado - Obtener el ultimo resultado
  * - GET /api/ruleta-publica.php/resultados-hoy - Obtener todos los resultados de hoy
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/auth_middleware.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+// Inicializar seguridad SIN requerir autenticacion (endpoint publico)
+initApiSecurity(false);
 
 require_once __DIR__ . '/db.php';
 

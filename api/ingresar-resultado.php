@@ -1,28 +1,21 @@
 <?php
 /**
  * API Endpoint: Ingresar Resultados de Lotto Animal
- * 
+ *
  * Replica la funcionalidad del formulario FrmDIngresarResultado.java
- * Permite registrar cuál animal resultó ganador en un horario y fecha específicos
- * 
+ * Permite registrar cual animal resulto ganador en un horario y fecha especificos
+ *
  * Endpoints disponibles:
  * - GET  /ingresar-resultado/animales          - Listar animales para seleccionar ganador
  * - GET  /ingresar-resultado/horarios          - Listar horarios de juego
  * - POST /ingresar-resultado/guardar           - Registrar animal ganador
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-// Manejo de peticiones OPTIONS (CORS preflight)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
+require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/db.php';
+
+// Inicializar seguridad - Solo Admin y SuperAdmin pueden ingresar resultados
+$currentUser = initApiSecurity(true, ['0', '1']);
 
 /**
  * Responde con JSON y código de estado HTTP

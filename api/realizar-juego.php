@@ -1,23 +1,23 @@
 <?php
 /**
  * API Endpoint: Realizar Juego de Lotto Animal
- * 
+ *
  * Replica la funcionalidad del formulario FrmDRealizarJuego.java
- * Maneja todas las operaciones para crear y guardar juegos de lotería de animales
- * 
+ * Maneja todas las operaciones para crear y guardar juegos de loteria de animales
+ *
  * Endpoints disponibles:
- * - GET  /realizar-juego/consecutivo          - Obtener próximo número de radicado
+ * - GET  /realizar-juego/consecutivo          - Obtener proximo numero de radicado
  * - GET  /realizar-juego/animales             - Listar todos los animales activos
  * - GET  /realizar-juego/horarios             - Listar horarios de juego activos
- * - GET  /realizar-juego/parametros           - Obtener parámetros mínimo y máximo
- * - GET  /realizar-juego/animal/{codigo}      - Buscar animal por código
+ * - GET  /realizar-juego/parametros           - Obtener parametros minimo y maximo
+ * - GET  /realizar-juego/animal/{codigo}      - Buscar animal por codigo
  * - POST /realizar-juego/guardar              - Guardar juego completo con historial
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+require_once 'auth_middleware.php';
+
+// Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
+$currentUser = initApiSecurity(true, ['0', '1', '2']);
 
 // Manejo de peticiones OPTIONS (CORS preflight)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

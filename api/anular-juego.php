@@ -1,21 +1,21 @@
 <?php
 /**
  * API Endpoint: Anular Juego de Lotto Animal
- * 
+ *
  * Replica la funcionalidad del formulario FrmDAnularJuego.java
- * Permite buscar un juego por radicado y fecha para proceder con su anulación
- * 
+ * Permite buscar un juego por radicado y fecha para proceder con su anulacion
+ *
  * Endpoints disponibles:
  * - GET  /anular-juego/buscar                 - Buscar juego por radicado y fecha
- * - POST /anular-juego/ejecutar               - Ejecutar anulación del juego
+ * - POST /anular-juego/ejecutar               - Ejecutar anulacion del juego
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+require_once 'auth_middleware.php';
 
-// Manejo de peticiones OPTIONS (CORS preflight)
+// Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
+$currentUser = initApiSecurity(true, ['0', '1', '2']);
+
+// El middleware ya maneja OPTIONS, pero dejamos esto por compatibilidad
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
