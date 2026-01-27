@@ -306,8 +306,7 @@ export default function CerrarJuego() {
             <TabsTrigger value="cerrar">Cerrar Juego</TabsTrigger>
             <TabsTrigger value="historial">Historial de Cierres</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="cerrar" className="space-y-6">
+<TabsContent value="cerrar" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Seleccionar Juego</CardTitle>
@@ -316,140 +315,7 @@ export default function CerrarJuego() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                  <div className="grid gap-2">
-                    <Label htmlFor="fecha">Fecha</Label>
-                    <Input
-                      id="fecha"
-                      type="date"
-                      value={formData.fecha}
-                      onChange={(e) =>
-                        setFormData({ ...formData, fecha: e.target.value })
-                      }
-                    />
-        <Card>
-          <CardHeader>
-            <CardTitle>Seleccionar Juego</CardTitle>
-            <CardDescription>
-              Seleccione el horario y fecha del juego a cerrar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
-              <div className="grid gap-2">
-                <Label htmlFor="horario">Horario</Label>
-                <Select
-                  value={formData.codigo_horario}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, codigo_horario: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione horario" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {horarios.map((horario) => (
-                      <SelectItem key={horario.NUM} value={horario.NUM.toString()}>
-                        {horario.HORA} - {horario.DESCRIPCION}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="sucursal" className="flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />
-                  Sucursal
-                </Label>
-                <Select
-                  value={formData.codigo_sucursal}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, codigo_sucursal: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas las sucursales" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">Todas las sucursales</SelectItem>
-                    {sucursales.map((sucursal) => (
-                      <SelectItem key={sucursal.CODIGO} value={sucursal.CODIGO.toString()}>
-                        {sucursal.BODEGA}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="fecha">Fecha</Label>
-                <Input
-                  id="fecha"
-                  type="date"
-                  value={formData.fecha}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fecha: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex items-end md:col-span-2">
-                <Button
-                  onClick={handleVerificar}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Verificando...
-                    </>
-                  ) : (
-                    'Verificar Estado'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {resumen && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {resumen.cerrado ? (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    Juego Ya Cerrado
-                  </>
-                ) : !resumen.tiene_ganador ? (
-                  <>
-                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                    Sin Resultado Registrado
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-blue-500" />
-                    Resumen del Juego
-                  </>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {resumen.cerrado
-                  ? 'Este juego ya fue cerrado anteriormente'
-                  : !resumen.tiene_ganador
-                  ? 'Debe registrar el animal ganador antes de cerrar'
-                  : 'Revise el resumen antes de cerrar'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    Total Apostado
-                  </div>
-
+                <div className="grid gap-4 md:grid-cols-5">
                   <div className="grid gap-2">
                     <Label htmlFor="horario">Horario</Label>
                     <Select
@@ -494,6 +360,18 @@ export default function CerrarJuego() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="fecha">Fecha</Label>
+                    <Input
+                      id="fecha"
+                      type="date"
+                      value={formData.fecha}
+                      onChange={(e) =>
+                        setFormData({ ...formData, fecha: e.target.value })
+                      }
+                    />
                   </div>
 
                   <div className="flex items-end lg:col-span-2">
@@ -541,8 +419,8 @@ export default function CerrarJuego() {
                     {resumen.cerrado
                       ? 'Este juego ya fue cerrado anteriormente'
                       : !resumen.tiene_ganador
-                      ? 'Debe registrar el animal ganador antes de cerrar'
-                      : 'Revise el resumen antes de cerrar'}
+                        ? 'Debe registrar el animal ganador antes de cerrar'
+                        : 'Revise el resumen antes de cerrar'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -662,251 +540,251 @@ export default function CerrarJuego() {
             )}
           </TabsContent>
 
-          <TabsContent value="historial" className="space-y-6">
-            {/* Filtros del historial */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Filtros de Busqueda
-                </CardTitle>
-                <CardDescription>
-                  Filtre los cierres por rango de fechas y sucursal
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="grid gap-2">
-                    <Label>Fecha Inicio</Label>
-                    <Input
-                      type="date"
-                      value={filtroHistorial.fecha_inicio}
-                      onChange={(e) =>
-                        setFiltroHistorial({ ...filtroHistorial, fecha_inicio: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Fecha Fin</Label>
-                    <Input
-                      type="date"
-                      value={filtroHistorial.fecha_fin}
-                      onChange={(e) =>
-                        setFiltroHistorial({ ...filtroHistorial, fecha_fin: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Sucursal</Label>
-                    <Select
-                      value={filtroHistorial.sucursal}
-                      onValueChange={(value) =>
-                        setFiltroHistorial({ ...filtroHistorial, sucursal: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Todas las sucursales</SelectItem>
-                        {sucursales.map((s) => (
-                          <SelectItem key={s.CODIGO} value={s.CODIGO.toString()}>
-                            {s.BODEGA}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={handleBuscarHistorial} className="w-full">
-                      <Search className="h-4 w-4 mr-2" />
-                      Buscar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Estadisticas generales */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <DollarSign className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Apostado</p>
-                      <p className="text-2xl font-bold">{formatCurrency(estadisticas.totalApostado)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                      <DollarSign className="h-6 w-6 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Pagado</p>
-                      <p className="text-2xl font-bold">{formatCurrency(estadisticas.totalPagado)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <TrendingUp className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Utilidad Total</p>
-                      <p className="text-2xl font-bold text-green-600">{formatCurrency(estadisticas.utilidad)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                      <Lock className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Cierres</p>
-                      <p className="text-2xl font-bold">{estadisticas.totalCierres}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Resumen por sucursal */}
-            {Object.keys(cierresPorSucursal).length > 1 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Resumen por Sucursal
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {Object.entries(cierresPorSucursal).map(([sucursal, data]: [string, any]) => (
-                      <div key={sucursal} className="p-4 border rounded-lg">
-                        <h4 className="font-semibold text-lg mb-3">{sucursal}</h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Cierres:</span>
-                            <span className="font-medium">{data.cierres.length}</span>
+                  <TabsContent value="historial" className="space-y-6">
+                    {/* Filtros del historial */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5" />
+                          Filtros de Busqueda
+                        </CardTitle>
+                        <CardDescription>
+                          Filtre los cierres por rango de fechas y sucursal
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4 md:grid-cols-4">
+                          <div className="grid gap-2">
+                            <Label>Fecha Inicio</Label>
+                            <Input
+                              type="date"
+                              value={filtroHistorial.fecha_inicio}
+                              onChange={(e) =>
+                                setFiltroHistorial({ ...filtroHistorial, fecha_inicio: e.target.value })
+                              }
+                            />
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Apostado:</span>
-                            <span className="font-medium">{formatCurrency(data.totalApostado)}</span>
+                          <div className="grid gap-2">
+                            <Label>Fecha Fin</Label>
+                            <Input
+                              type="date"
+                              value={filtroHistorial.fecha_fin}
+                              onChange={(e) =>
+                                setFiltroHistorial({ ...filtroHistorial, fecha_fin: e.target.value })
+                              }
+                            />
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Pagado:</span>
-                            <span className="font-medium text-red-600">{formatCurrency(data.totalPagado)}</span>
+                          <div className="grid gap-2">
+                            <Label>Sucursal</Label>
+                            <Select
+                              value={filtroHistorial.sucursal}
+                              onValueChange={(value) =>
+                                setFiltroHistorial({ ...filtroHistorial, sucursal: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todas" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Todas las sucursales</SelectItem>
+                                {sucursales.map((s) => (
+                                  <SelectItem key={s.CODIGO} value={s.CODIGO.toString()}>
+                                    {s.BODEGA}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <div className="flex justify-between border-t pt-2">
-                            <span className="text-muted-foreground">Utilidad:</span>
-                            <span className="font-bold text-green-600">{formatCurrency(data.utilidad)}</span>
+                          <div className="flex items-end">
+                            <Button onClick={handleBuscarHistorial} className="w-full">
+                              <Search className="h-4 w-4 mr-2" />
+                              Buscar
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      </CardContent>
+                    </Card>
 
-            {/* Tabla de cierres */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Historial de Cierres
-                  <Badge variant="secondary">{cierres.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Detalle de todos los cierres en el periodo seleccionado
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {cierres.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Lock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No hay cierres en el periodo seleccionado</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Horario</TableHead>
-                          <TableHead>Sucursal</TableHead>
-                          <TableHead>Animal Ganador</TableHead>
-                          <TableHead className="text-right">Total Apostado</TableHead>
-                          <TableHead className="text-right">Total Pagado</TableHead>
-                          <TableHead className="text-right">Utilidad</TableHead>
-                          <TableHead>Usuario</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cierres.map((cierre, index) => (
-                          <TableRow key={cierre.ID || index}>
-                            <TableCell>
-                              {cierre.FECHA ? format(new Date(cierre.FECHA + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
-                            </TableCell>
-                            <TableCell className="font-mono">{cierre.HORA || cierre.HORAJUEGO}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {cierre.NOMBRE_SUCURSAL || cierre.SUCURSAL || '-'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {cierre.CODANIMAL_GANADOR && (
-                                  (() => {
-                                    const animalData = getAnimalByNumero(parseInt(cierre.CODANIMAL_GANADOR));
-                                    return animalData ? (
-                                      <img
-                                        src={animalData.imagen}
-                                        alt={cierre.ANIMAL_GANADOR}
-                                        className="w-6 h-6 object-contain"
-                                      />
-                                    ) : null;
-                                  })()
-                                )}
-                                <span className="font-semibold">{cierre.ANIMAL_GANADOR}</span>
+                    {/* Estadisticas generales */}
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <DollarSign className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Apostado</p>
+                              <p className="text-2xl font-bold">{formatCurrency(estadisticas.totalApostado)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                              <DollarSign className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Pagado</p>
+                              <p className="text-2xl font-bold">{formatCurrency(estadisticas.totalPagado)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                              <TrendingUp className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Utilidad Total</p>
+                              <p className="text-2xl font-bold text-green-600">{formatCurrency(estadisticas.utilidad)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                              <Lock className="h-6 w-6 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Cierres</p>
+                              <p className="text-2xl font-bold">{estadisticas.totalCierres}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Resumen por sucursal */}
+                    {Object.keys(cierresPorSucursal).length > 1 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5" />
+                            Resumen por Sucursal
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {Object.entries(cierresPorSucursal).map(([sucursal, data]: [string, any]) => (
+                              <div key={sucursal} className="p-4 border rounded-lg">
+                                <h4 className="font-semibold text-lg mb-3">{sucursal}</h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Cierres:</span>
+                                    <span className="font-medium">{data.cierres.length}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Apostado:</span>
+                                    <span className="font-medium">{formatCurrency(data.totalApostado)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Pagado:</span>
+                                    <span className="font-medium text-red-600">{formatCurrency(data.totalPagado)}</span>
+                                  </div>
+                                  <div className="flex justify-between border-t pt-2">
+                                    <span className="text-muted-foreground">Utilidad:</span>
+                                    <span className="font-bold text-green-600">{formatCurrency(data.utilidad)}</span>
+                                  </div>
+                                </div>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(parseFloat(cierre.TOTAL_APOSTADO) || 0)}
-                            </TableCell>
-                            <TableCell className="text-right text-red-600 dark:text-red-400 font-semibold">
-                              {formatCurrency(parseFloat(cierre.TOTAL_PAGADO) || 0)}
-                            </TableCell>
-                            <TableCell className="text-right text-green-600 dark:text-green-400 font-semibold">
-                              {formatCurrency(parseFloat(cierre.UTILIDAD) || 0)}
-                            </TableCell>
-                            <TableCell>{cierre.USUARIO_CIERRE}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </DashboardLayout>
-  );
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Tabla de cierres */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          Historial de Cierres
+                          <Badge variant="secondary">{cierres.length}</Badge>
+                        </CardTitle>
+                        <CardDescription>
+                          Detalle de todos los cierres en el periodo seleccionado
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {cierres.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Lock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No hay cierres en el periodo seleccionado</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Fecha</TableHead>
+                                  <TableHead>Horario</TableHead>
+                                  <TableHead>Sucursal</TableHead>
+                                  <TableHead>Animal Ganador</TableHead>
+                                  <TableHead className="text-right">Total Apostado</TableHead>
+                                  <TableHead className="text-right">Total Pagado</TableHead>
+                                  <TableHead className="text-right">Utilidad</TableHead>
+                                  <TableHead>Usuario</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {cierres.map((cierre, index) => (
+                                  <TableRow key={cierre.ID || index}>
+                                    <TableCell>
+                                      {cierre.FECHA ? format(new Date(cierre.FECHA + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono">{cierre.HORA || cierre.HORAJUEGO}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">
+                                        {cierre.NOMBRE_SUCURSAL || cierre.SUCURSAL || '-'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        {cierre.CODANIMAL_GANADOR && (
+                                          (() => {
+                                            const animalData = getAnimalByNumero(parseInt(cierre.CODANIMAL_GANADOR));
+                                            return animalData ? (
+                                              <img
+                                                src={animalData.imagen}
+                                                alt={cierre.ANIMAL_GANADOR}
+                                                className="w-6 h-6 object-contain"
+                                              />
+                                            ) : null;
+                                          })()
+                                        )}
+                                        <span className="font-semibold">{cierre.ANIMAL_GANADOR}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {formatCurrency(parseFloat(cierre.TOTAL_APOSTADO) || 0)}
+                                    </TableCell>
+                                    <TableCell className="text-right text-red-600 dark:text-red-400 font-semibold">
+                                      {formatCurrency(parseFloat(cierre.TOTAL_PAGADO) || 0)}
+                                    </TableCell>
+                                    <TableCell className="text-right text-green-600 dark:text-green-400 font-semibold">
+                                      {formatCurrency(parseFloat(cierre.UTILIDAD) || 0)}
+                                    </TableCell>
+                                    <TableCell>{cierre.USUARIO_CIERRE}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </DashboardLayout>
+            );
 }

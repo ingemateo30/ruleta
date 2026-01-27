@@ -10,7 +10,7 @@ import { apiClient } from "@/api/client";
 import { getAnimalByNumero, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
+;
 
 interface ProximoSorteo {
   codigo: number;
@@ -168,58 +168,57 @@ const RuletaPublica = () => {
     const intervaloCambio = 80; // Cambiar cada 80ms
     let tiempoTranscurrido = 0;
 
-    const animacionInterval = setInterval(() => {
-      tiempoTranscurrido += intervaloCambio;
+   const animacionInterval = setInterval(() => {
+  tiempoTranscurrido += intervaloCambio;
 
-      // Seleccionar animal aleatorio (NUNCA el ganador durante la animacion)
-      const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
+  // Animal aleatorio (NUNCA el ganador)
+  const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
+  setAnimalAnimacion(animalesParaAnimacion[randomIndex].numero);
+
+  // Entrar en fase lenta (último 30%)
+  if (tiempoTranscurrido > duracionAnimacion * 0.7) {
+    clearInterval(animacionInterval);
+
+    let contadorLento = 0;
+    const maxCambiosLentos = 5;
+
+    const slowInterval = setInterval(() => {
+      contadorLento++;
+
+      const randomIndex = Math.floor(
+        Math.random() * animalesParaAnimacion.length
+      );
       setAnimalAnimacion(animalesParaAnimacion[randomIndex].numero);
 
-      // Ir mas lento hacia el final (70% del tiempo)
-      if (tiempoTranscurrido > duracionAnimacion * 0.7) {
-        clearInterval(animacionInterval);
+      if (contadorLento >= maxCambiosLentos) {
+        clearInterval(slowInterval);
 
-        // Animacion mas lenta al final
-        let contadorLento = 0;
-        const maxCambiosLentos = 5;
+        // Mostrar ganador real directamente
+        if (ganadorReal) {
+          setAnimalAnimacion(ganadorReal.codigo_animal);
+          setUltimoResultado(ganadorReal);
+        }
 
-        const slowInterval = setInterval(() => {
-          contadorLento++;
+        // Pausa corta y luego celebración
+        setTimeout(() => {
+          setMostrarGanador(true);
+          setIsAnimating(false);
+          setGanadorPreCargado(null);
 
-          // Seguir mostrando animales aleatorios (NUNCA el ganador)
-          const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
-          setAnimalAnimacion(animalesParaAnimacion[randomIndex].numero);
+          // Recargar datos
+          cargarDatos();
 
-          if (contadorLento >= maxCambiosLentos) {
-            clearInterval(slowInterval);
-
-            // MOSTRAR DIRECTAMENTE EL GANADOR - sin animal intermedio
-            if (ganadorReal) {
-              // Actualizar inmediatamente al ganador real
-              setAnimalAnimacion(ganadorReal.codigo_animal);
-              setUltimoResultado(ganadorReal);
-            }
-
-            // Pequena pausa y luego mostrar celebracion
-            setTimeout(() => {
-              setMostrarGanador(true);
-              setIsAnimating(false);
-              setGanadorPreCargado(null);
-
-              // Recargar datos completos
-              cargarDatos();
-
-              // Reset para el proximo sorteo
-              setTimeout(() => {
-                animacionEnProgreso.current = false;
-              }, 3000);
-            }, 200);
-            }, 5500);
-          }
-        }, 250);
+          // Reset del estado de animación
+          setTimeout(() => {
+            animacionEnProgreso.current = false;
+          }, 3000);
+        }, 200);
       }
     }, intervaloCambio);
+  }
+}, intervaloCambio);
   };
+    
 
   const formatTiempo = (segundos: number): string => {
     const horas = Math.floor(segundos / 3600);
