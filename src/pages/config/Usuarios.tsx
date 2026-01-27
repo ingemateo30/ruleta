@@ -87,7 +87,7 @@ export default function Usuarios() {
         clave: '',
         tipo: usuario.TIPO.toString(),
         caja: usuario.CAJA || '',
-        codbodega: usuario.CODBODEGA?.toString() || '',
+        codbodega: usuario.CODBODEGA?.toString() || '0',
         estado: usuario.ESTADO,
       });
     } else {
@@ -97,7 +97,7 @@ export default function Usuarios() {
         clave: '',
         tipo: '2',
         caja: '',
-        codbodega: '',
+        codbodega: '0',
         estado: 'A',
       });
     }
@@ -119,7 +119,7 @@ export default function Usuarios() {
         clave: formData.clave,
         tipo: parseInt(formData.tipo),
         caja: formData.caja,
-        codbodega: formData.codbodega ? parseInt(formData.codbodega) : null,
+        codbodega: formData.codbodega && formData.codbodega !== '0' ? parseInt(formData.codbodega) : null,
         estado: formData.estado,
       };
 
@@ -395,6 +395,28 @@ export default function Usuarios() {
                     required
                   />
                 </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sucursal">Sucursal</Label>
+                <Select
+                  value={formData.codbodega}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, codbodega: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione sucursal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* ✅ CAMBIO: Usar "0" en lugar de "" para "Sin sucursal" */}
+                    <SelectItem value="0">Sin sucursal</SelectItem>
+                    {sucursales.map((suc) => (
+                      <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
+                        {suc.BODEGA}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
                 <div className="grid gap-2">
                   <Label htmlFor="clave">

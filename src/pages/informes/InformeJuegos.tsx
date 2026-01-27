@@ -190,7 +190,7 @@ export default function InformeJuegos() {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="0">Todas</SelectItem>
                   {sucursales.map((suc) => (
                     <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
                       {suc.BODEGA}
@@ -212,7 +212,7 @@ export default function InformeJuegos() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="0">Todos</SelectItem>
                   {horarios.map((hor) => (
                     <SelectItem key={hor.NUM} value={hor.NUM.toString()}>
                       {hor.HORA} - {hor.DESCRIPCION}

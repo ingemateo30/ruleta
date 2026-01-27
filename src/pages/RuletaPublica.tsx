@@ -10,6 +10,7 @@ import { apiClient } from "@/api/client";
 import { getAnimalByNumero, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 interface ProximoSorteo {
   codigo: number;
@@ -50,6 +51,13 @@ const RuletaPublica = () => {
 
   // Reference to track animation state
   const animacionEnProgreso = useRef(false);
+  const [modoTest, setModoTest] = useState(false);
+
+  const simularSorteo = () => {
+    if (confirm('¿Deseas simular un sorteo de prueba?')) {
+      iniciarAnimacion();
+    }
+  };
 
   // Cargar datos iniciales y actualizar cada 10 segundos
   const cargarDatos = useCallback(async (fechaParam?: string) => {
@@ -206,6 +214,7 @@ const RuletaPublica = () => {
                 animacionEnProgreso.current = false;
               }, 3000);
             }, 200);
+            }, 5500);
           }
         }, 250);
       }
@@ -288,9 +297,14 @@ const RuletaPublica = () => {
                 Proximo Sorteo
               </CardTitle>
               {proximoSorteo && (
-                <p className="text-white/70 text-sm">
-                  {proximoSorteo.descripcion} - {formatHora(proximoSorteo.hora)}
-                </p>
+                <>
+                  <p className="text-white/90 text-base font-semibold">
+                    {proximoSorteo.descripcion}
+                  </p>
+                  <p className="text-white/70 text-sm">
+                    Hora: {formatHora(proximoSorteo.hora)}
+                  </p>
+                </>
               )}
             </CardHeader>
             <CardContent className="text-center">
@@ -303,6 +317,18 @@ const RuletaPublica = () => {
             </CardContent>
           </Card>
 
+          <Card className="bg-black/30 backdrop-blur-md border-yellow-400/50">
+            <CardContent className="p-4">
+              <Button
+                onClick={simularSorteo}
+                variant="outline"
+                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black"
+                disabled={isAnimating}
+              >
+                🎰 SIMULAR SORTEO (TEST)
+              </Button>
+            </CardContent>
+          </Card>
           {/* Ruleta / Animal */}
           <Card className="bg-black/30 backdrop-blur-md border-white/10 overflow-hidden">
             <CardContent className="p-8 flex flex-col items-center justify-center min-h-[300px]">
@@ -458,22 +484,20 @@ const RuletaPublica = () => {
                 return (
                   <div
                     key={horario.NUM}
-                    className={`p-3 rounded-lg text-center transition-all ${
-                      horario.estado === 'JUGADO'
-                        ? 'bg-green-500/20 border border-green-500/30'
-                        : horario.estado === 'PENDIENTE'
+                    className={`p-3 rounded-lg text-center transition-all ${horario.estado === 'JUGADO'
+                      ? 'bg-green-500/20 border border-green-500/30'
+                      : horario.estado === 'PENDIENTE'
                         ? 'bg-yellow-500/20 border border-yellow-500/30'
                         : 'bg-blue-500/20 border border-blue-500/30'
-                    }`}
+                      }`}
                   >
                     <Badge
-                      className={`mb-2 ${
-                        horario.estado === 'JUGADO'
-                          ? 'bg-green-500'
-                          : horario.estado === 'PENDIENTE'
+                      className={`mb-2 ${horario.estado === 'JUGADO'
+                        ? 'bg-green-500'
+                        : horario.estado === 'PENDIENTE'
                           ? 'bg-yellow-500 text-black'
                           : 'bg-blue-500'
-                      }`}
+                        }`}
                     >
                       {formatHora(horario.HORA)}
                     </Badge>

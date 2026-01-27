@@ -327,6 +327,127 @@ export default function CerrarJuego() {
                         setFormData({ ...formData, fecha: e.target.value })
                       }
                     />
+        <Card>
+          <CardHeader>
+            <CardTitle>Seleccionar Juego</CardTitle>
+            <CardDescription>
+              Seleccione el horario y fecha del juego a cerrar
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="grid gap-2">
+                <Label htmlFor="horario">Horario</Label>
+                <Select
+                  value={formData.codigo_horario}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, codigo_horario: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione horario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {horarios.map((horario) => (
+                      <SelectItem key={horario.NUM} value={horario.NUM.toString()}>
+                        {horario.HORA} - {horario.DESCRIPCION}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="sucursal" className="flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  Sucursal
+                </Label>
+                <Select
+                  value={formData.codigo_sucursal}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, codigo_sucursal: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las sucursales" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Todas las sucursales</SelectItem>
+                    {sucursales.map((sucursal) => (
+                      <SelectItem key={sucursal.CODIGO} value={sucursal.CODIGO.toString()}>
+                        {sucursal.BODEGA}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="fecha">Fecha</Label>
+                <Input
+                  id="fecha"
+                  type="date"
+                  value={formData.fecha}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fecha: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="flex items-end md:col-span-2">
+                <Button
+                  onClick={handleVerificar}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    'Verificar Estado'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {resumen && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {resumen.cerrado ? (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    Juego Ya Cerrado
+                  </>
+                ) : !resumen.tiene_ganador ? (
+                  <>
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    Sin Resultado Registrado
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-5 w-5 text-blue-500" />
+                    Resumen del Juego
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {resumen.cerrado
+                  ? 'Este juego ya fue cerrado anteriormente'
+                  : !resumen.tiene_ganador
+                  ? 'Debe registrar el animal ganador antes de cerrar'
+                  : 'Revise el resumen antes de cerrar'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Total Apostado
                   </div>
 
                   <div className="grid gap-2">
