@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ProtectedRoute, AdminRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RealizarJugadas from "./pages/operativo/RealizarJugadas";
@@ -41,38 +42,113 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Rutas publicas */}
             <Route path="/" element={<Login />} />
             <Route path="/ruleta" element={<RuletaPublica />} />
-            <Route path="/dashboard" element={<Dashboard />} />
 
-            {/* Operativo */}
-            <Route path="/operativo/jugadas" element={<RealizarJugadas />} />
-            <Route path="/operativo/anular" element={<AnularJugada />} />
-            <Route path="/operativo/listar-jugadas" element={<ListarJugadas />} />
-            <Route path="/operativo/resultados" element={<VerResultados />} />
-            <Route path="/operativo/pagos" element={<RealizarPagos />} />
-            <Route path="/operativo/cerrar-juego" element={<CerrarJuego />} />
+            {/* Dashboard - Requiere autenticacion */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
 
-            {/* Administración */}
-            <Route path="/admin/ingresar-resultados" element={<IngresarResultado />} />
+            {/* Operativo - Requiere autenticacion */}
+            <Route path="/operativo/jugadas" element={
+              <ProtectedRoute>
+                <RealizarJugadas />
+              </ProtectedRoute>
+            } />
+            <Route path="/operativo/anular" element={
+              <ProtectedRoute>
+                <AnularJugada />
+              </ProtectedRoute>
+            } />
+            <Route path="/operativo/listar-jugadas" element={
+              <ProtectedRoute>
+                <ListarJugadas />
+              </ProtectedRoute>
+            } />
+            <Route path="/operativo/resultados" element={
+              <ProtectedRoute>
+                <VerResultados />
+              </ProtectedRoute>
+            } />
+            <Route path="/operativo/pagos" element={
+              <ProtectedRoute>
+                <RealizarPagos />
+              </ProtectedRoute>
+            } />
+            <Route path="/operativo/cerrar-juego" element={
+              <ProtectedRoute>
+                <CerrarJuego />
+              </ProtectedRoute>
+            } />
 
-            {/* Configuración */}
-            <Route path="/config/seguridad" element={<Usuarios />} />
-            <Route path="/config/sucursales" element={<Sucursales />} />
-            <Route path="/config/parametros" element={<Parametros />} />
-            <Route path="/config/horarios" element={<Horarios />} />
-            <Route path="/config/asignar-ruleta" element={<AsignarRuleta />} />
+            {/* Administracion - Solo Admin y SuperAdmin */}
+            <Route path="/admin/ingresar-resultados" element={
+              <AdminRoute>
+                <IngresarResultado />
+              </AdminRoute>
+            } />
 
-            {/* Informes */}
-            <Route path="/informes/juegos" element={<InformeJuegos />} />
-            <Route path="/informes/ventas" element={<InformeVentas />} />
-            <Route path="/informes/resultados" element={<InformeResultados />} />
-            <Route path="/informes/pagos" element={<InformePagos />} />
+            {/* Configuracion - Solo Admin y SuperAdmin */}
+            <Route path="/config/seguridad" element={
+              <AdminRoute>
+                <Usuarios />
+              </AdminRoute>
+            } />
+            <Route path="/config/sucursales" element={
+              <AdminRoute>
+                <Sucursales />
+              </AdminRoute>
+            } />
+            <Route path="/config/parametros" element={
+              <AdminRoute>
+                <Parametros />
+              </AdminRoute>
+            } />
+            <Route path="/config/horarios" element={
+              <AdminRoute>
+                <Horarios />
+              </AdminRoute>
+            } />
+            <Route path="/config/asignar-ruleta" element={
+              <AdminRoute>
+                <AsignarRuleta />
+              </AdminRoute>
+            } />
 
-            {/* Estadísticas */}
-            <Route path="/estadisticas" element={<Estadisticas />} />
+            {/* Informes - Solo Admin y SuperAdmin */}
+            <Route path="/informes/juegos" element={
+              <AdminRoute>
+                <InformeJuegos />
+              </AdminRoute>
+            } />
+            <Route path="/informes/ventas" element={
+              <AdminRoute>
+                <InformeVentas />
+              </AdminRoute>
+            } />
+            <Route path="/informes/resultados" element={
+              <AdminRoute>
+                <InformeResultados />
+              </AdminRoute>
+            } />
+            <Route path="/informes/pagos" element={
+              <AdminRoute>
+                <InformePagos />
+              </AdminRoute>
+            } />
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Estadisticas - Solo Admin y SuperAdmin */}
+            <Route path="/estadisticas" element={
+              <AdminRoute>
+                <Estadisticas />
+              </AdminRoute>
+            } />
+
+            {/* Ruta por defecto - 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
