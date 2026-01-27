@@ -352,7 +352,7 @@ export default function CerrarJuego() {
                         <SelectValue placeholder="Todas las sucursales" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todas las sucursales</SelectItem>
+                        <SelectItem value="0">Todas las sucursales</SelectItem>
                         {sucursales.map((sucursal) => (
                           <SelectItem key={sucursal.CODIGO} value={sucursal.CODIGO.toString()}>
                             {sucursal.BODEGA}
@@ -586,7 +586,7 @@ export default function CerrarJuego() {
                                 <SelectValue placeholder="Todas" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Todas las sucursales</SelectItem>
+                                <SelectItem value="0">Todas las sucursales</SelectItem>
                                 {sucursales.map((s) => (
                                   <SelectItem key={s.CODIGO} value={s.CODIGO.toString()}>
                                     {s.BODEGA}

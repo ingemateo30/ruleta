@@ -471,7 +471,7 @@ export default function Usuarios() {
                       <SelectValue placeholder="Seleccione sucursal" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin sucursal</SelectItem>
+                      <SelectItem value="0">Sin sucursal</SelectItem>
                       {sucursales.map((suc) => (
                         <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
                           {suc.BODEGA}
