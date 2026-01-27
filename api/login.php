@@ -20,6 +20,59 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Incluir el archivo de conexión a la base de datos
 require_once __DIR__ . '/db.php';
 
+/**
+ * Desencripta una contraseña que fue encriptada con CryptoJS AES
+ * Compatible con CryptoJS.AES.encrypt(password, secretKey)
+ */
+function decryptAESPassword($encryptedPassword, $secretKey) {
+    // CryptoJS usa un formato especial: "Salted__" + salt (8 bytes) + ciphertext
+    $data = base64_decode($encryptedPassword);
+
+    // Verificar que comienza con "Salted__"
+    if (substr($data, 0, 8) !== "Salted__") {
+        return false;
+    }
+
+    // Extraer salt y ciphertext
+    $salt = substr($data, 8, 8);
+    $ciphertext = substr($data, 16);
+
+    // Derivar key e IV usando el método de CryptoJS (EVP_BytesToKey)
+    $keyAndIv = evpBytesToKey($secretKey, $salt);
+    $key = $keyAndIv['key'];
+    $iv = $keyAndIv['iv'];
+
+    // Desencriptar
+    $decrypted = openssl_decrypt($ciphertext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+
+    return $decrypted;
+}
+
+/**
+ * Implementación de EVP_BytesToKey compatible con CryptoJS
+ */
+function evpBytesToKey($password, $salt) {
+    $keySize = 32; // 256 bits
+    $ivSize = 16;  // 128 bits
+    $totalSize = $keySize + $ivSize;
+
+    $derivedBytes = '';
+    $block = '';
+
+    while (strlen($derivedBytes) < $totalSize) {
+        $block = md5($block . $password . $salt, true);
+        $derivedBytes .= $block;
+    }
+
+    return [
+        'key' => substr($derivedBytes, 0, $keySize),
+        'iv' => substr($derivedBytes, $keySize, $ivSize)
+    ];
+}
+
+// Clave secreta (debe coincidir con la del frontend)
+define('AES_SECRET_KEY', 'L0tt0An1m4l_S3cur3_K3y_2024!');
+
 // Obtener datos del POST
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -31,7 +84,15 @@ if (!isset($data['username']) || !isset($data['password'])) {
 }
 
 $username = trim($data['username']);
-$password = trim($data['password']);
+$encryptedPassword = trim($data['password']);
+
+// Desencriptar la contraseña
+$password = decryptAESPassword($encryptedPassword, AES_SECRET_KEY);
+
+// Si la desencriptación falla, intentar usar la contraseña directamente (compatibilidad)
+if ($password === false) {
+    $password = $encryptedPassword;
+}
 
 // Validar que no estén vacíos
 if (empty($username) || empty($password)) {
