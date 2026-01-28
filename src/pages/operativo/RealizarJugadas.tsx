@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Play, Trash2, Printer, ShoppingCart, Search, X, Loader2 } from "lucide-react";
 import { realizarJuegoService, authService } from "@/api";
 import type { AnimalAPI, HorarioAPI } from "@/api";
-import { animals, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
+import { animals, getAnimalByCodigo, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
 import { PlayIcon } from "@/components/ui/play-icon";
 import { obtenerValoresMasJugados, registrarMontosJugados } from "@/utils/valores-jugados";
 import ReciboCaja from "@/components/ReciboCaja";
@@ -88,16 +88,19 @@ const RealizarJugadas = () => {
                 return null;
               }
               
-              // Buscar el animal local por número o nombre para obtener la imagen
-              const animalLocal = getAnimalByNumero(animalAPI.NUM) || 
+              const codigoJuego = animalAPI.CODIGOJUEGO.trim();
+              
+              // Buscar el animal local por CÓDIGO primero (más preciso), luego por nombre
+              const animalLocal = getAnimalByCodigo(codigoJuego) || 
                                  getAnimalByNombre(animalAPI.VALOR);
               
               return {
                 numero: animalAPI.NUM,
+                codigo: codigoJuego, // Agregamos este campo para que coincida con la interfaz Animal
                 nombre: animalAPI.VALOR,
                 imagen: animalLocal?.imagen || "",
                 color: animalAPI.COLOR,
-                codigoJuego: animalAPI.CODIGOJUEGO.trim(), // Asegurar que no tenga espacios
+                codigoJuego: codigoJuego,
               } as AnimalMapeado;
             })
             .filter((animal): animal is AnimalMapeado => animal !== null); // Filtrar nulos
@@ -364,20 +367,15 @@ const RealizarJugadas = () => {
     const search = searchTerm.toLowerCase().trim();
     if (!search) return true;
     
-    // Buscar por número (con o sin ceros iniciales)
-    const numeroStr = animal.numero.toString();
-    const numeroPadded = numeroStr.padStart(2, "0");
-    
-    // Buscar por código de juego
+    // Buscar por código de juego exacto (string)
     const codigoJuego = animal.codigoJuego.toLowerCase();
     
     // Buscar por nombre
     const nombreLower = animal.nombre.toLowerCase();
     
     return (
-      numeroStr.includes(search) ||
-      numeroPadded.includes(search) ||
       codigoJuego.includes(search) ||
+      codigoJuego === search || // Búsqueda exacta
       nombreLower.includes(search) ||
       nombreLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) // Búsqueda sin acentos
     );
@@ -424,7 +422,7 @@ const RealizarJugadas = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Buscar por nombre o número (ej: león, 5, 05)..."
+                  placeholder="Buscar por nombre o código (ej: león, 0, 00, 05)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-10"
@@ -470,7 +468,7 @@ const RealizarJugadas = () => {
                             className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                           />
                         )}
-                        <span className="text-xs font-bold">#{animal.numero.toString().padStart(2, "0")}</span>
+                        <span className="text-xs font-bold">#{animal.codigoJuego}</span>
                         <span className="text-[10px] leading-tight text-center">{animal.nombre}</span>
                       </Button>
                     ))}
@@ -496,7 +494,7 @@ const RealizarJugadas = () => {
                     />
                   )}
                   <p className="font-bold text-foreground mt-2">
-                    #{selectedAnimal.numero.toString().padStart(2, "0")} - {selectedAnimal.nombre}
+                    #{selectedAnimal.codigoJuego} - {selectedAnimal.nombre}
                   </p>
                   {parametros && (
                     <p className="text-xs text-muted-foreground mt-1">
@@ -589,7 +587,7 @@ const RealizarJugadas = () => {
                       />
                       <div>
                         <p className="font-bold text-foreground">
-                          #{jugada.animal.numero.toString().padStart(2, "0")} - {jugada.animal.nombre}
+                          #{jugada.animal.codigoJuego} - {jugada.animal.nombre}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Horario: {jugada.horario.label}

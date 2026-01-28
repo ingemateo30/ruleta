@@ -14,19 +14,47 @@ try {
 
     // GET /api/usuarios.php/listar - Listar todos los usuarios
     if ($method === 'GET' && (end($uriParts) === 'listar' || end($uriParts) === 'usuarios.php')) {
-        $stmt = $db->query("
-            SELECT s.ID, s.NOMBRE, s.NICK, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
-                   b.BODEGA as NOMBRE_SUCURSAL
-            FROM seguridad s
-            LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO
-            ORDER BY s.ID DESC
-        ");
+        
+        // Si es SuperAdmin (tipo 0), puede ver todos los usuarios
+        // Si es Admin (tipo 1), solo puede ver usuarios tipo 1 y 2 (no SuperAdmins)
+        if ($currentUser['TIPO'] == '0') {
+            // SuperAdmin ve todos
+            $stmt = $db->query("
+                SELECT s.ID, s.NOMBRE, s.NICK, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
+                       b.BODEGA as NOMBRE_SUCURSAL
+                FROM seguridad s
+                LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO
+                ORDER BY s.ID DESC
+            ");
+        } else {
+            // Admin solo ve usuarios tipo 1 (Admin) y 2 (Operario)
+            $stmt = $db->query("
+                SELECT s.ID, s.NOMBRE, s.NICK, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
+                       b.BODEGA as NOMBRE_SUCURSAL
+                FROM seguridad s
+                LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO
+                WHERE s.TIPO IN ('1', '2')
+                ORDER BY s.ID DESC
+            ");
+        }
 
         $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Mapear tipo de usuario
         foreach ($usuarios as &$usuario) {
-            $usuario['TIPO_NOMBRE'] = $usuario['TIPO'] == 1 ? 'Administrador' : 'Operario';
+            switch($usuario['TIPO']) {
+                case '0':
+                    $usuario['TIPO_NOMBRE'] = 'SuperAdministrador';
+                    break;
+                case '1':
+                    $usuario['TIPO_NOMBRE'] = 'Administrador';
+                    break;
+                case '2':
+                    $usuario['TIPO_NOMBRE'] = 'Operario';
+                    break;
+                default:
+                    $usuario['TIPO_NOMBRE'] = 'Desconocido';
+            }
         }
 
         echo json_encode([
@@ -39,6 +67,7 @@ try {
     elseif ($method === 'GET' && strpos($uri, '/obtener/') !== false) {
         $id = end($uriParts);
 
+        // Primero obtener el usuario
         $stmt = $db->prepare("
             SELECT s.ID, s.NICK, s.CLAVE, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO,
                    b.BODEGA as NOMBRE_SUCURSAL
@@ -47,22 +76,45 @@ try {
             WHERE s.ID = ?
         ");
         $stmt->execute([$id]);
-
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($usuario) {
-            $usuario['TIPO_NOMBRE'] = $usuario['TIPO'] == 1 ? 'Administrador' : 'Operario';
-            echo json_encode([
-                'success' => true,
-                'data' => $usuario
-            ]);
-        } else {
+        if (!$usuario) {
             http_response_code(404);
             echo json_encode([
                 'success' => false,
                 'message' => 'Usuario no encontrado'
             ]);
+            exit;
         }
+
+        // Si el usuario actual es Admin (tipo 1) y está intentando ver un SuperAdmin (tipo 0)
+        if ($currentUser['TIPO'] == '1' && $usuario['TIPO'] == '0') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No tiene permisos para ver este usuario'
+            ]);
+            exit;
+        }
+
+        switch($usuario['TIPO']) {
+            case '0':
+                $usuario['TIPO_NOMBRE'] = 'SuperAdministrador';
+                break;
+            case '1':
+                $usuario['TIPO_NOMBRE'] = 'Administrador';
+                break;
+            case '2':
+                $usuario['TIPO_NOMBRE'] = 'Operario';
+                break;
+            default:
+                $usuario['TIPO_NOMBRE'] = 'Desconocido';
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $usuario
+        ]);
     }
 
     // POST /api/usuarios.php/crear - Crear nuevo usuario
@@ -75,6 +127,16 @@ try {
             echo json_encode([
                 'success' => false,
                 'message' => 'Nick, clave y tipo son requeridos'
+            ]);
+            exit;
+        }
+
+        // Un Admin (tipo 1) no puede crear SuperAdmins (tipo 0)
+        if ($currentUser['TIPO'] == '1' && $data['tipo'] == '0') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No tiene permisos para crear SuperAdministradores'
             ]);
             exit;
         }
@@ -132,6 +194,40 @@ try {
     elseif ($method === 'PUT' && strpos($uri, '/actualizar/') !== false) {
         $id = end($uriParts);
         $data = json_decode(file_get_contents('php://input'), true);
+
+        // Verificar que el usuario a actualizar existe y obtener su tipo
+        $stmt = $db->prepare("SELECT TIPO FROM seguridad WHERE ID = ?");
+        $stmt->execute([$id]);
+        $usuarioActual = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$usuarioActual) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ]);
+            exit;
+        }
+
+        // Un Admin (tipo 1) no puede modificar SuperAdmins (tipo 0)
+        if ($currentUser['TIPO'] == '1' && $usuarioActual['TIPO'] == '0') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No tiene permisos para modificar este usuario'
+            ]);
+            exit;
+        }
+
+        // Un Admin (tipo 1) no puede cambiar el tipo a SuperAdmin (tipo 0)
+        if ($currentUser['TIPO'] == '1' && isset($data['tipo']) && $data['tipo'] == '0') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No tiene permisos para asignar el rol de SuperAdministrador'
+            ]);
+            exit;
+        }
 
         // Construir query dinámicamente
         $fields = [];
@@ -194,6 +290,30 @@ try {
     // DELETE /api/usuarios.php/eliminar/{id} - Eliminar usuario (cambiar estado a inactivo)
     elseif ($method === 'DELETE' && strpos($uri, '/eliminar/') !== false) {
         $id = end($uriParts);
+
+        // Verificar que el usuario existe y obtener su tipo
+        $stmt = $db->prepare("SELECT TIPO FROM seguridad WHERE ID = ?");
+        $stmt->execute([$id]);
+        $usuarioActual = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$usuarioActual) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ]);
+            exit;
+        }
+
+        // Un Admin (tipo 1) no puede eliminar SuperAdmins (tipo 0)
+        if ($currentUser['TIPO'] == '1' && $usuarioActual['TIPO'] == '0') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No tiene permisos para eliminar este usuario'
+            ]);
+            exit;
+        }
 
         $stmt = $db->prepare("UPDATE seguridad SET ESTADO = 'I' WHERE ID = ?");
         $result = $stmt->execute([$id]);

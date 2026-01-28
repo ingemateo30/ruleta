@@ -7,13 +7,13 @@ import { toast } from 'sonner';
 import { CircleDot, Power, PowerOff } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getAnimalByNumero, getAnimalByNombre } from '@/constants/animals';
+import { getAnimalByNumero,getAnimalByCodigo, getAnimalByNombre } from '@/constants/animals';
 
 export default function AsignarRuleta() {
   const { user } = useAuth();
   const [animales, setAnimales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingAll, setProcessingAll] = useState(false);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function AsignarRuleta() {
     }
   };
 
-  const handleToggleAnimal = async (num: number, estadoActual: string) => {
+  const handleToggleAnimal = async (num: string, estadoActual: string) => {
     try {
       setProcessingId(num);
       const result = estadoActual === 'A'
@@ -91,10 +91,16 @@ export default function AsignarRuleta() {
     }
   };
 
-  const getAnimalImage = (num: number, nombre?: string) => {
-    // Buscar el animal por número o nombre para obtener la imagen real
-    const animal = getAnimalByNumero(num) || (nombre ? getAnimalByNombre(nombre) : undefined);
-    return animal?.imagen || '';
+  const getAnimalImage = (num: string,codigo: string, nombre?: string) => {
+    console.log('Buscando imagen para num:', num, 'codigo:', codigo, 'nombre:', nombre);
+     let animal = getAnimalByCodigo(num);
+  
+  // Si no se encuentra por código, buscar por nombre como fallback
+  if (!animal && nombre) {
+    animal = getAnimalByNombre(nombre);
+  }
+  
+  return animal?.imagen || '';
   };
 
   if (String(user?.tipo) !== '1') {
@@ -117,151 +123,151 @@ export default function AsignarRuleta() {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <CircleDot className="h-8 w-8" />
-            Gestión de Animales
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Administra los animales disponibles en la ruleta
-          </p>
-        </div>
-        <div className="space-x-2">
-          <Button
-            onClick={handleActivarTodos}
-            disabled={processingAll}
-            variant="default"
-          >
-            <Power className="h-4 w-4 mr-2" />
-            Activar Todos
-          </Button>
-          <Button
-            onClick={handleDesactivarTodos}
-            disabled={processingAll}
-            variant="destructive"
-          >
-            <PowerOff className="h-4 w-4 mr-2" />
-            Desactivar Todos
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Estadísticas Generales</CardTitle>
-          <CardDescription>
-            Total: {animales.length} animales configurados
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="text-sm font-medium text-green-700 dark:text-green-300">
-                Activos
-              </div>
-              <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                {animales.filter((a) => a.ESTADO === 'A').length}
-              </div>
-            </div>
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <div className="text-sm font-medium text-red-700 dark:text-red-300">
-                Inactivos
-              </div>
-              <div className="text-2xl font-bold text-red-900 dark:text-red-100">
-                {animales.filter((a) => a.ESTADO === 'I').length}
-              </div>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Total Jugadas
-              </div>
-              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {animales.reduce((sum, a) => sum + (a.TOTAL_JUGADAS || 0), 0)}
-              </div>
-            </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <CircleDot className="h-8 w-8" />
+              Gestión de Animales
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Administra los animales disponibles en la ruleta
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="space-x-2">
+            <Button
+              onClick={handleActivarTodos}
+              disabled={processingAll}
+              variant="default"
+            >
+              <Power className="h-4 w-4 mr-2" />
+              Activar Todos
+            </Button>
+            <Button
+              onClick={handleDesactivarTodos}
+              disabled={processingAll}
+              variant="destructive"
+            >
+              <PowerOff className="h-4 w-4 mr-2" />
+              Desactivar Todos
+            </Button>
+          </div>
+        </div>
 
-      {isLoading ? (
-        <div className="text-center py-8">Cargando...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {animales.map((animal) => (
-            <Card key={animal.NUM} className="overflow-hidden">
-              <div
-                className="h-32 flex items-center justify-center relative"
-                style={{ backgroundColor: animal.COLOR || '#cccccc' }}
-              >
-                {getAnimalImage(animal.NUM, animal.NOMBRE) ? (
-                  <>
-                    <img
-                      src={getAnimalImage(animal.NUM, animal.NOMBRE)}
-                      alt={animal.NOMBRE}
-                      className="h-24 w-24 object-contain drop-shadow-lg"
-                    />
-                    <div className="absolute top-2 left-2 bg-black/50 text-white text-lg font-bold px-2 py-1 rounded">
-                      {animal.NUM}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-6xl font-bold text-white drop-shadow-lg">
-                    {animal.NUM}
-                  </div>
-                )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Estadísticas Generales</CardTitle>
+            <CardDescription>
+              Total: {animales.length} animales configurados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Activos
+                </div>
+                <div className="text-2xl font-bold text-green-900 dark:text-green-100">
+                  {animales.filter((a) => a.ESTADO === 'A').length}
+                </div>
               </div>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{animal.NOMBRE}</CardTitle>
-                  <Badge variant={animal.ESTADO === 'A' ? 'default' : 'secondary'}>
-                    {animal.ESTADO === 'A' ? 'Activo' : 'Inactivo'}
-                  </Badge>
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="text-sm font-medium text-red-700 dark:text-red-300">
+                  Inactivos
                 </div>
-                <CardDescription>Animal #{animal.NUM}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <div className="text-muted-foreground">Jugadas</div>
-                    <div className="font-semibold">{animal.TOTAL_JUGADAS || 0}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Ganador</div>
-                    <div className="font-semibold">{animal.VECES_GANADOR || 0}x</div>
-                  </div>
+                <div className="text-2xl font-bold text-red-900 dark:text-red-100">
+                  {animales.filter((a) => a.ESTADO === 'I').length}
                 </div>
-                <div className="text-sm">
-                  <div className="text-muted-foreground">Total Apostado</div>
-                  <div className="font-semibold">
-                    ${(animal.TOTAL_APOSTADO || 0).toLocaleString()}
-                  </div>
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Total Jugadas
                 </div>
-                <Button
-                  onClick={() => handleToggleAnimal(animal.NUM, animal.ESTADO)}
-                  disabled={processingId === animal.NUM}
-                  variant={animal.ESTADO === 'A' ? 'destructive' : 'default'}
-                  className="w-full"
+                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                  {animales.reduce((sum, a) => sum + (a.TOTAL_JUGADAS || 0), 0)}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {isLoading ? (
+          <div className="text-center py-8">Cargando...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {animales.map((animal) => (
+              <Card key={animal.NUM} className="overflow-hidden">
+                <div
+                  className="h-32 flex items-center justify-center relative"
+                  style={{ backgroundColor: animal.COLOR || '#cccccc' }}
                 >
-                  {processingId === animal.NUM ? (
-                    'Procesando...'
-                  ) : animal.ESTADO === 'A' ? (
+                  {getAnimalImage(animal.NUM, animal.VALOR) ? (
                     <>
-                      <PowerOff className="h-4 w-4 mr-2" />
-                      Desactivar
+                      <img
+                        src={getAnimalImage(animal.NUM, animal.VALOR)}
+                        alt={animal.VALOR}
+                        className="h-24 w-24 object-contain drop-shadow-lg"
+                      />
+                      <div className="absolute top-2 left-2 bg-black/50 text-white text-lg font-bold px-2 py-1 rounded">
+                        {animal.NUM}
+                      </div>
                     </>
                   ) : (
-                    <>
-                      <Power className="h-4 w-4 mr-2" />
-                      Activar
-                    </>
+                    <div className="text-6xl font-bold text-white drop-shadow-lg">
+                      {animal.NUM}
+                    </div>
                   )}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                </div>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{animal.VALOR}</CardTitle>
+                    <Badge variant={animal.ESTADO === 'A' ? 'default' : 'secondary'}>
+                      {animal.ESTADO === 'A' ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </div>
+                  <CardDescription>Animal #{animal.NUM}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Jugadas</div>
+                      <div className="font-semibold">{animal.TOTAL_JUGADAS || 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Ganador</div>
+                      <div className="font-semibold">{animal.VECES_GANADOR || 0}x</div>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="text-muted-foreground">Total Apostado</div>
+                    <div className="font-semibold">
+                      ${(animal.TOTAL_APOSTADO || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleToggleAnimal(animal.NUM, animal.ESTADO)}
+                    disabled={processingId === animal.NUM}
+                    variant={animal.ESTADO === 'A' ? 'destructive' : 'default'}
+                    className="w-full"
+                  >
+                    {processingId === animal.NUM ? (
+                      'Procesando...'
+                    ) : animal.ESTADO === 'A' ? (
+                      <>
+                        <PowerOff className="h-4 w-4 mr-2" />
+                        Desactivar
+                      </>
+                    ) : (
+                      <>
+                        <Power className="h-4 w-4 mr-2" />
+                        Activar
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
