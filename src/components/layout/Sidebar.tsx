@@ -127,7 +127,7 @@ const getMenuItems = (userType: string): MenuItem[] => {
     {
       title: "Informes",
       icon: <FileBarChart className="h-4 w-4" />,
-      requiredRole: [USER_TYPES.SUPER_ADMIN],
+      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
       children: [
         { title: "Informe de Juegos", icon: <FileText className="h-4 w-4" />, href: "/informes/juegos" },
         { title: "Ventas del Dia", icon: <DollarSign className="h-4 w-4" />, href: "/informes/ventas" },
@@ -140,7 +140,7 @@ const getMenuItems = (userType: string): MenuItem[] => {
       title: "Estadisticas",
       icon: <TrendingUp className="h-4 w-4" />,
       href: "/estadisticas",
-      requiredRole: [USER_TYPES.SUPER_ADMIN],
+      requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
     },
   ];
 
