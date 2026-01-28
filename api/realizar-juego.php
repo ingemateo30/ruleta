@@ -14,7 +14,7 @@
  * - POST /realizar-juego/guardar              - Guardar juego completo con historial
  */
 
-require_once 'auth_middleware.php';
+require_once __DIR__ . '/auth_middleware.php';
 
 // Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
 $currentUser = initApiSecurity(true, ['0', '1', '2']);
