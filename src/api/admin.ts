@@ -261,6 +261,14 @@ export const informesAPI = {
   cierres: async (params: { fecha_inicio: string; fecha_fin: string }) => {
     return await apiClient.get<ApiResponse>('/informes.php/cierres', { params });
   },
+
+   conteoAnimales: async (params: {
+    fecha_inicio: string;
+    fecha_fin: string;
+    sucursal?: string;
+  }) => {
+    return await apiClient.get<ApiResponse>('/informes.php/conteo-animales', { params });
+  },
 };
 
 // ============= ESTADÍSTICAS =============

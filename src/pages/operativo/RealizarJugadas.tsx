@@ -616,7 +616,30 @@ const RealizarJugadas = () => {
 
             {jugadas.length > 0 && (
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" className="flex-1 gap-2">
+                 <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    const ahora = new Date();
+                    const fecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+                    const hora = ahora.toTimeString().split(' ')[0];
+                    const usuarioActual = authService.getCurrentUser();
+                    setDatosRecibo({
+                      radicado: "VISTA PREVIA",
+                      fecha,
+                      hora,
+                      sucursal: usuarioActual?.sucursal || "Sucursal",
+                      jugadas: jugadas.map(j => ({
+                        codigo: j.animal.codigoJuego,
+                        animal: j.animal.nombre,
+                        valor: j.monto,
+                        horaJuego: j.horario.data.HORA_FORMATEADA || j.horario.data.HORA,
+                      })),
+                      valorTotal: total,
+                    });
+                    setMostrarRecibo(true);
+                  }}
+                >
                   <Printer className="h-4 w-4" />
                   Vista Previa
                 </Button>

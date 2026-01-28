@@ -21,13 +21,15 @@ try {
             SELECT
                 COUNT(DISTINCT RADICADO) as total_tickets,
                 COALESCE(SUM(CASE WHEN ESTADO = 'A' THEN TOTALJUEGO ELSE 0 END), 0) as total_ventas,
-                COALESCE(SUM(CASE WHEN ESTADO = 'C' THEN TOTALJUEGO ELSE 0 END), 0) as total_cancelado
+                 COALESCE(SUM(CASE WHEN ESTADO IN ('I', 'C') THEN TOTALJUEGO ELSE 0 END), 0) as total_cancelado,
+                COUNT(DISTINCT CASE WHEN ESTADO = 'A' THEN RADICADO END) as tickets_activos,
+                COUNT(DISTINCT CASE WHEN ESTADO IN ('I', 'C') THEN RADICADO END) as tickets_cancelados
             FROM jugarlotto
             WHERE DATE(FECHA) = ?
         ");
         $stmt->execute([$fecha]);
         $kpis = $stmt->fetch(PDO::FETCH_ASSOC);
-
+ 
         // Total pagado
         $stmt = $db->prepare("
             SELECT COALESCE(SUM(VALOR_GANADO), 0) as total_pagado
@@ -36,9 +38,38 @@ try {
         ");
         $stmt->execute([$fecha]);
         $pagos = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $kpis['total_pagado'] = $pagos['total_pagado'];
-        $kpis['utilidad_neta'] = $kpis['total_ventas'] - $kpis['total_pagado'];
+ 
+        // Obtener parámetros contables
+        $stmtParams = $db->query("SELECT NOMBRE, VALOR FROM parametros WHERE NOMBRE IN ('PUNTOSPAGO', 'PORCENTAJEADMINSUCURSAL', 'COMISIONSISTEMATIZACION', 'COMISIONADMINISTRACION')");
+        $parametros = [];
+        while ($row = $stmtParams->fetch(PDO::FETCH_ASSOC)) {
+            $parametros[$row['NOMBRE']] = floatval($row['VALOR']);
+        }
+ 
+        $porcentajeSucursal = $parametros['PORCENTAJEADMINSUCURSAL'] ?? 7;
+        $porcentajeSistema = $parametros['COMISIONSISTEMATIZACION'] ?? 20;
+        $porcentajeAdmin = $parametros['COMISIONADMINISTRACION'] ?? 80;
+ 
+        $kpis['total_pagado'] = floatval($pagos['total_pagado']);
+        $kpis['total_ventas'] = floatval($kpis['total_ventas']);
+        $kpis['total_cancelado'] = floatval($kpis['total_cancelado']);
+        $kpis['ventas_netas'] = $kpis['total_ventas'];
+ 
+        // Cálculos contables
+        $pagoAdminSucursal = $kpis['total_ventas'] * ($porcentajeSucursal / 100);
+        $ingresosNetos = $kpis['total_ventas'] - $pagoAdminSucursal - $kpis['total_pagado'];
+        $comisionSistema = $ingresosNetos > 0 ? $ingresosNetos * ($porcentajeSistema / 100) : 0;
+        $comisionAdmin = $ingresosNetos > 0 ? $ingresosNetos * ($porcentajeAdmin / 100) : 0;
+ 
+        $kpis['utilidad_bruta'] = $kpis['total_ventas'] - $kpis['total_pagado'];
+        $kpis['pago_admin_sucursal'] = round($pagoAdminSucursal, 2);
+        $kpis['ingresos_netos'] = round($ingresosNetos, 2);
+        $kpis['comision_sistema'] = round($comisionSistema, 2);
+        $kpis['comision_admin'] = round($comisionAdmin, 2);
+        $kpis['utilidad_neta'] = round($ingresosNetos, 2);
+        $kpis['porcentaje_sucursal'] = $porcentajeSucursal;
+        $kpis['porcentaje_sistema'] = $porcentajeSistema;
+        $kpis['porcentaje_admin'] = $porcentajeAdmin;
 
         // Ventas por hora del día
         $stmt = $db->prepare("

@@ -8,13 +8,30 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Search, Trash2, Loader2, Calendar, Clock, Building, AlertTriangle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { anularJuegoService, authService } from "@/api";
 import type { CabeceraJuego, DetalleJuego } from "@/api";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
+ 
+// Motivos predefinidos para anulación
+const MOTIVOS_ANULACION = [
+  "Error en facturación",
+  "Jugada incompleta",
+  "Hora de juego incorrecta",
+  "Cliente sin dinero completo",
+  "Error al seleccionar el animal del cliente",
+];
+ 
 const AnularJugada = () => {
   const [radicado, setRadicado] = useState("");
   const [fechaBusqueda, setFechaBusqueda] = useState("");
+  const [motivoSeleccionado, setMotivoSeleccionado] = useState("");
   const [motivoAnulacion, setMotivoAnulacion] = useState("");
   const [juegoEncontrado, setJuegoEncontrado] = useState<{
     cabecera: CabeceraJuego;
@@ -70,49 +87,49 @@ const AnularJugada = () => {
     }
   };
 
+ // Construir motivo completo (predefinido + adicional)
+  const motivoCompleto = (() => {
+    const partes: string[] = [];
+    if (motivoSeleccionado) partes.push(motivoSeleccionado);
+    if (motivoAnulacion.trim()) partes.push(motivoAnulacion.trim());
+    return partes.join(". ");
+  })();
+ 
   const handleAnularJuego = async () => {
     if (!juegoEncontrado) return;
-
-    if (!motivoAnulacion.trim()) {
+ 
+    if (!motivoSeleccionado && !motivoAnulacion.trim()) {
       toast({
         title: "Error",
-        description: "Debe ingresar el motivo de la anulación",
+        description: "Debe seleccionar o ingresar el motivo de la anulación",
         variant: "destructive",
       });
       return;
     }
-
-    if (motivoAnulacion.trim().length < 10) {
-      toast({
-        title: "Error",
-        description: "El motivo debe tener al menos 10 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
-
+ 
     setAnulando(true);
     try {
       const usuarioActual = authService.getCurrentUser();
       const response = await anularJuegoService.ejecutarAnulacion({
         radicado: juegoEncontrado.cabecera.RADICADO,
         fecha: juegoEncontrado.cabecera.FECHA,
-        motivo: motivoAnulacion.trim(),
+        motivo: motivoCompleto,
         usuario: usuarioActual?.nick || 'Sistema',
       });
-
+ 
       if (response.success) {
         toast({
-          title: "¡Juego anulado!",
+          title: "Juego anulado",
           description: response.message || "El juego ha sido anulado correctamente",
         });
         setJuegoEncontrado(null);
         setRadicado("");
         setMotivoAnulacion("");
+        setMotivoSeleccionado("");
       } else {
         toast({
           title: "Error",
-          description: response.error || "Error al anular el juego",
+          description: response.error || response.message || "Error al anular el juego",
           variant: "destructive",
         });
       }
@@ -264,28 +281,40 @@ const AnularJugada = () => {
 
                 {juegoEncontrado.cabecera.ESTADO === 'A' ? (
                   <>
-                    <div className="space-y-2 border-t pt-4">
+                      <div className="space-y-3 border-t pt-4">
                       <Label className="text-sm font-semibold flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-yellow-500" />
                         Motivo de Anulación (Requerido)
                       </Label>
+                      <Select
+                        value={motivoSeleccionado}
+                        onValueChange={(value) => setMotivoSeleccionado(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione un motivo..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MOTIVOS_ANULACION.map((motivo) => (
+                            <SelectItem key={motivo} value={motivo}>
+                              {motivo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Textarea
-                        placeholder="Ingrese el motivo detallado de la anulación (mínimo 10 caracteres)..."
+                        placeholder="Detalle adicional (opcional)..."
                         value={motivoAnulacion}
                         onChange={(e) => setMotivoAnulacion(e.target.value)}
-                        className="min-h-[80px]"
+                        className="min-h-[60px]"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        {motivoAnulacion.length}/10 caracteres mínimo
-                      </p>
                     </div>
-
+ 
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
                           variant="destructive"
                           className="w-full"
-                          disabled={anulando || motivoAnulacion.trim().length < 10}
+                          disabled={anulando || (!motivoSeleccionado && !motivoAnulacion.trim())}
                         >
                           {anulando ? (
                             <>
@@ -310,7 +339,7 @@ const AnularJugada = () => {
                               permanentemente.
                             </p>
                             <p className="mt-2">
-                              <strong>Motivo:</strong> {motivoAnulacion}
+                              <strong>Motivo:</strong> {motivoCompleto}
                             </p>
                           </AlertDialogDescription>
                         </AlertDialogHeader>

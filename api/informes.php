@@ -404,6 +404,84 @@ try {
         ]);
     }
 
+     // GET /api/informes.php/conteo-animales - Conteo de jugadas por animal (general y por sucursal)
+    elseif ($method === 'GET' && end($uriParts) === 'conteo-animales') {
+        $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d');
+        $fechaFin = $_GET['fecha_fin'] ?? date('Y-m-d');
+        $sucursal = $_GET['sucursal'] ?? '';
+ 
+        // Conteo general por animal
+        $sql = "
+            SELECT
+                l.NUM,
+                l.CODIGOJUEGO,
+                l.VALOR as ANIMAL,
+                l.COLOR,
+                COUNT(*) as TOTAL_JUGADAS,
+                COALESCE(SUM(hj.VALOR), 0) as TOTAL_APOSTADO
+            FROM hislottojuego hj
+            JOIN jugarlotto j ON hj.RADICADO = j.RADICADO AND hj.FECHA = j.FECHA
+            JOIN lottoruleta l ON hj.CODANIMAL = l.CODIGOJUEGO
+            WHERE j.FECHA >= ? AND j.FECHA <= ?
+            AND j.ESTADO = 'A'
+            AND hj.ESTADOP = 'A'
+        ";
+ 
+        $params = [$fechaInicio, $fechaFin];
+ 
+        if (!empty($sucursal) && $sucursal !== '0') {
+            $sql .= " AND j.SUCURSAL = ?";
+            $params[] = $sucursal;
+        }
+ 
+        $sql .= " GROUP BY l.NUM, l.CODIGOJUEGO, l.VALOR, l.COLOR";
+        $sql .= " ORDER BY TOTAL_JUGADAS DESC";
+ 
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $conteo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+ 
+        // Conteo por sucursal (si no se filtró por sucursal)
+        $conteoPorSucursal = [];
+        if (empty($sucursal) || $sucursal === '0') {
+            $sql = "
+                SELECT
+                    b.BODEGA as SUCURSAL,
+                    l.CODIGOJUEGO,
+                    l.VALOR as ANIMAL,
+                    COUNT(*) as TOTAL_JUGADAS,
+                    COALESCE(SUM(hj.VALOR), 0) as TOTAL_APOSTADO
+                FROM hislottojuego hj
+                JOIN jugarlotto j ON hj.RADICADO = j.RADICADO AND hj.FECHA = j.FECHA
+                JOIN lottoruleta l ON hj.CODANIMAL = l.CODIGOJUEGO
+                JOIN bodegas b ON j.SUCURSAL = b.CODIGO
+                WHERE j.FECHA >= ? AND j.FECHA <= ?
+                AND j.ESTADO = 'A'
+                AND hj.ESTADOP = 'A'
+                GROUP BY b.CODIGO, b.BODEGA, l.NUM, l.CODIGOJUEGO, l.VALOR
+                ORDER BY b.BODEGA, TOTAL_JUGADAS DESC
+            ";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$fechaInicio, $fechaFin]);
+            $conteoPorSucursal = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+ 
+        $totalJugadas = array_sum(array_column($conteo, 'TOTAL_JUGADAS'));
+        $totalApostado = array_sum(array_column($conteo, 'TOTAL_APOSTADO'));
+ 
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'conteo' => $conteo,
+                'conteo_por_sucursal' => $conteoPorSucursal,
+                'resumen' => [
+                    'total_jugadas' => $totalJugadas,
+                    'total_apostado' => $totalApostado
+                ]
+            ]
+        ]);
+    }
+ 
     // GET /api/informes.php/cierres - Informe de cierres de juegos
     elseif ($method === 'GET' && end($uriParts) === 'cierres') {
         $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d');

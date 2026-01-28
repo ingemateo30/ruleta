@@ -9,7 +9,7 @@
  * - GET  /anular-juego/buscar                 - Buscar juego por radicado y fecha
  * - POST /anular-juego/ejecutar               - Ejecutar anulacion del juego
  */
-
+require_once __DIR__ . '/db.php';
 require_once 'auth_middleware.php';
 
 // Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require_once __DIR__ . '/db.php';
+
 
 /**
  * Responde con JSON y código de estado HTTP
@@ -119,24 +119,58 @@ function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = 
             ];
         }
 
+       // Verificar que el juego exista y esté activo antes de proceder
+        $stmtCheck = $conn->prepare(
+            "SELECT RADICADO, ESTADO FROM jugarlotto WHERE RADICADO = :radicado AND FECHA = :fecha"
+        );
+        $stmtCheck->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+        $juegoExistente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+ 
+        if (!$juegoExistente) {
+            return [
+                'success' => false,
+                'error' => 'No se encontró el juego con ese radicado y fecha'
+            ];
+        }
+ 
+        if ($juegoExistente['ESTADO'] !== 'A') {
+            return [
+                'success' => false,
+                'error' => 'El juego ya se encuentra anulado'
+            ];
+        }
+ 
         // Iniciar transacción
         $conn->beginTransaction();
-
-        // 1. Actualizar jugarlotto con motivo de anulación
-        $stmtUpdJuego = $conn->prepare(
-            "UPDATE jugarlotto
-             SET ESTADO = 'I',
-                 MOTIVO_ANULACION = :motivo,
-                 FECHA_ANULACION = NOW(),
-                 USUARIO_ANULACION = :usuario
-             WHERE RADICADO = :radicado AND FECHA = :fecha AND ESTADO = 'A'"
-        );
-        $stmtUpdJuego->execute([
-            'radicado' => $radicado,
-            'fecha' => $fecha,
-            'motivo' => $motivo,
-            'usuario' => $usuario
-        ]);
+ 
+        // 1. Intentar actualizar jugarlotto con columnas de motivo (si existen)
+        try {
+            $stmtUpdJuego = $conn->prepare(
+                "UPDATE jugarlotto
+                 SET ESTADO = 'I',
+                     MOTIVO_ANULACION = :motivo,
+                     FECHA_ANULACION = NOW(),
+                     USUARIO_ANULACION = :usuario
+                 WHERE RADICADO = :radicado AND FECHA = :fecha AND ESTADO = 'A'"
+            );
+            $stmtUpdJuego->execute([
+                'radicado' => $radicado,
+                'fecha' => $fecha,
+                'motivo' => $motivo,
+                'usuario' => $usuario
+            ]);
+        } catch (PDOException $colErr) {
+            // Si las columnas de motivo no existen, solo actualizar el ESTADO
+            $stmtUpdJuego = $conn->prepare(
+                "UPDATE jugarlotto
+                 SET ESTADO = 'I'
+                 WHERE RADICADO = :radicado AND FECHA = :fecha AND ESTADO = 'A'"
+            );
+            $stmtUpdJuego->execute([
+                'radicado' => $radicado,
+                'fecha' => $fecha
+            ]);
+        }
 
         if ($stmtUpdJuego->rowCount() === 0) {
             $conn->rollBack();

@@ -105,11 +105,39 @@ const ReciboCaja = ({
         return;
       }
 
+      // Términos y condiciones
+      const tyc = [
+        "- Ticket ganador tiene 3 dias habiles",
+        "  para ser redimido.",
+        "- Ticket ganador sera cancelado 10 min",
+        "  despues del ultimo resultado.",
+        "- Ticket ganador debe ser presentado en",
+        "  fisico y en perfecto estado, de lo",
+        "  contrario sera anulado.",
+        "- Prohibida la venta a menores de",
+        "  18 anos.",
+      ];
+      const tycHeight = tyc.length * 10 + 20; // 10px per line + spacing
+ 
       // 1. Calcular altura necesaria antes de establecer el tamaño
-      const logoHeight = logoImage ? 80 : 0; // Altura para el logo
+      // Calcular dimensiones del logo manteniendo aspect ratio
+      let logoDisplayWidth = 0;
+      let logoDisplayHeight = 0;
+      if (logoImage) {
+        const maxLogoWidth = 160;
+        const maxLogoHeight = 80;
+        const imgRatio = logoImage.naturalWidth / logoImage.naturalHeight;
+        logoDisplayWidth = maxLogoWidth;
+        logoDisplayHeight = maxLogoWidth / imgRatio;
+        if (logoDisplayHeight > maxLogoHeight) {
+          logoDisplayHeight = maxLogoHeight;
+          logoDisplayWidth = maxLogoHeight * imgRatio;
+        }
+      }
+      const logoHeight = logoImage ? logoDisplayHeight + 8 : 0;
       const headerHeight = logoHeight + 20 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
       const jugadasHeight = jugadas.length * 18;
-      const footerHeight = 5 + 15 + 15 + 15 + 40; // Total, líneas, pie
+      const footerHeight = 5 + 15 + 15 + 15 + 40 + tycHeight; // Total, líneas, pie, T&C
       const paddingTotal = 20;
       const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
 
@@ -132,11 +160,9 @@ const ReciboCaja = ({
       ctx.font = "bold 14px monospace";
 
       // Dibujar el logo si está disponible
-      if (logoImage) {
-        const logoWidth = 200;
-        const logoDisplayHeight = 70;
-        const logoX = (width - logoWidth) / 2;
-        ctx.drawImage(logoImage, logoX, y, logoWidth, logoDisplayHeight);
+     if (logoImage) {
+        const logoX = (width - logoDisplayWidth) / 2;
+        ctx.drawImage(logoImage, logoX, y, logoDisplayWidth, logoDisplayHeight);
         y += logoDisplayHeight + 8;
       } else {
         // Título LOTTO ANIMAL como fallback
@@ -246,7 +272,24 @@ const ReciboCaja = ({
       ctx.fillText("Este es su comprobante de juego", width / 2, y);
       y += 10;
       ctx.font = "8px monospace";
-      ctx.fillText("Válido solo el día de la jugada", width / 2, y);
+      ctx.fillText("Valido solo el dia de la jugada", width / 2, y);
+      y += 15;
+ 
+      // Línea separadora antes de T&C
+      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+      y += 10;
+ 
+      // Términos y condiciones
+      ctx.font = "bold 8px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
+      y += 10;
+      ctx.font = "7px monospace";
+      ctx.textAlign = "left";
+      tyc.forEach((linea) => {
+        ctx.fillText(linea, padding, y);
+        y += 10;
+      });
 
       console.log('Canvas renderizado correctamente:', {
         width: canvas.width,

@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 
 export default function InformeJuegos() {
   const [jugadas, setJugadas] = useState<any[]>([]);
+  const [conteoAnimales, setConteoAnimales] = useState<any[]>([]);
   const [sucursales, setSucursales] = useState<any[]>([]);
   const [horarios, setHorarios] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,13 +66,23 @@ export default function InformeJuegos() {
       if (filtros.sucursal) params.sucursal = filtros.sucursal;
       if (filtros.horario) params.horario = filtros.horario;
 
-      const response = await informesAPI.juegos(params);
-
+      const [response, conteoResponse] = await Promise.all([
+        informesAPI.juegos(params),
+        informesAPI.conteoAnimales({
+          fecha_inicio: filtros.fecha_inicio,
+          fecha_fin: filtros.fecha_fin,
+          sucursal: filtros.sucursal || undefined,
+        }),
+      ]);
+ 
       if (response.success) {
-        // API devuelve { juegos: [...], resumen: {...} }
         const juegosData = response.data?.juegos || response.data || [];
         setJugadas(juegosData);
         toast.success(`Se encontraron ${juegosData.length} jugadas`);
+      }
+ 
+      if (conteoResponse.success) {
+        setConteoAnimales(conteoResponse.data?.conteo || []);
       }
     } catch (error: any) {
       toast.error('Error al generar informe: ' + error.message);
@@ -306,6 +317,43 @@ export default function InformeJuegos() {
               </Table>
             </CardContent>
           </Card>
+           {/* Conteo de Jugadas por Animal */}
+          {conteoAnimales.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Conteo de Jugadas por Animalito</CardTitle>
+                <CardDescription>
+                  Cantidad de veces que se jugó cada animal{filtros.sucursal ? ' en la sucursal seleccionada' : ' en todas las sucursales'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Animalito</TableHead>
+                      <TableHead className="text-center">Jugadas</TableHead>
+                      <TableHead className="text-right">Total Apostado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conteoAnimales.map((item: any, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-semibold">
+                          #{item.CODIGOJUEGO} {item.ANIMAL}
+                        </TableCell>
+                        <TableCell className="text-center font-bold">
+                          {parseInt(item.TOTAL_JUGADAS).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ${parseFloat(item.TOTAL_APOSTADO).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

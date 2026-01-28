@@ -27,7 +27,7 @@ try {
         }
 
         $sql = "
-            SELECT
+           SELECT DISTINCT
                 j.RADICADO,
                 j.FECHA,
                 j.HORA,
@@ -39,6 +39,7 @@ try {
                 h.VALOR as VALOR_APOSTADO,
                 h.CODIGOJ,
                 h.HORAJUEGO,
+                h.DESJUEGO,
                 g.CODIGOA as ANIMAL_GANADOR,
                 g.ANIMAL as NOMBRE_GANADOR,
                 g.FECHA as FECHA_SORTEO,
@@ -55,12 +56,12 @@ try {
                     ELSE 'PENDIENTE'
                 END as ESTADO_PAGO
             FROM jugarlotto j
-            JOIN hislottojuego h ON j.RADICADO = h.RADICADO
+            JOIN hislottojuego h ON j.RADICADO = h.RADICADO AND h.FECHA = j.FECHA
             JOIN ingresarganadores g ON h.CODANIMAL = g.CODIGOA
                 AND h.CODIGOJ = g.CODIGOH
-                AND DATE(j.FECHA) = g.FECHA
+                AND j.FECHA = g.FECHA
             LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
-            CROSS JOIN (SELECT VALOR as PUNTOSPAGO FROM parametros WHERE NOMBRE = 'PUNTOSPAGO') p
+            CROSS JOIN (SELECT VALOR as PUNTOSPAGO FROM parametros WHERE NOMBRE = 'PUNTOSPAGO' LIMIT 1) p
             WHERE j.ESTADO = 'A'
             AND h.ESTADOP = 'A'
             AND h.ESTADOC = 'A'
@@ -198,7 +199,7 @@ try {
         try {
             // Buscar jugadas ganadoras pendientes de pago
             $stmt = $db->prepare("
-                SELECT
+                 SELECT DISTINCT
                     j.RADICADO,
                     j.FECHA,
                     j.HORA,
@@ -212,11 +213,11 @@ try {
                     p.PUNTOSPAGO,
                     (h.VALOR * p.PUNTOSPAGO) as VALOR_GANADO
                 FROM jugarlotto j
-                JOIN hislottojuego h ON j.RADICADO = h.RADICADO
+                JOIN hislottojuego h ON j.RADICADO = h.RADICADO AND h.FECHA = j.FECHA
                 JOIN ingresarganadores g ON h.CODANIMAL = g.CODIGOA
                     AND h.CODIGOJ = g.CODIGOH
-                    AND DATE(j.FECHA) = g.FECHA
-                CROSS JOIN (SELECT VALOR as PUNTOSPAGO FROM parametros WHERE NOMBRE = 'PUNTOSPAGO') p
+                    AND j.FECHA = g.FECHA
+                CROSS JOIN (SELECT VALOR as PUNTOSPAGO FROM parametros WHERE NOMBRE = 'PUNTOSPAGO' LIMIT 1) p
                 WHERE j.RADICADO = ?
                 AND j.ESTADO = 'A'
                 AND h.ESTADOP = 'A'
