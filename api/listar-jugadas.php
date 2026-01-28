@@ -11,7 +11,7 @@
  * - GET  /listar-jugadas/recientes            - Obtener las ultimas jugadas del dia actual
  * - GET  /listar-jugadas/voucher/{radicado}   - Obtener datos estructurados para reimpresion de voucher
  */
-
+require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth_middleware.php';
 
 // Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require_once __DIR__ . '/db.php';
+
 
 /**
  * Responde con JSON y código de estado HTTP

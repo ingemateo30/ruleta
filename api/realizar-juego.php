@@ -1,4 +1,7 @@
 <?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 /**
  * API Endpoint: Realizar Juego de Lotto Animal
  *
@@ -14,6 +17,8 @@
  * - POST /realizar-juego/guardar              - Guardar juego completo con historial
  */
 
+require_once __DIR__ . '/db.php';
+
 require_once __DIR__ . '/auth_middleware.php';
 
 // Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
@@ -25,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require_once __DIR__ . '/db.php';
+
 
 /**
  * Responde con JSON y código de estado HTTP
