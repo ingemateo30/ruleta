@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { CircleDot, Power, PowerOff } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getAnimalByNumero, getAnimalByNombre } from '@/constants/animals';
 
 export default function AsignarRuleta() {
   const { user } = useAuth();
@@ -90,9 +91,10 @@ export default function AsignarRuleta() {
     }
   };
 
-  const getAnimalImage = (num: number) => {
-    // Retorna una URL de placeholder para las imágenes de animales
-    return `https://via.placeholder.com/150/000000/FFFFFF/?text=Animal+${num}`;
+  const getAnimalImage = (num: number, nombre?: string) => {
+    // Buscar el animal por número o nombre para obtener la imagen real
+    const animal = getAnimalByNumero(num) || (nombre ? getAnimalByNombre(nombre) : undefined);
+    return animal?.imagen || '';
   };
 
   if (String(user?.tipo) !== '1') {
@@ -189,12 +191,25 @@ export default function AsignarRuleta() {
           {animales.map((animal) => (
             <Card key={animal.NUM} className="overflow-hidden">
               <div
-                className="h-32 flex items-center justify-center"
+                className="h-32 flex items-center justify-center relative"
                 style={{ backgroundColor: animal.COLOR || '#cccccc' }}
               >
-                <div className="text-6xl font-bold text-white drop-shadow-lg">
-                  {animal.NUM}
-                </div>
+                {getAnimalImage(animal.NUM, animal.NOMBRE) ? (
+                  <>
+                    <img
+                      src={getAnimalImage(animal.NUM, animal.NOMBRE)}
+                      alt={animal.NOMBRE}
+                      className="h-24 w-24 object-contain drop-shadow-lg"
+                    />
+                    <div className="absolute top-2 left-2 bg-black/50 text-white text-lg font-bold px-2 py-1 rounded">
+                      {animal.NUM}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-6xl font-bold text-white drop-shadow-lg">
+                    {animal.NUM}
+                  </div>
+                )}
               </div>
               <CardHeader>
                 <div className="flex items-center justify-between">
