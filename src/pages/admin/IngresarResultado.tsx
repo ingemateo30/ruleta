@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Trophy, Loader2, Search, X, Calendar, Clock, CheckCircle2 } from "lucide-react";
 import { ingresarResultadoService } from "@/api";
 import type { AnimalResultado, HorarioResultado } from "@/api";
-import { animals, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
+import { animals,getAnimalByCodigo, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
 
 interface AnimalMapeado extends Animal {
   codigoJuego: string;
@@ -55,15 +55,19 @@ const IngresarResultado = () => {
                 return null;
               }
               
-              const animalLocal = getAnimalByNumero(animalAPI.NUM) || 
+              const codigoJuego = animalAPI.CODIGOJUEGO.trim();
+              
+              // Buscar el animal local por CÓDIGO primero (más preciso), luego por nombre
+              const animalLocal = getAnimalByCodigo(codigoJuego) || 
                                  getAnimalByNombre(animalAPI.VALOR);
               
               return {
                 numero: animalAPI.NUM,
+                codigo: codigoJuego, // Agregamos este campo para que coincida con la interfaz Animal
                 nombre: animalAPI.VALOR,
                 imagen: animalLocal?.imagen || "",
                 color: animalAPI.COLOR,
-                codigoJuego: animalAPI.CODIGOJUEGO.trim(),
+                codigoJuego: codigoJuego,
               } as AnimalMapeado;
             })
             .filter((animal): animal is AnimalMapeado => animal !== null);
@@ -212,11 +216,10 @@ const IngresarResultado = () => {
     const nombreLower = animal.nombre.toLowerCase();
     
     return (
-      numeroStr.includes(search) ||
-      numeroPadded.includes(search) ||
       codigoJuego.includes(search) ||
+      codigoJuego === search || // Búsqueda exacta
       nombreLower.includes(search) ||
-      nombreLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)
+      nombreLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) // Búsqueda sin acentos
     );
   });
 
@@ -262,7 +265,7 @@ const IngresarResultado = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Buscar por nombre o número (ej: león, 5, 05)..."
+                  placeholder="Buscar por nombre o código (ej: león, 0, 00, 05)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-10"
@@ -308,7 +311,7 @@ const IngresarResultado = () => {
                             className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                           />
                         )}
-                        <span className="text-xs font-bold">#{animal.numero.toString().padStart(2, "0")}</span>
+                        <span className="text-xs font-bold">#{animal.codigoJuego}</span>
                         <span className="text-[10px] leading-tight text-center">{animal.nombre}</span>
                       </Button>
                     ))}
@@ -336,7 +339,7 @@ const IngresarResultado = () => {
                   <div className="flex items-center justify-center gap-2 mt-2">
                     <Trophy className="h-5 w-5 text-yellow-500" />
                     <p className="font-bold text-foreground">
-                      #{selectedAnimal.numero.toString().padStart(2, "0")} - {selectedAnimal.nombre}
+                      #{selectedAnimal.codigoJuego} - {selectedAnimal.nombre}
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Animal Ganador</p>
