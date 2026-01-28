@@ -12,7 +12,7 @@
  * - GET  /listar-jugadas/voucher/{radicado}   - Obtener datos estructurados para reimpresion de voucher
  */
 
-require_once 'auth_middleware.php';
+require_once __DIR__ . '/auth_middleware.php';
 
 // Inicializar seguridad - Requiere autenticacion (cualquier usuario logueado)
 $currentUser = initApiSecurity(true, ['0', '1', '2']);

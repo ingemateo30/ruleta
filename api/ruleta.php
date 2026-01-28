@@ -1,6 +1,6 @@
 <?php
-require_once 'auth_middleware.php';
-require_once 'db.php';
+require_once __DIR__ . '/auth_middleware.php';
+require_once __DIR__ . '/db.php';
 
 // Inicializar seguridad - Solo Admin y SuperAdmin
 $currentUser = initApiSecurity(true, ['0', '1']);
