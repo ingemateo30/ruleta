@@ -212,10 +212,14 @@ try {
 
     // GET: Horarios del día con estado
     elseif ($method === 'GET' && $action === 'horarios') {
-        // Usar fecha del parámetro si se proporciona, sino usar fecha actual
-        $hoy = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : date('Y-m-d');
-        $ahora = date('H:i:s');
+        // Usar fecha del parámetro si se proporciona, sino usar fecha actual del servidor MySQL
+        $stmtFecha = $conn->query("SELECT CURDATE() as fecha_actual, CURTIME() as hora_actual");
+        $tiempoServer = $stmtFecha->fetch(PDO::FETCH_ASSOC);
 
+        $hoy = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : $tiempoServer['fecha_actual'];
+        $esHoy = ($hoy === $tiempoServer['fecha_actual']);
+
+        // Usar la hora del servidor MySQL para consistencia
         $stmt = $conn->prepare("
             SELECT
                 h.NUM,
@@ -226,7 +230,8 @@ try {
                 l.COLOR,
                 CASE
                     WHEN g.CODIGOA IS NOT NULL THEN 'JUGADO'
-                    WHEN h.HORA <= :ahora THEN 'PENDIENTE'
+                    WHEN :esHoy = 1 AND h.HORA <= CURTIME() THEN 'PENDIENTE'
+                    WHEN :esHoy2 = 0 THEN 'PENDIENTE'
                     ELSE 'PROXIMO'
                 END as estado
             FROM horariojuego h
@@ -235,7 +240,11 @@ try {
             WHERE h.ESTADO = 'A'
             ORDER BY h.HORA ASC
         ");
-        $stmt->execute(['fecha' => $hoy, 'ahora' => $ahora]);
+        $stmt->execute([
+            'fecha' => $hoy,
+            'esHoy' => $esHoy ? 1 : 0,
+            'esHoy2' => $esHoy ? 1 : 0
+        ]);
         $horarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         sendResponse([

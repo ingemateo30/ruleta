@@ -22,15 +22,24 @@ interface AnimalMapeado extends Animal {
   codigoJuego: string;
 }
 
+interface HorarioConEstado extends HorarioResultado {
+  CODIGOA?: number;
+  ANIMAL?: string;
+  COLOR?: string;
+  estado?: 'JUGADO' | 'PASADO' | 'PENDIENTE';
+  bloqueado?: number;
+}
+
 const IngresarResultado = () => {
   const [animalesAPI, setAnimalesAPI] = useState<AnimalMapeado[]>([]);
-  const [horariosAPI, setHorariosAPI] = useState<HorarioResultado[]>([]);
+  const [horariosAPI, setHorariosAPI] = useState<HorarioConEstado[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAnimal, setSelectedAnimal] = useState<AnimalMapeado | null>(null);
   const [selectedHorario, setSelectedHorario] = useState("");
   const [fecha, setFecha] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -100,6 +109,36 @@ const IngresarResultado = () => {
     setFecha(hoy);
   }, []);
 
+  // Cargar horarios con estado cuando cambia la fecha
+  useEffect(() => {
+    const cargarHorariosConEstado = async () => {
+      if (!fecha) return;
+
+      setCargandoHorarios(true);
+      try {
+        const horariosRes = await ingresarResultadoService.obtenerHorarios(fecha);
+        if (horariosRes.success && horariosRes.data) {
+          setHorariosAPI(horariosRes.data);
+          // Limpiar selección si el horario seleccionado ya no está disponible
+          if (selectedHorario) {
+            const horarioActual = horariosRes.data.find(
+              (h: HorarioConEstado) => h.NUM.toString() === selectedHorario
+            );
+            if (horarioActual?.estado === 'JUGADO' && horarioActual?.bloqueado) {
+              setSelectedHorario("");
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error al cargar horarios:', error);
+      } finally {
+        setCargandoHorarios(false);
+      }
+    };
+
+    cargarHorariosConEstado();
+  }, [fecha]);
+
   const handleGuardarResultado = async () => {
     if (!selectedAnimal || !selectedHorario || !fecha) {
       toast({
@@ -138,6 +177,12 @@ const IngresarResultado = () => {
         // Limpiar selección
         setSelectedAnimal(null);
         setSelectedHorario("");
+
+        // Recargar horarios para actualizar el estado
+        const horariosRes = await ingresarResultadoService.obtenerHorarios(fecha);
+        if (horariosRes.success && horariosRes.data) {
+          setHorariosAPI(horariosRes.data);
+        }
       } else {
         toast({
           title: "Error",
@@ -314,19 +359,50 @@ const IngresarResultado = () => {
                 <Label className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   Horario
+                  {cargandoHorarios && <Loader2 className="h-3 w-3 animate-spin" />}
                 </Label>
                 <Select value={selectedHorario} onValueChange={setSelectedHorario}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione horario" />
                   </SelectTrigger>
                   <SelectContent>
-                    {horariosAPI.map((h) => (
-                      <SelectItem key={h.NUM} value={h.NUM.toString()}>
-                        {h.DESCRIPCION} - {h.HORA}
-                      </SelectItem>
-                    ))}
+                    {horariosAPI.map((h) => {
+                      const esBloqueado = h.estado === 'JUGADO' && h.bloqueado === 1;
+                      const tieneGanador = h.estado === 'JUGADO';
+
+                      return (
+                        <SelectItem
+                          key={h.NUM}
+                          value={h.NUM.toString()}
+                          disabled={esBloqueado}
+                          className={esBloqueado ? 'opacity-50' : ''}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>{h.DESCRIPCION} - {h.HORA}</span>
+                            {tieneGanador && (
+                              <Badge
+                                variant={esBloqueado ? "destructive" : "secondary"}
+                                className="text-[10px] px-1 py-0"
+                              >
+                                {esBloqueado ? `${h.ANIMAL} (bloqueado)` : `${h.ANIMAL}`}
+                              </Badge>
+                            )}
+                            {h.estado === 'PASADO' && !tieneGanador && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                Sin resultado
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {selectedHorario && horariosAPI.find(h => h.NUM.toString() === selectedHorario)?.estado === 'JUGADO' && (
+                  <p className="text-xs text-yellow-600">
+                    Este horario ya tiene un ganador registrado. Se actualizará el resultado.
+                  </p>
+                )}
               </div>
 
               <Button
