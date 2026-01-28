@@ -31,11 +31,14 @@ class IngresarResultadoService {
 
   /**
    * Obtiene todos los horarios de juego activos
+   * @param fecha - Fecha opcional para obtener horarios con estado (YYYY-MM-DD)
    */
-  async obtenerHorarios(): Promise<HorariosResultadoResponse> {
+  async obtenerHorarios(fecha?: string): Promise<HorariosResultadoResponse> {
     try {
+      const params = fecha ? { fecha } : undefined;
       const response = await apiClient.get<HorariosResultadoResponse>(
-        `${this.baseEndpoint}/horarios`
+        `${this.baseEndpoint}/horarios`,
+        { params }
       );
       return response;
     } catch (error) {
