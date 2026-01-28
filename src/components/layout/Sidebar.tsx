@@ -180,15 +180,6 @@ const SidebarContent = ({
             onClick={() => onNavigate("/dashboard")}
           >
             <div className="flex items-center gap-3">
-              <img
-                src="/src/logo/LOGO LOTTO ANIMAL PNG.png"
-                alt="Lotto Animal Logo"
-                className="h-8 w-auto object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = new URL("../logo/LOGO LOTTO ANIMAL PNG.png", import.meta.url).href;
-                }}
-              />
               <div>
                 <h1 className="font-bold text-base text-foreground leading-tight">Lotto Animal</h1>
                 {isSuperAdmin && (
