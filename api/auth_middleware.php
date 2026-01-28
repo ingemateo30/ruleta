@@ -109,7 +109,7 @@ function validateAuthentication($required = true) {
     // Validar el token (el token es el ID del usuario encriptado)
     // Por ahora validamos que el usuario exista en la BD
     try {
-        require_once 'db.php';
+        require_once __DIR__ . '/db.php';
         $db = Database::getInstance()->getConnection();
 
         $stmt = $db->prepare("

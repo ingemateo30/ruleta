@@ -59,6 +59,9 @@ const RuletaPublica = () => {
     }
   };
 
+  // Referencia para el último horario conocido (para detectar cambios)
+  const ultimoHorarioConocido = useRef<number | null>(null);
+
   // Cargar datos iniciales y actualizar cada 10 segundos
   const cargarDatos = useCallback(async (fechaParam?: string) => {
     try {
@@ -69,11 +72,26 @@ const RuletaPublica = () => {
       ]);
 
       if (proximoRes.success && proximoRes.data) {
-        setProximoSorteo(proximoRes.data.proximo_sorteo);
+        const nuevoSorteo = proximoRes.data.proximo_sorteo;
+
+        // Detectar si cambió el horario (pasamos al siguiente sorteo)
+        if (nuevoSorteo && ultimoHorarioConocido.current !== null &&
+            ultimoHorarioConocido.current !== nuevoSorteo.codigo) {
+          // El horario cambió, actualizar inmediatamente
+          console.log('Cambio de horario detectado:', ultimoHorarioConocido.current, '->', nuevoSorteo.codigo);
+        }
+
+        if (nuevoSorteo) {
+          ultimoHorarioConocido.current = nuevoSorteo.codigo;
+        }
+
+        setProximoSorteo(nuevoSorteo);
 
         // Only update countdown if not animating
         if (!animacionEnProgreso.current) {
-          setSegundosRestantes(proximoRes.data.proximo_sorteo?.segundos_faltantes || 0);
+          // Si los segundos son negativos o muy diferentes, sincronizar
+          const nuevoSegundos = nuevoSorteo?.segundos_faltantes || 0;
+          setSegundosRestantes(nuevoSegundos);
         }
 
         if (proximoRes.data.ultimo_resultado) {
@@ -102,7 +120,16 @@ const RuletaPublica = () => {
 
   // Contador regresivo
   useEffect(() => {
-    if (segundosRestantes <= 0) return;
+    if (segundosRestantes <= 0) {
+      // Si estamos en 0 y no hay animación en progreso, recargar datos para obtener siguiente horario
+      if (!animacionEnProgreso.current && !isAnimating) {
+        const timeout = setTimeout(() => {
+          cargarDatos();
+        }, 2000); // Esperar 2 segundos antes de recargar
+        return () => clearTimeout(timeout);
+      }
+      return;
+    }
 
     const timer = setInterval(() => {
       setSegundosRestantes(prev => {
@@ -118,7 +145,7 @@ const RuletaPublica = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [segundosRestantes]);
+  }, [segundosRestantes, isAnimating, cargarDatos]);
 
   // Animacion de la ruleta - CORREGIDA para no mostrar animal incorrecto
   const iniciarAnimacion = async () => {

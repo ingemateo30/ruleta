@@ -76,14 +76,14 @@ function listarAnimales($conn) {
 function listarHorarios($conn) {
     try {
         $stmt = $conn->query(
-            "SELECT NUM, DESCRIPCION, HORA 
-             FROM horariojuego 
-             WHERE ESTADO = 'A' 
+            "SELECT NUM, DESCRIPCION, HORA
+             FROM horariojuego
+             WHERE ESTADO = 'A'
              ORDER BY NUM"
         );
-        
+
         $horarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         return [
             'success' => true,
             'data' => $horarios,
@@ -93,6 +93,65 @@ function listarHorarios($conn) {
         return [
             'success' => false,
             'error' => 'Error al listar horarios',
+            'details' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Lista los horarios con su estado de ganador para una fecha específica
+ */
+function listarHorariosConEstado($conn, $fecha) {
+    try {
+        // Obtener hora actual del servidor MySQL
+        $stmtTime = $conn->query("SELECT CURTIME() as hora_actual, CURDATE() as fecha_actual");
+        $serverTime = $stmtTime->fetch(PDO::FETCH_ASSOC);
+
+        $esHoy = ($fecha === $serverTime['fecha_actual']);
+
+        $stmt = $conn->prepare(
+            "SELECT
+                h.NUM,
+                h.DESCRIPCION,
+                h.HORA,
+                g.CODIGOA,
+                g.ANIMAL,
+                l.COLOR,
+                CASE
+                    WHEN g.CODIGOA IS NOT NULL THEN 'JUGADO'
+                    WHEN :esHoy = 1 AND h.HORA <= CURTIME() THEN 'PASADO'
+                    ELSE 'PENDIENTE'
+                END as estado,
+                CASE
+                    WHEN :esHoy2 = 1 AND h.HORA <= CURTIME() THEN 1
+                    ELSE 0
+                END as bloqueado
+             FROM horariojuego h
+             LEFT JOIN ingresarganadores g ON h.NUM = g.CODIGOH AND g.FECHA = :fecha AND g.ESTADO = 'A'
+             LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
+             WHERE h.ESTADO = 'A'
+             ORDER BY h.HORA ASC"
+        );
+
+        $stmt->execute([
+            'fecha' => $fecha,
+            'esHoy' => $esHoy ? 1 : 0,
+            'esHoy2' => $esHoy ? 1 : 0
+        ]);
+
+        $horarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'success' => true,
+            'data' => $horarios,
+            'count' => count($horarios),
+            'fecha' => $fecha,
+            'hora_servidor' => $serverTime['hora_actual']
+        ];
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Error al listar horarios con estado',
             'details' => $e->getMessage()
         ];
     }
@@ -115,10 +174,56 @@ function guardarResultado($conn, $data) {
             }
         }
 
+        // Verificar si ya existe un ganador para este horario y fecha
+        $stmtCheck = $conn->prepare(
+            "SELECT g.CODIGOA, g.ANIMAL, h.HORA
+             FROM ingresarganadores g
+             JOIN horariojuego h ON g.CODIGOH = h.NUM
+             WHERE g.CODIGOH = :codigoH AND g.FECHA = :fecha AND g.ESTADO = 'A'"
+        );
+        $stmtCheck->execute([
+            'codigoH' => $data['codigoHorario'],
+            'fecha' => $data['fecha']
+        ]);
+        $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($existente) {
+            // Ya existe un ganador para este horario y fecha
+            // Verificar si la hora del sorteo ya pasó (solo aplica para la fecha de hoy)
+            $fechaHoy = date('Y-m-d');
+            $horaActual = date('H:i:s');
+
+            if ($data['fecha'] === $fechaHoy && $existente['HORA'] <= $horaActual) {
+                // La hora ya pasó, no se puede modificar
+                return [
+                    'success' => false,
+                    'error' => "No se puede modificar el resultado. El horario {$data['descripcionHorario']} ya pasó y tiene registrado como ganador: {$existente['ANIMAL']}"
+                ];
+            }
+
+            // Si la hora no ha pasado, actualizar el ganador existente
+            $stmtUpdate = $conn->prepare(
+                "UPDATE ingresarganadores
+                 SET CODIGOA = :codigoA, ANIMAL = :animal
+                 WHERE CODIGOH = :codigoH AND FECHA = :fecha AND ESTADO = 'A'"
+            );
+            $stmtUpdate->execute([
+                'codigoA' => $data['codigoAnimal'],
+                'animal'  => $data['nombreAnimal'],
+                'codigoH' => $data['codigoHorario'],
+                'fecha'   => $data['fecha']
+            ]);
+
+            return [
+                'success' => true,
+                'message' => "Resultado actualizado correctamente para {$data['descripcionHorario']} el {$data['fecha']} (anterior: {$existente['ANIMAL']})"
+            ];
+        }
+
         // Insertar en ingresarganadores
         // NOTA: Se usa DESCRIOCIONH respetando el nombre de la columna en el esquema SQL (posible typo original)
         $stmt = $conn->prepare(
-            "INSERT INTO ingresarganadores (CODIGOA, ANIMAL, CODIGOH, DESCRIOCIONH, FECHA, ESTADO) 
+            "INSERT INTO ingresarganadores (CODIGOA, ANIMAL, CODIGOH, DESCRIOCIONH, FECHA, ESTADO)
              VALUES (:codigoA, :animal, :codigoH, :descH, :fecha, 'A')"
         );
 
@@ -240,7 +345,12 @@ try {
 
     // GET: Listar horarios
     elseif ($method === 'GET' && $action === 'horarios') {
-        $result = listarHorarios($conn);
+        // Si se proporciona fecha, devolver horarios con estado
+        if (isset($_GET['fecha']) && !empty($_GET['fecha'])) {
+            $result = listarHorariosConEstado($conn, $_GET['fecha']);
+        } else {
+            $result = listarHorarios($conn);
+        }
         sendResponse($result, $result['success'] ? 200 : 400);
     }
 
