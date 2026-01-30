@@ -85,6 +85,7 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Parametros", icon: <SlidersHorizontal className="h-4 w-4" />, href: "/config/parametros" },
         { title: "Asignar Ruleta", icon: <Target className="h-4 w-4" />, href: "/config/asignar-ruleta" },
         { title: "Horarios de Juego", icon: <Clock className="h-4 w-4" />, href: "/config/horarios" },
+        { title: "Autenticacion 2FA", icon: <Clock className="h-4 w-4" />, href: "/config/2fa-setup" },
       ],
     },
     // Operativo - Solo para Operarios (sin Cerrar Juego)

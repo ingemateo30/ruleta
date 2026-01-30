@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/auth_middleware.php';
+require_once __DIR__ . '/TOTP.php';
 
 // Inicializar seguridad SIN requerir autenticacion (endpoint publico de login)
 initApiSecurity(false);
@@ -79,6 +80,7 @@ if (!isset($data['username']) || !isset($data['password'])) {
 
 $username = trim($data['username']);
 $encryptedPassword = trim($data['password']);
+$totpCode = isset($data['totpCode']) ? trim($data['totpCode']) : null;
 
 // Desencriptar la contraseña
 $password = decryptAESPassword($encryptedPassword, AES_SECRET_KEY);
@@ -100,7 +102,8 @@ try {
     $pdo = getDBConnection();
     
     // Consultar usuario en la tabla seguridad con JOIN a bodegas para obtener sucursal
-    $stmt = $pdo->prepare("SELECT s.ID, s.NOMBRE, s.NICK, s.CLAVE, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO, b.BODEGA as SUCURSAL
+    $stmt = $pdo->prepare("SELECT s.ID, s.NOMBRE, s.NICK, s.CLAVE, s.TIPO, s.CAJA, s.CODBODEGA, s.ESTADO, 
+                           s.TOTP_SECRET, s.TOTP_ENABLED, b.BODEGA as SUCURSAL
                            FROM seguridad s
                            LEFT JOIN bodegas b ON s.CODBODEGA = b.CODIGO
                            WHERE s.NICK = :nick AND s.CLAVE = :clave AND (s.ESTADO = '1' OR s.ESTADO = 'A')");
@@ -112,6 +115,36 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($user) {
+        // Verificar si el usuario tiene 2FA activado
+        if ($user['TOTP_ENABLED'] == 1 && !empty($user['TOTP_SECRET'])) {
+            // 2FA está activado - se requiere código TOTP
+            
+            if (empty($totpCode)) {
+                // No se proporcionó código TOTP - solicitar
+                http_response_code(200);
+                echo json_encode([
+                    'success' => false,
+                    'requires2FA' => true,
+                    'message' => 'Se requiere código de autenticación de dos factores',
+                    'userId' => $user['ID'] // Temporal para segundo paso
+                ]);
+                exit();
+            }
+            
+            // Verificar código TOTP
+            if (!TOTP::verifyCode($totpCode, $user['TOTP_SECRET'])) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'requires2FA' => true,
+                    'message' => 'Código de autenticación incorrecto'
+                ]);
+                exit();
+            }
+            
+            // Código TOTP correcto - continuar con login
+        }
+        
         // Login exitoso - Devolver todos los valores importantes
         http_response_code(200);
         echo json_encode([
@@ -125,7 +158,8 @@ try {
                 'caja' => $user['CAJA'],
                 'codigoSucursal' => $user['CODBODEGA'],
                 'sucursal' => $user['SUCURSAL'] ?? 'Sin sucursal',
-                'estado' => $user['ESTADO']
+                'estado' => $user['ESTADO'],
+                'has2FA' => ($user['TOTP_ENABLED'] == 1)
             ]
         ]);
     } else {

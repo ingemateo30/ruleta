@@ -52,6 +52,7 @@ const RealizarJugadas = () => {
   const [guardando, setGuardando] = useState(false);
   const [valoresRapidos, setValoresRapidos] = useState<number[]>([]);
   const [mostrarRecibo, setMostrarRecibo] = useState(false);
+  const [horaActual, setHoraActual] = useState(new Date());
   const [datosRecibo, setDatosRecibo] = useState<{
     radicado: string;
     fecha: string;
@@ -70,6 +71,13 @@ const RealizarJugadas = () => {
   useEffect(() => {
     const valores = obtenerValoresMasJugados();
     setValoresRapidos(valores);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHoraActual(new Date());
+    }, 60000); // Revisar cada 60 segundos
+    return () => clearInterval(timer);
   }, []);
 
   // Cargar datos iniciales
@@ -381,6 +389,27 @@ const RealizarJugadas = () => {
     );
   });
 
+  const isHorarioVencido = (horaStr: string) => {
+    if (!horaStr) return false;
+
+    try {
+      const fechaHorario = new Date();
+      // Asumimos que horaStr viene en formato "HH:mm" o "HH:mm:ss" (ej: "09:00:00" o "09:00")
+      // Si tu API devuelve formato 12h ("09:00 PM"), necesitarás una conversión extra.
+      // Esta lógica básica funciona para formato 24h estándar de SQL:
+      
+      const [horas, minutos] = horaStr.split(':').map(Number);
+      
+      fechaHorario.setHours(horas, minutos || 0, 0, 0);
+
+      // Si la hora actual es mayor a la hora del sorteo, está vencido
+      return horaActual >= fechaHorario;
+    } catch (e) {
+      console.error("Error al parsear hora", horaStr);
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -511,11 +540,21 @@ const RealizarJugadas = () => {
                     <SelectValue placeholder="Seleccione horario" />
                   </SelectTrigger>
                   <SelectContent>
-                    {horariosAPI.map((h) => (
-                      <SelectItem key={h.id} value={h.id}>
-                        {h.label}
-                      </SelectItem>
-                    ))}
+                    {horariosAPI.map((h) => {
+                      // 4. APLICACIÓN: Verificamos si este horario específico está vencido
+                      const vencido = isHorarioVencido(h.data.HORA); 
+                      
+                      return (
+                        <SelectItem 
+                          key={h.id} 
+                          value={h.id} 
+                          disabled={vencido} // Bloquea la selección
+                          className={vencido ? "text-muted-foreground opacity-50" : ""}
+                        >
+                          {h.label} {vencido ? '(Cerrado)' : ''}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

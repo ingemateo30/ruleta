@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ProtectedRoute, AdminRoute } from "@/components/auth/ProtectedRoute";
+import TwoFactorSetup from "./components/TwoFactorSetup";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RealizarJugadas from "./pages/operativo/RealizarJugadas";
@@ -117,6 +118,11 @@ const App = () => (
               <AdminRoute>
                 <AsignarRuleta />
               </AdminRoute>
+            } />
+            <Route path="/config/2fa-setup" element={
+              <ProtectedRoute>
+                <TwoFactorSetup />
+              </ProtectedRoute>
             } />
 
             {/* Informes - Solo Admin y SuperAdmin */}

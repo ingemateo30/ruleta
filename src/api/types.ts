@@ -9,6 +9,7 @@ export interface ApiResponse<T = unknown> {
 export interface LoginRequest {
   username: string;
   password: string;
+  totpCode?: string;
 }
 
 export interface User {
@@ -23,6 +24,7 @@ export interface User {
   sucursal: string;
   estado: number;
   bloqueado?: boolean; // Si el admin esta bloqueado por el superadmin
+  has2FA?: boolean;
 }
 
 // Constantes de tipos de usuario
@@ -42,8 +44,36 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   user?: User;
+  requires2FA?: boolean;
+  userId?: number;
 }
 
+export interface Setup2FAResponse {
+  success: boolean;
+  message?: string;
+  secret?: string;
+  qrUrl?: string;
+  issuer?: string;
+  account?: string;
+}
+
+export interface Activate2FARequest {
+  code: string;
+}
+
+export interface Activate2FAResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface Disable2FARequest {
+  password: string;
+}
+
+export interface Disable2FAResponse {
+  success: boolean;
+  message: string;
+}
 export interface ApiErrorResponse {
   success: false;
   message: string;

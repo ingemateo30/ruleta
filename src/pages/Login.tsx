@@ -54,9 +54,11 @@ const FloatingParticles = () => {
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState(RATE_LIMIT_ATTEMPTS);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -176,7 +178,19 @@ const Login = () => {
       const response = await authService.login({
         username,
         password: encryptedPassword,
+        totpCode: requires2FA ? totpCode : undefined,
       });
+
+      // Si requiere 2FA y aún no se ha ingresado
+      if (response.requires2FA && !requires2FA) {
+        setRequires2FA(true);
+        setIsLoading(false);
+        toast({
+          title: "Autenticación de dos factores",
+          description: "Ingrese el código de su aplicación de autenticación",
+        });
+        return;
+      }
 
       if (response.success && response.user) {
         recordAttempt(true);
@@ -187,19 +201,24 @@ const Login = () => {
         navigate("/dashboard");
       } else {
         recordAttempt(false);
-        setError(response.message || "Error al iniciar sesion");
+        setError(response.message || "Error al iniciar sesión");
         toast({
-          title: "Error de autenticacion",
-          description: response.message || "Usuario o contrasena incorrectos",
+          title: "Error de autenticación",
+          description: response.message || "Usuario o contraseña incorrectos",
           variant: "destructive",
         });
+        
+        // Si falla el código 2FA, limpiar el campo
+        if (requires2FA) {
+          setTotpCode("");
+        }
       }
     } catch (err) {
       recordAttempt(false);
-      const errorMessage = err instanceof Error ? err.message : "Error de conexion";
+      const errorMessage = err instanceof Error ? err.message : "Error de conexión";
       setError("Error al conectar con el servidor");
       toast({
-        title: "Error de conexion",
+        title: "Error de conexión",
         description: errorMessage,
         variant: "destructive",
       });
@@ -291,7 +310,7 @@ const Login = () => {
                       <div className="p-3 bg-gray-800/40 rounded-xl border border-gray-700/30">
                         <Fingerprint className="h-5 w-5 text-orange-400/70" />
                       </div>
-                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Protegido</span>
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">2FA</span>
                     </div>
                   </div>
                 </div>
@@ -302,63 +321,117 @@ const Login = () => {
                 <div className="max-w-md mx-auto w-full space-y-8">
                   {/* Header */}
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-semibold text-white">Iniciar Sesión</h3>
-                    <p className="text-gray-500 text-sm">Ingresa tus credenciales para acceder</p>
+                    <h3 className="text-2xl font-semibold text-white">
+                      {requires2FA ? "Verificación 2FA" : "Iniciar Sesión"}
+                    </h3>
+                    <p className="text-gray-500 text-sm">
+                      {requires2FA 
+                        ? "Ingresa el código de tu aplicación de autenticación"
+                        : "Ingresa tus credenciales para acceder"
+                      }
+                    </p>
                   </div>
 
                   <form onSubmit={handleLogin} className="space-y-6">
-                    {/* Username field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-gray-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        Usuario
-                      </Label>
-                      <div className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-amber-500/30 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
-                        <div className="relative">
-                          <Input
-                            id="username"
-                            type="text"
-                            placeholder="Ingrese su usuario"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="h-11 bg-[hsl(240,5%,8%)] border-gray-700/40 text-white placeholder:text-gray-600 rounded-xl focus:border-orange-500/40 focus:ring-orange-500/10 transition-all pl-4"
-                            required
-                            disabled={isLocked()}
-                          />
+                    {!requires2FA ? (
+                      <>
+                        {/* Username field */}
+                        <div className="space-y-2">
+                          <Label htmlFor="username" className="text-gray-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            Usuario
+                          </Label>
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-amber-500/30 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
+                            <div className="relative">
+                              <Input
+                                id="username"
+                                type="text"
+                                placeholder="Ingrese su usuario"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="h-11 bg-[hsl(240,5%,8%)] border-gray-700/40 text-white placeholder:text-gray-600 rounded-xl focus:border-orange-500/40 focus:ring-orange-500/10 transition-all pl-4"
+                                required
+                                disabled={isLocked()}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Password field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-gray-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2">
-                        <Lock className="h-3 w-3" />
-                        Contraseña
-                      </Label>
-                      <div className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-amber-500/30 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
-                        <div className="relative">
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Ingrese su contraseña"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="h-11 bg-[hsl(240,5%,8%)] border-gray-700/40 text-white placeholder:text-gray-600 rounded-xl focus:border-orange-500/40 focus:ring-orange-500/10 transition-all pl-4 pr-11"
-                            required
-                            disabled={isLocked()}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-orange-400 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
+                        {/* Password field */}
+                        <div className="space-y-2">
+                          <Label htmlFor="password" className="text-gray-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2">
+                            <Lock className="h-3 w-3" />
+                            Contraseña
+                          </Label>
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-amber-500/30 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
+                            <div className="relative">
+                              <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Ingrese su contraseña"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="h-11 bg-[hsl(240,5%,8%)] border-gray-700/40 text-white placeholder:text-gray-600 rounded-xl focus:border-orange-500/40 focus:ring-orange-500/10 transition-all pl-4 pr-11"
+                                required
+                                disabled={isLocked()}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-orange-400 transition-colors"
+                              >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* 2FA Code field */}
+                        <div className="space-y-2">
+                          <Label htmlFor="totpCode" className="text-gray-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2">
+                            <Shield className="h-3 w-3" />
+                            Código de Autenticación
+                          </Label>
+                          <div className="relative group">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-amber-500/30 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
+                            <div className="relative">
+                              <Input
+                                id="totpCode"
+                                type="text"
+                                placeholder="000000"
+                                value={totpCode}
+                                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="h-11 bg-[hsl(240,5%,8%)] border-gray-700/40 text-white placeholder:text-gray-600 rounded-xl focus:border-orange-500/40 focus:ring-orange-500/10 transition-all text-center text-2xl tracking-[0.5em] font-mono"
+                                required
+                                maxLength={6}
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 text-center">
+                            Ingresa el código de 6 dígitos de tu app de autenticación
+                          </p>
+                        </div>
+
+                        {/* Back button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setRequires2FA(false);
+                            setTotpCode("");
+                            setError("");
+                          }}
+                          className="w-full text-gray-400 hover:text-white"
+                        >
+                          ← Volver al inicio de sesión
+                        </Button>
+                      </>
+                    )}
 
                     {/* Rate limiting warning */}
                     {remainingAttempts < RATE_LIMIT_ATTEMPTS && remainingAttempts > 0 && (
@@ -403,7 +476,7 @@ const Login = () => {
                       ) : (
                         <div className="flex items-center gap-2">
                           <LogIn className="h-4 w-4" />
-                          <span className="text-sm">Ingresar</span>
+                          <span className="text-sm">{requires2FA ? "Verificar Código" : "Ingresar"}</span>
                         </div>
                       )}
                     </Button>

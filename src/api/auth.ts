@@ -1,5 +1,14 @@
 import { apiClient, ApiError } from './client';
-import type { LoginRequest, LoginResponse, User } from './types';
+import type { 
+  LoginRequest, 
+  LoginResponse, 
+  User, 
+  Setup2FAResponse,
+  Activate2FARequest,
+  Activate2FAResponse,
+  Disable2FARequest,
+  Disable2FAResponse
+} from './types';
 
 /**
  * Servicio de autenticación
@@ -8,7 +17,7 @@ class AuthService {
   private readonly STORAGE_KEY = 'user';
 
   /**
-   * Inicia sesión con usuario y contraseña
+   * Inicia sesión con usuario y contraseña (y código 2FA si es necesario)
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
@@ -17,6 +26,7 @@ class AuthService {
         {
           username: credentials.username,
           password: credentials.password,
+          totpCode: credentials.totpCode,
         }
       );
 
@@ -34,10 +44,135 @@ class AuthService {
           message: error.message,
         };
       }
-
       return {
         success: false,
         message: 'Error inesperado al iniciar sesión',
+      };
+    }
+  }
+
+  /**
+   * Configura 2FA para el usuario actual - genera secreto y QR
+   */
+  async setup2FA(): Promise<Setup2FAResponse> {
+    try {
+      const user = this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          message: 'No hay usuario autenticado',
+        };
+      }
+
+      const response = await apiClient.post<Setup2FAResponse>(
+        '/setup_2fa.php',
+        {},
+        {
+          headers: {
+            'X-User-Id': user.id.toString(),
+          },
+        }
+      );
+
+      return response;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+      return {
+        success: false,
+        message: 'Error al configurar 2FA',
+      };
+    }
+  }
+
+  /**
+   * Activa 2FA verificando el código generado
+   */
+  async activate2FA(request: Activate2FARequest): Promise<Activate2FAResponse> {
+    try {
+      const user = this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          message: 'No hay usuario autenticado',
+        };
+      }
+
+      const response = await apiClient.post<Activate2FAResponse>(
+        '/activate_2fa.php',
+        request,
+        {
+          headers: {
+            'X-User-Id': user.id.toString(),
+          },
+        }
+      );
+
+      // Si se activa exitosamente, actualizar el usuario
+      if (response.success) {
+        user.has2FA = true;
+        this.saveUser(user);
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+      return {
+        success: false,
+        message: 'Error al activar 2FA',
+      };
+    }
+  }
+
+  /**
+   * Desactiva 2FA verificando la contraseña
+   */
+  async disable2FA(request: Disable2FARequest): Promise<Disable2FAResponse> {
+    try {
+      const user = this.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          message: 'No hay usuario autenticado',
+        };
+      }
+
+      const response = await apiClient.post<Disable2FAResponse>(
+        '/disable_2fa.php',
+        request,
+        {
+          headers: {
+            'X-User-Id': user.id.toString(),
+          },
+        }
+      );
+
+      // Si se desactiva exitosamente, actualizar el usuario
+      if (response.success) {
+        user.has2FA = false;
+        this.saveUser(user);
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+      return {
+        success: false,
+        message: 'Error al desactivar 2FA',
       };
     }
   }
@@ -58,7 +193,6 @@ class AuthService {
       if (!userStr) {
         return null;
       }
-
       const user = JSON.parse(userStr) as User;
       return user;
     } catch {
@@ -71,6 +205,14 @@ class AuthService {
    */
   isAuthenticated(): boolean {
     return this.getCurrentUser() !== null;
+  }
+
+  /**
+   * Verifica si el usuario tiene 2FA activado
+   */
+  has2FAEnabled(): boolean {
+    const user = this.getCurrentUser();
+    return user?.has2FA === true;
   }
 
   /**
