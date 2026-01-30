@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Trophy, Calendar, Loader2, RefreshCw } from "lucide-react";
-import { getAnimalByNumero } from "@/constants/animals";
+import { getAnimalByCodigo, getAnimalByNombre, getAnimalByNumero } from "@/constants/animals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,7 +165,9 @@ const VerResultados = () => {
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
                   {dia.sorteos.map((sorteo, index) => {
-                    const animalData = getAnimalByNumero(sorteo.numero);
+
+            const animalData = getAnimalByNombre(sorteo.animal);
+            console.log('Sorteo:', sorteo, 'AnimalData:', animalData);
                     return (
                       <div
                         key={`${dia.fecha}-${sorteo.hora}-${index}`}
@@ -185,7 +187,9 @@ const VerResultados = () => {
                         <div className="flex items-center justify-center gap-1 mt-1">
                           <Trophy className="h-3 w-3 text-chart-4" />
                           <span className="text-sm text-muted-foreground">
-                            #{sorteo.numero?.toString().padStart(2, "0")}
+
+                            #{sorteo.animal === "Ballena" ? "00" : sorteo.numero.toString()}
+
                           </span>
                         </div>
                       </div>

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import QRCode from "qrcode";
 
 // Importar el logo
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
@@ -41,6 +42,7 @@ const ReciboCaja = ({
 }: ReciboCajaProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  const [qrImage, setQrImage] = useState<HTMLImageElement | null>(null);
 
   // Cargar el logo
   useEffect(() => {
@@ -63,6 +65,43 @@ const ReciboCaja = ({
       loadLogo();
     }
   }, [open]);
+
+  // Generar QR Code
+  useEffect(() => {
+    const generateQR = async () => {
+      if (!radicado || !sucursal || !fecha || !hora) return;
+      
+      try {
+        // Formato del QR: radicado-sucursal-fecha-hora
+        const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
+        
+        // Generar QR como data URL
+        const qrDataUrl = await QRCode.toDataURL(qrData, {
+          width: 120,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        
+        // Cargar como imagen
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = qrDataUrl;
+        });
+        setQrImage(img);
+      } catch (error) {
+        console.error("Error generando QR:", error);
+      }
+    };
+
+    if (open && radicado && sucursal && fecha && hora) {
+      generateQR();
+    }
+  }, [open, radicado, sucursal, fecha, hora]);
 
   // Dibujar el recibo en el canvas
   useEffect(() => {
@@ -135,9 +174,10 @@ const ReciboCaja = ({
         }
       }
       const logoHeight = logoImage ? logoDisplayHeight + 8 : 0;
+      const qrHeight = qrImage ? 120 + 15 : 0; // QR + espacio
       const headerHeight = logoHeight + 20 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
       const jugadasHeight = jugadas.length * 18;
-      const footerHeight = 5 + 15 + 15 + 15 + 40 + tycHeight; // Total, líneas, pie, T&C
+      const footerHeight = 5 + 15 + 15 + 25 + qrHeight + tycHeight; // Total, líneas, pie, QR, T&C
       const paddingTotal = 20;
       const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
 
@@ -270,24 +310,29 @@ const ReciboCaja = ({
       ctx.fillText("*** CONSERVE SU TICKET ***", width / 2, y);
       y += 12;
       ctx.fillText("Este es su comprobante de juego", width / 2, y);
-      y += 10;
-      ctx.font = "8px monospace";
-      ctx.fillText("Valido solo el dia de la jugada", width / 2, y);
       y += 15;
+
+      // Dibujar QR Code centrado
+      if (qrImage) {
+        const qrSize = 120;
+        const qrX = (width - qrSize) / 2;
+        ctx.drawImage(qrImage, qrX, y, qrSize, qrSize);
+        y += qrSize + 15;
+      }
  
       // Línea separadora antes de T&C
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 10;
  
-      // Términos y condiciones
+      // Términos y condiciones (centrados)
       ctx.font = "bold 8px monospace";
       ctx.textAlign = "center";
       ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
       y += 10;
       ctx.font = "7px monospace";
-      ctx.textAlign = "left";
+      ctx.textAlign = "center";
       tyc.forEach((linea) => {
-        ctx.fillText(linea, padding, y);
+        ctx.fillText(linea, width / 2, y);
         y += 10;
       });
 
@@ -299,7 +344,7 @@ const ReciboCaja = ({
     }, 100); // Delay de 100ms para asegurar que el DOM esté listo
 
     return () => clearTimeout(timeoutId);
-  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal, logoImage]);
+  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal, logoImage, qrImage]);
 
   const formatearHora = (hora: string): string => {
     if (!hora) return "";

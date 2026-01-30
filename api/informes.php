@@ -32,7 +32,11 @@ try {
                 h.NUM as CODIGO_HORARIO,
                 h.DESCRIPCION as HORARIO,
                 COUNT(DISTINCT hj.CODANIMAL) as CANTIDAD_ANIMALES,
-                GROUP_CONCAT(DISTINCT CONCAT(hj.ANIMAL, ' ($', hj.VALOR, ')') SEPARATOR ', ') as DETALLE_ANIMALES
+                GROUP_CONCAT(
+  DISTINCT CONCAT(hj.ANIMAL, ' ($', REPLACE(FORMAT(hj.VALOR, 0), ',', '.'), ')')
+  SEPARATOR ', '
+) as DETALLE_ANIMALES
+
             FROM jugarlotto j
             LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
             LEFT JOIN hislottojuego hj ON j.RADICADO = hj.RADICADO AND hj.ESTADOP = 'A'
@@ -93,7 +97,10 @@ try {
                 b.BODEGA as SUCURSAL,
                 DATE(j.FECHA) as FECHA,
                 COUNT(DISTINCT j.RADICADO) as TOTAL_TICKETS,
+                COUNT(DISTINCT CASE WHEN j.ESTADO = 'A' THEN j.RADICADO END) as TICKETS_ACTIVOS,
+                COUNT(DISTINCT CASE WHEN j.ESTADO = 'I' THEN j.RADICADO END) as TICKETS_ANULADOS,
                 COALESCE(SUM(CASE WHEN j.ESTADO = 'A' THEN j.TOTALJUEGO ELSE 0 END), 0) as VENTAS_ACTIVAS,
+                COALESCE(SUM(CASE WHEN j.ESTADO = 'I' THEN j.TOTALJUEGO ELSE 0 END), 0) as VENTAS_ANULADAS,
                 COALESCE(SUM(CASE WHEN j.ESTADO = 'C' THEN j.TOTALJUEGO ELSE 0 END), 0) as VENTAS_CANCELADAS,
                 COALESCE(SUM(CASE WHEN j.ESTADO = 'A' THEN j.TOTALJUEGO ELSE 0 END), 0) as TOTAL_VENTAS,
                 COUNT(DISTINCT j.USUARIO) as USUARIOS_VENDIERON
@@ -105,7 +112,7 @@ try {
 
         $params = [$fechaInicio, $fechaFin];
 
-        if (!empty($sucursal)) {
+        if (!empty($sucursal) && $sucursal !== '0') {
             $sql .= " AND b.CODIGO = ?";
             $params[] = $sucursal;
         }
@@ -116,6 +123,39 @@ try {
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $ventas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Tickets anulados con detalle
+        $sql = "
+            SELECT
+                j.RADICADO,
+                j.FECHA,
+                j.HORA,
+                j.SUCURSAL,
+                b.BODEGA as NOMBRE_SUCURSAL,
+                j.TOTALJUEGO,
+                j.USUARIO,
+                j.MOTIVO_ANULACION,
+                j.FECHA_ANULACION,
+                j.USUARIO_ANULACION
+            FROM jugarlotto j
+            LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
+            WHERE j.ESTADO = 'I'
+            AND DATE(j.FECHA) >= ?
+            AND DATE(j.FECHA) <= ?
+        ";
+
+        $params = [$fechaInicio, $fechaFin];
+
+        if (!empty($sucursal) && $sucursal !== '0') {
+            $sql .= " AND j.SUCURSAL = ?";
+            $params[] = $sucursal;
+        }
+
+        $sql .= " ORDER BY j.FECHA_ANULACION DESC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $ticketsAnulados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Ventas por horario
         $sql = "
@@ -136,7 +176,7 @@ try {
 
         $params = [$fechaInicio, $fechaFin];
 
-        if (!empty($sucursal)) {
+        if (!empty($sucursal) && $sucursal !== '0') {
             $sql .= " AND j.SUCURSAL = ?";
             $params[] = $sucursal;
         }
@@ -151,17 +191,22 @@ try {
         // Totales generales
         $totalVentas = array_sum(array_column($ventas, 'TOTAL_VENTAS'));
         $totalTickets = array_sum(array_column($ventas, 'TOTAL_TICKETS'));
+        $totalAnulado = array_sum(array_column($ventas, 'VENTAS_ANULADAS'));
         $totalCancelado = array_sum(array_column($ventas, 'VENTAS_CANCELADAS'));
+        $ticketsAnuladosTotal = array_sum(array_column($ventas, 'TICKETS_ANULADOS'));
 
         echo json_encode([
             'success' => true,
             'data' => [
                 'ventas_por_sucursal' => $ventas,
                 'ventas_por_horario' => $ventasPorHorario,
+                'tickets_anulados' => $ticketsAnulados,
                 'resumen' => [
                     'total_ventas' => $totalVentas,
                     'total_tickets' => $totalTickets,
+                    'total_anulado' => $totalAnulado,
                     'total_cancelado' => $totalCancelado,
+                    'tickets_anulados' => $ticketsAnuladosTotal,
                     'ventas_netas' => $totalVentas - $totalCancelado
                 ]
             ]

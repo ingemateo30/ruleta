@@ -37,13 +37,13 @@ const AnimalRoulette = () => {
               className={`${animal.color} rounded-lg p-2 sm:p-3 text-center hover:scale-105 transition-all duration-200 cursor-pointer border border-border animate-scale-in active:scale-95`}
               style={{ animationDelay: `${idx * 0.05}s` }}
             >
-              <img 
-                src={animal.imagen} 
+              <img
+                src={animal.imagen}
                 alt={animal.nombre}
                 className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain"
               />
               <p className="text-xs font-bold text-foreground mt-1">
-                #{animal.numero.toString().padStart(2, "0")}
+                #{animal.nombre === "Ballena" ? "00" : animal.numero.toString()}
               </p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {animal.nombre}

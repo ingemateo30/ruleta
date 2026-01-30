@@ -27,7 +27,7 @@ try {
             FROM lottoruleta l
             LEFT JOIN hislottojuego h ON l.NUM = h.CODANIMAL AND h.ESTADOP = 'A'
             GROUP BY l.NUM, l.CODIGOJUEGO, l.VALOR, l.COLOR, l.ESTADO
-            ORDER BY l.NUM ASC
+            ORDER BY CAST(l.NUM AS UNSIGNED) ASC
         ");
 
         $animales = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -333,7 +333,8 @@ const ListarJugadas = () => {
                       <TableHead className="w-[100px]">Radicado</TableHead>
                       <TableHead>Animal</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
-                      <TableHead>Hora</TableHead>
+                      <TableHead>Hora Jugada</TableHead>
+                      <TableHead>Juega a las</TableHead>
                       <TableHead className="hidden md:table-cell">Sucursal</TableHead>
                       <TableHead className="text-center">Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -358,6 +359,12 @@ const ListarJugadas = () => {
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3 opacity-50" />
                             {jugada.HORA}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold">
+                          <div className="flex flex-col">
+                            <span className="text-primary">{jugada.HORAJUEGO || 'N/A'}</span>
+                            <span className="text-[10px] text-muted-foreground">{jugada.DESJUEGO || ''}</span>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
@@ -397,62 +404,63 @@ const ListarJugadas = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Resumen de Jugadas por Animalito */}
+        {jugadas.length > 0 && (() => {
+          const conteo = jugadas
+            .filter((j) => j.ESTADOP === 'A')
+            .reduce<Record<string, { animal: string; codigo: string; jugadas: number; total: number }>>((acc, j) => {
+              const key = j.CODANIMAL || j.ANIMAL;
+              if (!acc[key]) {
+                acc[key] = { animal: j.ANIMAL, codigo: j.CODANIMAL, jugadas: 0, total: 0 };
+              }
+              acc[key].jugadas += 1;
+              acc[key].total += typeof j.VALOR === 'number' ? j.VALOR : parseFloat(j.VALOR) || 0;
+              return acc;
+            }, {});
+          const conteoArr = Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
+   
+          return (
+            <Card className="shadow-md">
+              <CardHeader className="border-b pb-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Conteo de Jugadas por Animalito
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-accent/50">
+                      <TableRow>
+                        <TableHead>Animalito</TableHead>
+                        <TableHead className="text-center">Jugadas</TableHead>
+                        <TableHead className="text-right">Total Apostado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {conteoArr.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-semibold">
+                            #{item.codigo} {item.animal}
+                          </TableCell>
+                          <TableCell className="text-center font-bold">
+                            {item.jugadas}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-primary">
+                            ${item.total.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
- {/* Resumen de Jugadas por Animalito */}
-      {jugadas.length > 0 && (() => {
-        const conteo = jugadas
-          .filter((j) => j.ESTADOP === 'A')
-          .reduce<Record<string, { animal: string; codigo: string; jugadas: number; total: number }>>((acc, j) => {
-            const key = j.CODANIMAL || j.ANIMAL;
-            if (!acc[key]) {
-              acc[key] = { animal: j.ANIMAL, codigo: j.CODANIMAL, jugadas: 0, total: 0 };
-            }
-            acc[key].jugadas += 1;
-            acc[key].total += typeof j.VALOR === 'number' ? j.VALOR : parseFloat(j.VALOR) || 0;
-            return acc;
-          }, {});
-        const conteoArr = Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
- 
-        return (
-          <Card className="shadow-md">
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-5 w-5 text-primary" />
-                Conteo de Jugadas por Animalito
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-accent/50">
-                    <TableRow>
-                      <TableHead>Animalito</TableHead>
-                      <TableHead className="text-center">Jugadas</TableHead>
-                      <TableHead className="text-right">Total Apostado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {conteoArr.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-semibold">
-                          #{item.codigo} {item.animal}
-                        </TableCell>
-                        <TableCell className="text-center font-bold">
-                          {item.jugadas}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-primary">
-                          ${item.total.toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
       {/* Modal de Recibo para Reimpresión */}
       {datosRecibo && (
         <ReciboCaja

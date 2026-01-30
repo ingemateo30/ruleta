@@ -97,7 +97,7 @@ function consultarJugadas($conn, $fecha, $codigoJuego) {
         }
 
         $stmt = $conn->prepare(
-            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP 
+            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO
              FROM hislottojuego 
              WHERE CODIGOJ = :codigoJuego AND FECHA = :fecha
              ORDER BY HORA DESC"
@@ -143,7 +143,7 @@ function obtenerJugadasRecientes($conn, $limite = 20) {
         $fechaActual = date('Y-m-d');
         
         $stmt = $conn->prepare(
-            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO
+            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO
              FROM hislottojuego 
              WHERE FECHA = :fecha
              ORDER BY HORA DESC, RADICADO DESC

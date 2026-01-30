@@ -15,16 +15,16 @@ const getAnimalImage = (filename: string): string => {
 // Lista completa de animales con sus imágenes
 export const animals: Animal[] = [
   { numero: 0,codigo: '00', nombre: "Ballena", imagen: getAnimalImage("00ballena.png") },
-  { numero: 0,codigo: '0', nombre: "Delfín", imagen: getAnimalImage("0delfin.png") },
+  { numero: 0,codigo: '0', nombre: "Delfin", imagen: getAnimalImage("0delfin.png") },
   { numero: 1,codigo: '1', nombre: "Carnero", imagen: getAnimalImage("1carnero.png") },
   { numero: 2,codigo: '2', nombre: "Toro", imagen: getAnimalImage("2toro.png") },
-  { numero: 3,codigo: '3', nombre: "Ciempiés", imagen: getAnimalImage("3cienpies.png") },
-  { numero: 4,codigo: '4', nombre: "Alacrán", imagen: getAnimalImage("4alacran.png") },
-  { numero: 5,codigo: '5', nombre: "León", imagen: getAnimalImage("5leon.png") },
+  { numero: 3,codigo: '3', nombre: "Cienpies", imagen: getAnimalImage("3cienpies.png") },
+  { numero: 4,codigo: '4', nombre: "Alacran", imagen: getAnimalImage("4alacran.png") },
+  { numero: 5,codigo: '5', nombre: "Leon", imagen: getAnimalImage("5leon.png") },
   { numero: 6, codigo: '6', nombre: "Rana", imagen: getAnimalImage("6rana.png") },
   { numero: 7, codigo: '7', nombre: "Perico", imagen: getAnimalImage("7perico.png") },
-  { numero: 8, codigo: '8', nombre: "Ratón", imagen: getAnimalImage("8raton.png") },
-  { numero: 9, codigo: '9', nombre: "Águila", imagen: getAnimalImage("9aguila.png") },
+  { numero: 8, codigo: '8', nombre: "Raton", imagen: getAnimalImage("8raton.png") },
+  { numero: 9, codigo: '9', nombre: "Aguila", imagen: getAnimalImage("9aguila.png") },
   { numero: 10, codigo: '10', nombre: "Tigre", imagen: getAnimalImage("10tigre.png") },
   { numero: 11, codigo: '11', nombre: "Gato", imagen: getAnimalImage("11gato.png") },
   { numero: 12, codigo: '12', nombre: "Caballo", imagen: getAnimalImage("12caballo.png") },
@@ -43,9 +43,9 @@ export const animals: Animal[] = [
   { numero: 25, codigo: '25', nombre: "Gallina", imagen: getAnimalImage("25gallina.png") },
   { numero: 26, codigo: '26', nombre: "Vaca", imagen: getAnimalImage("26vaca.png") },
   { numero: 27, codigo: '27', nombre: "Perro", imagen: getAnimalImage("27perro.png") },
-  { numero: 28, codigo: '28', nombre: "Cóndor", imagen: getAnimalImage("28condor.png") },
+  { numero: 28, codigo: '28', nombre: "Condor", imagen: getAnimalImage("28condor.png") },
   { numero: 29, codigo: '29', nombre: "Elefante", imagen: getAnimalImage("29elefante.png") },
-  { numero: 30, codigo: '30', nombre: "Caimán", imagen: getAnimalImage("30caiman.png") },
+  { numero: 30, codigo: '30', nombre: "Caiman", imagen: getAnimalImage("30caiman.png") },
   { numero: 31, codigo: '31', nombre: "Capibara", imagen: getAnimalImage("31capibara.png") },
   { numero: 32, codigo: '32', nombre: "Ardilla", imagen: getAnimalImage("32ardilla.png") },
   { numero: 33, codigo: '33', nombre: "Pescado", imagen: getAnimalImage("33pescado.png") },
@@ -70,4 +70,4 @@ export const getAnimalByNombre = (nombre: string): Animal | undefined => {
   );
 };
 // Animales principales para la ruleta (los primeros 12)
-export const mainAnimals: Animal[] = animals.slice(0, 36); // Desde Carnero (1) hasta Caballo (12)
+export const mainAnimals: Animal[] = animals.slice(0, 40); // Desde Carnero (1) hasta Caballo (12)

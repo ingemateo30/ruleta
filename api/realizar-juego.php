@@ -95,7 +95,7 @@ function listarAnimales($conn) {
             "SELECT NUM, CODIGOJUEGO, VALOR, COLOR 
              FROM lottoruleta 
              WHERE ESTADO = 'A' 
-             ORDER BY NUM"
+             ORDER BY CAST(NUM AS UNSIGNED) ASC"
         );
         
         $animales = $stmt->fetchAll(PDO::FETCH_ASSOC);

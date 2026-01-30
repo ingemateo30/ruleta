@@ -18,7 +18,7 @@ import { Search, DollarSign, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getAnimalByNumero } from '@/constants/animals';
+import { getAnimalByNombre, getAnimalByNumero } from '@/constants/animals';
 
 export default function RealizarPagos() {
   const { user } = useAuth();
@@ -235,7 +235,7 @@ export default function RealizarPagos() {
                   </TableHeader>
                   <TableBody>
                     {ganadores.map((jugada, index) => {
-                      const animalData = getAnimalByNumero(parseInt(jugada.CODANIMAL || '0'));
+                      const animalData = getAnimalByNombre(jugada.ANIMAL);
                       const valorApostado = parseFloat(jugada.VALOR_APOSTADO || 0);
                       const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
 
@@ -264,7 +264,7 @@ export default function RealizarPagos() {
                                 {jugada.ANIMAL}
                               </span>
                               <Badge variant="outline" className="text-xs">
-                                #{jugada.CODANIMAL?.toString().padStart(2, '0')}
+                                #{jugada.CODANIMAL?.toString()}
                               </Badge>
                             </div>
                           </TableCell>

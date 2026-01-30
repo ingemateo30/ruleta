@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { TrendingUp, Download } from 'lucide-react';
+import { TrendingUp, Download, AlertCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import {
@@ -33,6 +33,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function InformeVentas() {
   const [datos, setDatos] = useState<any>(null);
@@ -84,13 +93,28 @@ export default function InformeVentas() {
             total_tickets: parseInt(h.TOTAL_JUGADAS || 0),
             total_ventas: parseFloat(h.TOTAL_APOSTADO || 0),
             promedio: parseInt(h.TOTAL_JUGADAS || 0) > 0
-              ? parseFloat(h.TOTAL_APOSTADO || 0) / parseInt(h.TOTAL_JUGADAS || 1)
+              ? parseFloat((h.TOTAL_APOSTADO || "0").toString().replace(/\./g, "").replace(/,/g, "."))
+              / parseInt(h.TOTAL_JUGADAS || 1)
               : 0,
+
+          })),
+          tickets_anulados: (apiData.tickets_anulados || []).map((t: any) => ({
+            radicado: t.RADICADO,
+            fecha: t.FECHA,
+            hora: t.HORA,
+            sucursal: t.NOMBRE_SUCURSAL,
+            total: parseFloat(t.TOTALJUEGO || 0),
+            usuario: t.USUARIO,
+            motivo: t.MOTIVO_ANULACION,
+            fecha_anulacion: t.FECHA_ANULACION,
+            usuario_anulacion: t.USUARIO_ANULACION,
           })),
           kpis: {
             total_ventas: apiData.resumen?.total_ventas || 0,
             total_tickets: apiData.resumen?.total_tickets || 0,
             ventas_canceladas: apiData.resumen?.total_cancelado || 0,
+            tickets_anulados: apiData.resumen?.tickets_anulados || 0,
+            total_anulado: apiData.resumen?.total_anulado || 0,
           }
         };
         setDatos(mappedData);
@@ -136,198 +160,305 @@ export default function InformeVentas() {
 
   return (
     <DashboardLayout>
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-8 w-8" />
-            Informe de Ventas
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Análisis de ventas por sucursal y horario
-          </p>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <TrendingUp className="h-8 w-8" />
+              Informe de Ventas
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Análisis de ventas por sucursal y horario
+            </p>
+          </div>
+          {datos && (
+            <Button onClick={exportarCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+          )}
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros de Búsqueda</CardTitle>
+            <CardDescription>
+              Seleccione el rango de fechas y sucursal
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-2">
+                <Label htmlFor="fecha_inicio">Fecha Inicio</Label>
+                <Input
+                  id="fecha_inicio"
+                  type="date"
+                  value={filtros.fecha_inicio}
+                  onChange={(e) =>
+                    setFiltros({ ...filtros, fecha_inicio: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="fecha_fin">Fecha Fin</Label>
+                <Input
+                  id="fecha_fin"
+                  type="date"
+                  value={filtros.fecha_fin}
+                  onChange={(e) =>
+                    setFiltros({ ...filtros, fecha_fin: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="sucursal">Sucursal</Label>
+                <Select
+                  value={filtros.sucursal}
+                  onValueChange={(value) =>
+                    setFiltros({ ...filtros, sucursal: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Todas</SelectItem>
+                    {sucursales.map((suc) => (
+                      <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
+                        {suc.BODEGA}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button onClick={handleBuscar} disabled={isLoading} className="w-full">
+                  {isLoading ? 'Generando...' : 'Generar Informe'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {datos && (
-          <Button onClick={exportarCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
+          <>
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Total Ventas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">
+                    ${(datos.kpis?.total_ventas || 0).toLocaleString()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Total Tickets</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-600">
+                    {(datos.kpis?.total_tickets || 0).toLocaleString()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <XCircle className="h-5 w-5 text-orange-600" />
+                    Tickets Anulados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-orange-600">
+                    {(datos.kpis?.tickets_anulados || 0).toLocaleString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    ${(datos.kpis?.total_anulado || 0).toLocaleString()} en ventas
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Ventas Canceladas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-red-600">
+                    ${(datos.kpis?.ventas_canceladas || 0).toLocaleString()}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sección de Tickets Anulados */}
+            {datos.tickets_anulados && datos.tickets_anulados.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-orange-600" />
+                    Tickets Anulados - Detalle
+                  </CardTitle>
+                  <CardDescription>
+                    Listado de tickets anulados con motivos de anulación
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Radicado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Hora</TableHead>
+                        <TableHead>Sucursal</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Motivo</TableHead>
+                        <TableHead>Fecha Anulación</TableHead>
+                        <TableHead>Anulado por</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {datos.tickets_anulados.map((ticket: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono font-medium">
+                            {ticket.radicado}
+                          </TableCell>
+                          <TableCell>{ticket.fecha}</TableCell>
+                          <TableCell>{ticket.hora}</TableCell>
+                          <TableCell>{ticket.sucursal}</TableCell>
+                          <TableCell className="text-right font-semibold text-orange-600">
+                            ${(ticket.total || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell>{ticket.usuario}</TableCell>
+                          <TableCell>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8">
+                                  <AlertCircle className="h-4 w-4 mr-2" />
+                                  Ver motivo
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Motivo de Anulación</DialogTitle>
+                                  <DialogDescription>
+                                    Ticket: {ticket.radicado}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Motivo:</p>
+                                    <p className="text-sm bg-muted p-3 rounded-md">
+                                      {ticket.motivo || 'No especificado'}
+                                    </p>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">Anulado por:</p>
+                                      <p>{ticket.usuario_anulacion}</p>
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">Fecha:</p>
+                                      <p>{ticket.fecha_anulacion}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {ticket.fecha_anulacion}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{ticket.usuario_anulacion}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Ventas por Sucursal</CardTitle>
+                <CardDescription>
+                  Comparativo de ventas entre sucursales
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={datos.por_sucursal || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="sucursal" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value: any) => `$${value.toLocaleString()}`}
+                    />
+                    <Legend />
+                    <Bar dataKey="total_ventas" fill="#22c55e" name="Total Ventas" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Ventas por Horario</CardTitle>
+                <CardDescription>
+                  Detalle de ventas por horario
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {datos.por_horario && datos.por_horario.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Horario</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Total Tickets</TableHead>
+                        <TableHead className="text-right">Total Ventas</TableHead>
+                        <TableHead className="text-right">Promedio</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {datos.por_horario.map((horario: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono font-medium">
+                            {horario.hora}
+                          </TableCell>
+                          <TableCell>{horario.descripcion}</TableCell>
+                          <TableCell className="text-right">
+                            {(horario.total_tickets || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            ${(horario.total_ventas || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${(horario.promedio || 0).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No hay datos de ventas por horario
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros de Búsqueda</CardTitle>
-          <CardDescription>
-            Seleccione el rango de fechas y sucursal
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="grid gap-2">
-              <Label htmlFor="fecha_inicio">Fecha Inicio</Label>
-              <Input
-                id="fecha_inicio"
-                type="date"
-                value={filtros.fecha_inicio}
-                onChange={(e) =>
-                  setFiltros({ ...filtros, fecha_inicio: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="fecha_fin">Fecha Fin</Label>
-              <Input
-                id="fecha_fin"
-                type="date"
-                value={filtros.fecha_fin}
-                onChange={(e) =>
-                  setFiltros({ ...filtros, fecha_fin: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="sucursal">Sucursal</Label>
-              <Select
-                value={filtros.sucursal}
-                onValueChange={(value) =>
-                  setFiltros({ ...filtros, sucursal: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Todas</SelectItem>
-                  {sucursales.map((suc) => (
-                    <SelectItem key={suc.CODIGO} value={suc.CODIGO.toString()}>
-                      {suc.BODEGA}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end">
-              <Button onClick={handleBuscar} disabled={isLoading} className="w-full">
-                {isLoading ? 'Generando...' : 'Generar Informe'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {datos && (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Total Ventas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">
-                  ${(datos.kpis?.total_ventas || 0).toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Total Tickets</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600">
-                  {(datos.kpis?.total_tickets || 0).toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Ventas Canceladas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600">
-                  ${(datos.kpis?.ventas_canceladas || 0).toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Ventas por Sucursal</CardTitle>
-              <CardDescription>
-                Comparativo de ventas entre sucursales
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={datos.por_sucursal || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="sucursal" />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value: any) => `$${value.toLocaleString()}`}
-                  />
-                  <Legend />
-                  <Bar dataKey="total_ventas" fill="#22c55e" name="Total Ventas" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Ventas por Horario</CardTitle>
-              <CardDescription>
-                Detalle de ventas por horario
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {datos.por_horario && datos.por_horario.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Horario</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead className="text-right">Total Tickets</TableHead>
-                      <TableHead className="text-right">Total Ventas</TableHead>
-                      <TableHead className="text-right">Promedio</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {datos.por_horario.map((horario: any, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono font-medium">
-                          {horario.hora}
-                        </TableCell>
-                        <TableCell>{horario.descripcion}</TableCell>
-                        <TableCell className="text-right">
-                          {(horario.total_tickets || 0).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ${(horario.total_ventas || 0).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ${(horario.promedio || 0).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No hay datos de ventas por horario
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
     </DashboardLayout>
   );
 }

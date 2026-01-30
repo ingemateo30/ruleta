@@ -15,7 +15,7 @@ require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/db.php';
 
 // Inicializar seguridad - Solo Admin y SuperAdmin pueden ingresar resultados
-$currentUser = initApiSecurity(true, ['0', '1']);
+$currentUser = initApiSecurity(true, ['0', '1','2']);
 
 /**
  * Responde con JSON y código de estado HTTP
@@ -50,7 +50,7 @@ function listarAnimales($conn) {
             "SELECT NUM, CODIGOJUEGO, VALOR, COLOR 
              FROM lottoruleta 
              WHERE ESTADO = 'A' 
-             ORDER BY NUM"
+             ORDER BY CAST(NUM AS UNSIGNED) ASC"
         );
         
         $animales = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -166,7 +166,7 @@ function guardarResultado($conn, $data) {
         // Validar datos requeridos
         $required = ['codigoAnimal', 'nombreAnimal', 'codigoHorario', 'descripcionHorario', 'fecha'];
         foreach ($required as $field) {
-            if (!isset($data[$field]) || empty($data[$field])) {
+            if (!isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
                 return [
                     'success' => false,
                     'error' => "Campo requerido: $field"
@@ -301,7 +301,7 @@ function listarResultados($conn, $fecha_inicio = null, $fecha_fin = null) {
             $agrupados[$fecha]['sorteos'][] = [
                 'hora' => $r['HORA'],
                 'animal' => $r['ANIMAL'],
-                'numero' => (int)$r['NUMERO_ANIMAL'],
+                'numero' => (int)$r['CODIGOA'],
                 'color' => $r['COLOR'],
                 'codigoHorario' => $r['CODIGOH'],
                 'descripcionHorario' => $r['DESCRIOCIONH']
