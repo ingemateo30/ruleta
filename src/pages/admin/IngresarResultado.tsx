@@ -40,6 +40,15 @@ const IngresarResultado = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
+  const [horaActual, setHoraActual] = useState(new Date());
+
+  // Actualizar hora actual cada 60 segundos
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHoraActual(new Date());
+    }, 60000); // Revisar cada 60 segundos
+    return () => clearInterval(timer);
+  }, []);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -142,6 +151,35 @@ const IngresarResultado = () => {
 
     cargarHorariosConEstado();
   }, [fecha]);
+
+  // Función para verificar si un horario está vencido
+  const isHorarioVencido = (horaStr: string) => {
+    if (!horaStr) return false;
+
+    // Solo validar horarios vencidos si la fecha seleccionada es HOY
+    const fechaSeleccionada = new Date(fecha + 'T00:00:00');
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // Si la fecha seleccionada no es hoy, NO marcar como vencido
+    if (fechaSeleccionada.getTime() !== hoy.getTime()) {
+      return false;
+    }
+
+    try {
+      const fechaHorario = new Date();
+      // Asumimos que horaStr viene en formato "HH:mm" o "HH:mm:ss" (ej: "09:00:00" o "09:00")
+      const [horas, minutos] = horaStr.split(':').map(Number);
+      
+      fechaHorario.setHours(horas, minutos || 0, 0, 0);
+
+      // Si la hora actual es mayor a la hora del sorteo, está vencido
+      return horaActual >= fechaHorario;
+    } catch (e) {
+      console.error("Error al parsear hora", horaStr);
+      return false;
+    }
+  };
 
   const handleGuardarResultado = async () => {
     if (!selectedAnimal || !selectedHorario || !fecha) {
@@ -372,17 +410,26 @@ const IngresarResultado = () => {
                     {horariosAPI.map((h) => {
                       const esBloqueado = h.estado === 'JUGADO' && h.bloqueado === 1;
                       const tieneGanador = h.estado === 'JUGADO';
+                      const vencido = isHorarioVencido(h.HORA);
 
                       return (
                         <SelectItem
                           key={h.NUM}
                           value={h.NUM.toString()}
-                          disabled={esBloqueado}
-                          className={esBloqueado ? 'opacity-50' : ''}
+                          disabled={esBloqueado || vencido}
+                          className={(esBloqueado || vencido) ? 'opacity-50' : ''}
                         >
                           <div className="flex items-center gap-2">
                             <span>{h.DESCRIPCION} - {h.HORA}</span>
-                            {tieneGanador && (
+                            {vencido && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1 py-0 text-muted-foreground"
+                              >
+                                Cerrado
+                              </Badge>
+                            )}
+                            {tieneGanador && !vencido && (
                               <Badge
                                 variant={esBloqueado ? "destructive" : "secondary"}
                                 className="text-[10px] px-1 py-0"
@@ -390,7 +437,7 @@ const IngresarResultado = () => {
                                 {esBloqueado ? `${h.ANIMAL} (bloqueado)` : `${h.ANIMAL}`}
                               </Badge>
                             )}
-                            {h.estado === 'PASADO' && !tieneGanador && (
+                            {h.estado === 'PASADO' && !tieneGanador && !vencido && (
                               <Badge variant="outline" className="text-[10px] px-1 py-0">
                                 Sin resultado
                               </Badge>

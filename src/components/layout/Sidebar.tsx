@@ -88,6 +88,15 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Autenticacion 2FA", icon: <Clock className="h-4 w-4" />, href: "/config/2fa-setup" },
       ],
     },
+
+     {
+      title: "Seguridad",
+      icon: <Settings className="h-4 w-4" />,
+      requiredRole: [USER_TYPES.OPERARIO],
+      children: [
+        { title: "Autenticacion 2FA", icon: <Clock className="h-4 w-4" />, href: "/config/2fa-setup" },
+      ],
+    },
     // Operativo - Solo para Operarios (sin Cerrar Juego)
     {
       title: "Operativo",
