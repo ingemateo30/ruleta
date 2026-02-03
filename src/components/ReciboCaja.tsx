@@ -70,12 +70,10 @@ const ReciboCaja = ({
   useEffect(() => {
     const generateQR = async () => {
       if (!radicado || !sucursal || !fecha || !hora) return;
-      
+
       try {
-        // Formato del QR: radicado-sucursal-fecha-hora
         const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
-        
-        // Generar QR como data URL
+
         const qrDataUrl = await QRCode.toDataURL(qrData, {
           width: 120,
           margin: 1,
@@ -84,8 +82,7 @@ const ReciboCaja = ({
             light: '#FFFFFF'
           }
         });
-        
-        // Cargar como imagen
+
         const img = new Image();
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -107,59 +104,31 @@ const ReciboCaja = ({
   useEffect(() => {
     if (!open) return;
 
-    // Pequeño delay para asegurar que el canvas esté montado
     const timeoutId = setTimeout(() => {
-      if (!canvasRef.current) {
-        console.error('Canvas ref no está disponible');
-        return;
-      }
+      if (!canvasRef.current) return;
 
-      // Debug: Verificar que los datos estén disponibles
-      console.log('ReciboCaja - Datos recibidos:', {
-        radicado,
-        fecha,
-        hora,
-        sucursal,
-        jugadas,
-        valorTotal,
-        open
-      });
+      if (!radicado || !fecha || !hora || !sucursal || !jugadas || jugadas.length === 0) return;
 
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.error('No se pudo obtener el contexto 2D del canvas');
-        return;
-      }
+      if (!ctx) return;
 
-      // Validar que tengamos datos necesarios
-      if (!radicado || !fecha || !hora || !sucursal || !jugadas || jugadas.length === 0) {
-        console.error('Faltan datos necesarios para renderizar el recibo:', {
-          radicado: !!radicado,
-          fecha: !!fecha,
-          hora: !!hora,
-          sucursal: !!sucursal,
-          jugadas: jugadas?.length || 0
-        });
-        return;
-      }
-
-      // Términos y condiciones
+      // Terminos y condiciones (sin guiones)
       const tyc = [
-        "- Ticket ganador tiene 3 dias habiles",
-        "  para ser redimido.",
-        "- Ticket ganador sera cancelado 10 min",
-        "  despues del ultimo resultado.",
-        "- Ticket ganador debe ser presentado en",
-        "  fisico y en perfecto estado, de lo",
-        "  contrario sera anulado.",
-        "- Prohibida la venta a menores de",
-        "  18 anos.",
+        "Ticket ganador tiene 3 dias habiles",
+        "para ser redimido.",
+        "Ticket ganador sera cancelado 10 min",
+        "despues del ultimo resultado.",
+        "Ticket ganador debe ser presentado en",
+        "fisico y en perfecto estado, de lo",
+        "contrario sera anulado.",
+        "Prohibida la venta a menores de",
+        "18 anos.",
       ];
-      const tycHeight = tyc.length * 10 + 20; // 10px per line + spacing
- 
-      // 1. Calcular altura necesaria antes de establecer el tamaño
-      // Calcular dimensiones del logo manteniendo aspect ratio
+      const tycLineHeight = 12;
+      const tycHeight = tyc.length * tycLineHeight + 25;
+
+      // Calcular dimensiones del logo
       let logoDisplayWidth = 0;
       let logoDisplayHeight = 0;
       if (logoImage) {
@@ -173,15 +142,18 @@ const ReciboCaja = ({
           logoDisplayWidth = maxLogoHeight * imgRatio;
         }
       }
+
       const logoHeight = logoImage ? logoDisplayHeight + 8 : 0;
-      const qrHeight = qrImage ? 120 + 15 : 0; // QR + espacio
-      const headerHeight = logoHeight + 20 + 10 + 54 + 15 + 32 + 12; // Logo, líneas, info, tabla header
-      const jugadasHeight = jugadas.length * 18;
-      const footerHeight = 5 + 15 + 15 + 25 + qrHeight + tycHeight; // Total, líneas, pie, QR, T&C
+      const qrHeight = qrImage ? 120 + 15 : 0;
+      // Title "Lotto Animal / Una hora para ganar" below logo
+      const titleHeight = 35;
+      const headerHeight = logoHeight + titleHeight + 10 + 65 + 15 + 40 + 12;
+      const jugadasHeight = jugadas.length * 20;
+      const footerHeight = 5 + 15 + 15 + 25 + qrHeight + tycHeight;
       const paddingTotal = 20;
       const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
 
-      // 2. Establecer tamaño del canvas (ESTO LIMPIA EL CANVAS)
+      // 80mm thermal paper = ~302px
       const width = 302;
       canvas.width = width;
       canvas.height = totalHeight;
@@ -189,30 +161,29 @@ const ReciboCaja = ({
       const padding = 10;
       let y = padding;
 
-      // 3. Ahora sí, dibujar todo
-      // Limpiar con fondo blanco
+      // Fondo blanco
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Configurar fuente inicial
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
-      ctx.font = "bold 14px monospace";
 
-      // Dibujar el logo si está disponible
-     if (logoImage) {
+      // Logo
+      if (logoImage) {
         const logoX = (width - logoDisplayWidth) / 2;
         ctx.drawImage(logoImage, logoX, y, logoDisplayWidth, logoDisplayHeight);
-        y += logoDisplayHeight + 8;
-      } else {
-        // Título LOTTO ANIMAL como fallback
-        y += 15;
-        ctx.font = "bold 20px monospace";
-        ctx.fillText("LOTTO ANIMAL", width / 2, y);
-        y += 25;
+        y += logoDisplayHeight + 4;
       }
 
-      // Línea doble
+      // Titulo: "LOTTO ANIMAL" y subtitulo "Una hora para ganar"
+      ctx.font = "bold 16px monospace";
+      ctx.fillText("LOTTO ANIMAL", width / 2, y + 14);
+      y += 18;
+      ctx.font = "bold 11px monospace";
+      ctx.fillText("Una hora para ganar", width / 2, y + 10);
+      y += 18;
+
+      // Linea doble
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
@@ -220,91 +191,93 @@ const ReciboCaja = ({
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 15;
 
-      // Información del juego
+      // Info del juego
       ctx.textAlign = "left";
       ctx.font = "12px monospace";
-      
+
       // Radicado
-      ctx.fillText(`Radicado Juego:`, padding, y);
+      ctx.fillText("Radicado:", padding, y);
       ctx.textAlign = "right";
       ctx.fillText(radicado.padStart(8, "0"), width - padding, y);
       ctx.textAlign = "left";
-      y += 18;
-
-      // Fecha y Hora
-      const fechaFormateada = fecha.replace(/-/g, "/");
-      const horaFormateada = formatearHora(hora);
-      ctx.fillText(`Fecha:`, padding, y);
-      ctx.fillText(fechaFormateada, padding + 60, y);
-      ctx.textAlign = "right";
-      ctx.fillText(`Hora:`, width - padding - 80, y);
-      ctx.fillText(horaFormateada, width - padding, y);
-      ctx.textAlign = "left";
-      y += 18;
+      y += 16;
 
       // Sucursal
-      ctx.fillText(`Sucursal:`, padding, y);
-      ctx.fillText(sucursal, padding + 70, y);
-      y += 15;
-
-      // Línea separadora
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 15;
-
-      // Encabezado de tabla
-      ctx.font = "bold 11px monospace";
-      ctx.fillText("Codigo", padding, y);
-      ctx.fillText("Lotto Animal", padding + 50, y);
+      ctx.fillText("Sucursal:", padding, y);
       ctx.textAlign = "right";
-      ctx.fillText("Valor $", width - padding - 50, y);
-      const horaJX = width - padding;
-      ctx.fillText("Hora J.", horaJX, y);
+      ctx.fillText(sucursal, width - padding, y);
       ctx.textAlign = "left";
+      y += 16;
+
+      // Fecha
+      const fechaFormateada = fecha.replace(/-/g, "/");
+      ctx.fillText("Fecha:", padding, y);
+      ctx.textAlign = "right";
+      ctx.fillText(fechaFormateada, width - padding, y);
+      ctx.textAlign = "left";
+      y += 16;
+
+      // Hora (primero la hora, luego el valor va abajo en el total)
+      const horaFormateada = formatearHora(hora);
+      ctx.fillText("Hora:", padding, y);
+      ctx.textAlign = "right";
+      ctx.fillText(horaFormateada, width - padding, y);
+      ctx.textAlign = "left";
+      y += 15;
+
+      // Linea separadora
+      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 12;
 
-      ctx.font = "10px monospace";
+      // Encabezado de tabla: Hora J. | Cod | Animal | Valor
+      ctx.font = "bold 10px monospace";
+      ctx.fillText("Hora", padding, y);
+      ctx.fillText("Cod", padding + 55, y);
+      ctx.fillText("Animal", padding + 90, y);
       ctx.textAlign = "right";
-      ctx.fillText("HORA", horaJX, y);
-      y += 10;
-      ctx.fillText("JUEGO", horaJX, y);
+      ctx.fillText("Valor $", width - padding, y);
       ctx.textAlign = "left";
       y += 5;
 
-      // Línea separadora
+      // Linea separadora
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 12;
+      y += 14;
 
-      // Datos de las jugadas
+      // Datos de las jugadas (hora primero, luego el resto con espaciado)
       ctx.font = "11px monospace";
       jugadas.forEach((jugada) => {
         ctx.textAlign = "left";
-        ctx.fillText(jugada.codigo || "", padding, y);
-        ctx.fillText((jugada.animal || "").toUpperCase(), padding + 50, y);
+        const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
+        ctx.fillText(horaJuegoFormateada, padding, y);
+        ctx.fillText(jugada.codigo || "", padding + 55, y);
+        ctx.fillText((jugada.animal || "").toUpperCase().substring(0, 10), padding + 90, y);
         ctx.textAlign = "right";
         const valorFormateado = (jugada.valor || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        ctx.fillText(valorFormateado, width - padding - 50, y);
-        const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
-        ctx.fillText(horaJuegoFormateada, width - padding, y);
+        ctx.fillText("$" + valorFormateado, width - padding, y);
         ctx.textAlign = "left";
-        y += 18;
+        y += 20;
       });
 
       y += 5;
 
+      // Linea antes del total
+      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+      y += 14;
+
       // Valor Total
-      ctx.font = "bold 12px monospace";
-      ctx.fillText("Valor Total: $", padding, y);
+      ctx.font = "bold 14px monospace";
+      ctx.fillText("TOTAL:", padding, y);
       ctx.textAlign = "right";
       const totalFormateado = valorTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      ctx.fillText(totalFormateado, width - padding, y);
+      ctx.fillText("$" + totalFormateado, width - padding, y);
       ctx.textAlign = "left";
       y += 15;
 
-      // Línea separadora
+      // Linea separadora
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 15;
 
-      // Pie de página
+      // Pie de pagina
       ctx.font = "10px monospace";
       ctx.textAlign = "center";
       ctx.fillText("*** CONSERVE SU TICKET ***", width / 2, y);
@@ -312,36 +285,30 @@ const ReciboCaja = ({
       ctx.fillText("Este es su comprobante de juego", width / 2, y);
       y += 15;
 
-      // Dibujar QR Code centrado
+      // QR Code centrado
       if (qrImage) {
         const qrSize = 120;
         const qrX = (width - qrSize) / 2;
         ctx.drawImage(qrImage, qrX, y, qrSize, qrSize);
         y += qrSize + 15;
       }
- 
-      // Línea separadora antes de T&C
+
+      // Linea separadora antes de TyC
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 10;
- 
-      // Términos y condiciones (centrados)
-      ctx.font = "bold 8px monospace";
+      y += 12;
+
+      // Terminos y condiciones (sin guiones, fuente mas grande)
+      ctx.font = "bold 9px monospace";
       ctx.textAlign = "center";
       ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
-      y += 10;
-      ctx.font = "7px monospace";
+      y += 12;
+      ctx.font = "8px monospace";
       ctx.textAlign = "center";
       tyc.forEach((linea) => {
         ctx.fillText(linea, width / 2, y);
-        y += 10;
+        y += tycLineHeight;
       });
-
-      console.log('Canvas renderizado correctamente:', {
-        width: canvas.width,
-        height: canvas.height,
-        radicado
-      });
-    }, 100); // Delay de 100ms para asegurar que el DOM esté listo
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal, logoImage, qrImage]);
@@ -349,18 +316,16 @@ const ReciboCaja = ({
   const formatearHora = (hora: string): string => {
     if (!hora) return "";
     try {
-      // Formato HH:MM:SS -> HH.MM.SS AM/PM
       const partes = hora.split(":");
       if (partes.length < 2) return hora;
-      
+
       const horas = parseInt(partes[0] || "0", 10);
       const minutos = partes[1] || "00";
       const segundos = partes[2] || "00";
       const ampm = horas >= 12 ? "PM" : "AM";
       const horas12 = horas % 12 || 12;
-      return `${horas12.toString().padStart(2, "0")}.${minutos}.${segundos} ${ampm}`;
+      return `${horas12.toString().padStart(2, "0")}:${minutos}:${segundos} ${ampm}`;
     } catch (error) {
-      console.error("Error formateando hora:", error);
       return hora;
     }
   };
@@ -368,29 +333,24 @@ const ReciboCaja = ({
   const formatearHoraJuego = (horaJuego: string): string => {
     if (!horaJuego) return "";
     try {
-      // Si ya está en formato HH:MM AM/PM, mantenerlo
       if (horaJuego.includes("AM") || horaJuego.includes("PM")) {
         return horaJuego;
       }
-      // Si está en formato HH:MM:SS o HH:MM, convertir a HH:MM AM/PM
       if (horaJuego.includes(":")) {
         const partes = horaJuego.split(":");
         if (partes.length < 2) return horaJuego;
-        
+
         const horas = parseInt(partes[0] || "0", 10);
         const minutos = partes[1] || "00";
         const ampm = horas >= 12 ? "PM" : "AM";
         const horas12 = horas % 12 || 12;
-        return `${horas12.toString().padStart(2, "0")}:${minutos} ${ampm}`;
+        return `${horas12}:${minutos}${ampm}`;
       }
       return horaJuego;
     } catch (error) {
-      console.error("Error formateando hora de juego:", error);
       return horaJuego;
     }
   };
-
-  // Se eliminó el efecto de impresión automática a petición del usuario
 
   const handleImprimir = () => {
     if (!canvasRef.current) return;
@@ -398,7 +358,6 @@ const ReciboCaja = ({
     const canvas = canvasRef.current;
     const dataUrl = canvas.toDataURL("image/png");
 
-    // Crear ventana de impresión
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -409,28 +368,23 @@ const ReciboCaja = ({
           <style>
             @media print {
               @page {
-                size: A4 portrait;
-                margin: 20mm;
+                size: 80mm auto;
+                margin: 0;
               }
               body {
                 margin: 0;
                 padding: 0;
                 background: white;
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                min-height: 100vh;
               }
               img {
-                width: 302px;
+                width: 80mm;
                 height: auto;
                 display: block;
-                margin: 0 auto;
               }
             }
             body {
               margin: 0;
-              padding: 20px;
+              padding: 10px;
               display: flex;
               justify-content: center;
               align-items: flex-start;
@@ -448,7 +402,6 @@ const ReciboCaja = ({
         <body>
           <img src="${dataUrl}" alt="Ticket" />
           <script>
-            // Esperar a que la imagen cargue antes de imprimir
             const img = document.querySelector('img');
             if (img.complete) {
               window.print();
@@ -468,31 +421,31 @@ const ReciboCaja = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[380px] p-0">
-        <DialogHeader className="p-6 pb-4">
-          <DialogTitle>Recibo de Caja</DialogTitle>
+      <DialogContent className="max-w-[95vw] sm:max-w-[380px] p-0">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+          <DialogTitle className="text-sm sm:text-base">Recibo de Caja</DialogTitle>
         </DialogHeader>
-        <div className="p-6 pt-0 space-y-4">
-          {/* Previsualización del canvas */}
-          <div className="flex justify-center bg-gray-100 p-4 rounded-lg overflow-auto">
+        <div className="p-4 sm:p-6 pt-0 space-y-3 sm:space-y-4">
+          {/* Previsualizacion del canvas */}
+          <div className="flex justify-center bg-gray-100 p-2 sm:p-4 rounded-lg overflow-auto max-h-[60vh]">
             <canvas
               ref={canvasRef}
               className="bg-white shadow-lg"
-              style={{ 
-                width: "302px", 
+              style={{
+                width: "302px",
                 display: "block",
                 imageRendering: "crisp-edges"
               }}
             />
           </div>
 
-          {/* Botones de acción */}
+          {/* Botones de accion */}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} className="flex-1">
+            <Button variant="outline" onClick={onClose} className="flex-1" size="sm">
               <X className="h-4 w-4 mr-2" />
               Cerrar
             </Button>
-            <Button onClick={handleImprimir} className="flex-1">
+            <Button onClick={handleImprimir} className="flex-1" size="sm">
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>

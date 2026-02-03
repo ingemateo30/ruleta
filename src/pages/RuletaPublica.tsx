@@ -7,16 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Timer, Trophy, Clock, Loader2, Calendar, Search } from "lucide-react";
 import { apiClient } from "@/api/client";
-import { getAnimalByNumero, animals as ANIMALS } from "@/constants/animals";
+import { getAnimalByNombre, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
 import { format } from "date-fns";
-;
 
 interface ProximoSorteo {
   codigo: number;
   descripcion: string;
   hora: string;
   segundos_faltantes: number;
+  es_manana?: boolean;
 }
 
 interface Resultado {
@@ -43,23 +43,12 @@ const RuletaPublica = () => {
   const [horarios, setHorarios] = useState<HorarioConEstado[]>([]);
   const [segundosRestantes, setSegundosRestantes] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [animalAnimacion, setAnimalAnimacion] = useState<number>(0);
+  const [animalAnimacion, setAnimalAnimacion] = useState<string>("");
   const [mostrarGanador, setMostrarGanador] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fechaFiltro, setFechaFiltro] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [ganadorPreCargado, setGanadorPreCargado] = useState<Resultado | null>(null);
 
-  // Reference to track animation state
   const animacionEnProgreso = useRef(false);
-  const [modoTest, setModoTest] = useState(false);
-
-  const simularSorteo = () => {
-    if (confirm('¿Deseas simular un sorteo de prueba?')) {
-      iniciarAnimacion();
-    }
-  };
-
-  // Referencia para el último horario conocido (para detectar cambios)
   const ultimoHorarioConocido = useRef<number | null>(null);
 
   // Cargar datos iniciales y actualizar cada 10 segundos
@@ -74,28 +63,18 @@ const RuletaPublica = () => {
       if (proximoRes.success && proximoRes.data) {
         const nuevoSorteo = proximoRes.data.proximo_sorteo;
 
-        // Detectar si cambió el horario (pasamos al siguiente sorteo)
-        if (nuevoSorteo && ultimoHorarioConocido.current !== null &&
-            ultimoHorarioConocido.current !== nuevoSorteo.codigo) {
-          // El horario cambió, actualizar inmediatamente
-          console.log('Cambio de horario detectado:', ultimoHorarioConocido.current, '->', nuevoSorteo.codigo);
-        }
-
         if (nuevoSorteo) {
           ultimoHorarioConocido.current = nuevoSorteo.codigo;
         }
 
         setProximoSorteo(nuevoSorteo);
 
-        // Only update countdown if not animating
         if (!animacionEnProgreso.current) {
-          // Si los segundos son negativos o muy diferentes, sincronizar
           const nuevoSegundos = nuevoSorteo?.segundos_faltantes || 0;
           setSegundosRestantes(nuevoSegundos);
         }
 
         if (proximoRes.data.ultimo_resultado) {
-          // Don't update ultimo resultado during animation
           if (!animacionEnProgreso.current) {
             setUltimoResultado(proximoRes.data.ultimo_resultado);
           }
@@ -118,14 +97,13 @@ const RuletaPublica = () => {
     return () => clearInterval(interval);
   }, [cargarDatos]);
 
-  // Contador regresivo
+  // Contador regresivo sincronizado con servidor
   useEffect(() => {
     if (segundosRestantes <= 0) {
-      // Si estamos en 0 y no hay animación en progreso, recargar datos para obtener siguiente horario
       if (!animacionEnProgreso.current && !isAnimating) {
         const timeout = setTimeout(() => {
           cargarDatos();
-        }, 2000); // Esperar 2 segundos antes de recargar
+        }, 2000);
         return () => clearTimeout(timeout);
       }
       return;
@@ -134,7 +112,6 @@ const RuletaPublica = () => {
     const timer = setInterval(() => {
       setSegundosRestantes(prev => {
         if (prev <= 1) {
-          // Iniciar animacion cuando llegue a 0
           if (!animacionEnProgreso.current) {
             iniciarAnimacion();
           }
@@ -147,7 +124,7 @@ const RuletaPublica = () => {
     return () => clearInterval(timer);
   }, [segundosRestantes, isAnimating, cargarDatos]);
 
-  // Animacion de la ruleta - CORREGIDA para no mostrar animal incorrecto
+  // Animacion de la ruleta al llegar a 0
   const iniciarAnimacion = async () => {
     if (animacionEnProgreso.current) return;
 
@@ -155,97 +132,81 @@ const RuletaPublica = () => {
     setIsAnimating(true);
     setMostrarGanador(false);
 
-    // PRIMERO: Cargar el ganador real del servidor antes de animar
     let ganadorReal: Resultado | null = null;
 
-    // Esperar un momento para que el servidor tenga el resultado
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Esperar unos segundos antes de consultar el ganador (1 minuto post-sorteo)
+    await new Promise(resolve => setTimeout(resolve, 60000));
 
     try {
       const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
       if (response.success && response.data?.ultimo_resultado) {
         ganadorReal = response.data.ultimo_resultado;
-        setGanadorPreCargado(ganadorReal);
       }
     } catch (error) {
       console.error('Error al cargar ganador:', error);
     }
 
-    // Si no hay ganador, intentar de nuevo
     if (!ganadorReal) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 30000));
       try {
         const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
         if (response.success && response.data?.ultimo_resultado) {
           ganadorReal = response.data.ultimo_resultado;
-          setGanadorPreCargado(ganadorReal);
         }
       } catch (error) {
         console.error('Error al cargar ganador (retry):', error);
       }
     }
 
-    // Crear array de animales EXCLUYENDO al ganador para la animacion
+    // Animacion rapida de animalitos cambiando
     const animalesParaAnimacion = ganadorReal
-      ? ANIMALS.filter(a => a.numero !== ganadorReal!.codigo_animal)
+      ? ANIMALS.filter(a => a.nombre.toLowerCase() !== ganadorReal!.animal.toLowerCase())
       : ANIMALS;
 
-    // Animacion de cambio rapido de animales
-    const duracionAnimacion = 4000; // 4 segundos
-    const intervaloCambio = 80; // Cambiar cada 80ms
+    const duracionAnimacion = 4000;
+    const intervaloCambio = 80;
     let tiempoTranscurrido = 0;
 
-   const animacionInterval = setInterval(() => {
-  tiempoTranscurrido += intervaloCambio;
+    const animacionInterval = setInterval(() => {
+      tiempoTranscurrido += intervaloCambio;
 
-  // Animal aleatorio (NUNCA el ganador)
-  const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
-  setAnimalAnimacion(animalesParaAnimacion[randomIndex].numero);
+      const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
+      setAnimalAnimacion(animalesParaAnimacion[randomIndex].nombre);
 
-  // Entrar en fase lenta (último 30%)
-  if (tiempoTranscurrido > duracionAnimacion * 0.7) {
-    clearInterval(animacionInterval);
+      if (tiempoTranscurrido > duracionAnimacion * 0.7) {
+        clearInterval(animacionInterval);
 
-    let contadorLento = 0;
-    const maxCambiosLentos = 5;
+        let contadorLento = 0;
+        const maxCambiosLentos = 5;
 
-    const slowInterval = setInterval(() => {
-      contadorLento++;
+        const slowInterval = setInterval(() => {
+          contadorLento++;
 
-      const randomIndex = Math.floor(
-        Math.random() * animalesParaAnimacion.length
-      );
-      setAnimalAnimacion(animalesParaAnimacion[randomIndex].numero);
+          const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
+          setAnimalAnimacion(animalesParaAnimacion[randomIndex].nombre);
 
-      if (contadorLento >= maxCambiosLentos) {
-        clearInterval(slowInterval);
+          if (contadorLento >= maxCambiosLentos) {
+            clearInterval(slowInterval);
 
-        // Mostrar ganador real directamente
-        if (ganadorReal) {
-          setAnimalAnimacion(ganadorReal.codigo_animal);
-          setUltimoResultado(ganadorReal);
-        }
+            if (ganadorReal) {
+              setAnimalAnimacion(ganadorReal.animal);
+              setUltimoResultado(ganadorReal);
+            }
 
-        // Pausa corta y luego celebración
-        setTimeout(() => {
-          setMostrarGanador(true);
-          setIsAnimating(false);
-          setGanadorPreCargado(null);
+            setTimeout(() => {
+              setMostrarGanador(true);
+              setIsAnimating(false);
+              cargarDatos();
 
-          // Recargar datos
-          cargarDatos();
-
-          // Reset del estado de animación
-          setTimeout(() => {
-            animacionEnProgreso.current = false;
-          }, 3000);
-        }, 200);
+              setTimeout(() => {
+                animacionEnProgreso.current = false;
+              }, 3000);
+            }, 200);
+          }
+        }, 300);
       }
     }, intervaloCambio);
-  }
-}, intervaloCambio);
   };
-    
 
   const formatTiempo = (segundos: number): string => {
     const horas = Math.floor(segundos / 3600);
@@ -262,10 +223,10 @@ const RuletaPublica = () => {
     if (!hora) return "";
     const partes = hora.split(":");
     if (partes.length < 2) return hora;
-    const horas = parseInt(partes[0], 10);
+    const h = parseInt(partes[0], 10);
     const minutos = partes[1];
-    const ampm = horas >= 12 ? "PM" : "AM";
-    const horas12 = horas % 12 || 12;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const horas12 = h % 12 || 12;
     return `${horas12}:${minutos} ${ampm}`;
   };
 
@@ -273,7 +234,7 @@ const RuletaPublica = () => {
     cargarDatos(fechaFiltro);
   };
 
-  // Determinar si mostrar resultado basado en la hora
+  // Verificar si se puede mostrar el resultado (con buffer post-sorteo de 1 minuto)
   const puedeVerResultado = (horario: HorarioConEstado): boolean => {
     if (horario.estado !== 'JUGADO') return false;
 
@@ -283,14 +244,17 @@ const RuletaPublica = () => {
     // Si es otro dia, siempre mostrar
     if (fechaFiltro !== hoy) return true;
 
-    // Si es hoy, verificar que ya paso la hora del sorteo
-    const horaActual = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    // Si es hoy, verificar que ya paso la hora del sorteo + 1 minuto
+    const [horaH, minH, segH] = (horario.HORA || '00:00:00').split(':').map(Number);
+    const horaSorteo = new Date();
+    horaSorteo.setHours(horaH, minH || 0, segH || 0, 0);
+    horaSorteo.setMinutes(horaSorteo.getMinutes() + 1);
 
-    return horario.HORA <= horaActual;
+    return now >= horaSorteo;
   };
 
-  const animalEnAnimacion = getAnimalByNumero(animalAnimacion);
-  const animalGanador = ultimoResultado ? getAnimalByNumero(ultimoResultado.codigo_animal) : null;
+  const animalEnAnimacion = getAnimalByNombre(animalAnimacion);
+  const animalGanador = ultimoResultado ? getAnimalByNombre(ultimoResultado.animal) : null;
 
   if (isLoading) {
     return (
@@ -303,19 +267,24 @@ const RuletaPublica = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header con logo */}
-        <div className="text-center py-4">
+        {/* Header con logo grande y titulo */}
+        <div className="text-center py-6">
           <img
             src={logoLottoAnimal}
             alt="Lotto Animal"
-            className="h-20 mx-auto mb-2"
+            className="h-32 sm:h-40 mx-auto mb-4"
           />
-          <p className="text-white/70 text-lg">Sorteos en vivo</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            Lotto Animal
+          </h1>
+          <p className="text-xl sm:text-2xl text-yellow-400 font-semibold mt-1">
+            Una hora para ganar
+          </p>
         </div>
 
-        {/* Seccion principal - Ruleta y Contador */}
+        {/* Seccion principal - Reloj y Ultimo ganador */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Contador regresivo */}
+          {/* Contador regresivo parametrizado */}
           <Card className="bg-black/30 backdrop-blur-md border-white/10">
             <CardHeader className="text-center">
               <CardTitle className="text-white flex items-center justify-center gap-2 text-xl">
@@ -327,9 +296,12 @@ const RuletaPublica = () => {
                   <p className="text-white/90 text-base font-semibold">
                     {proximoSorteo.descripcion}
                   </p>
-                  <p className="text-white/70 text-sm">
-                    Hora: {formatHora(proximoSorteo.hora)}
+                  <p className="text-yellow-400 text-lg font-bold">
+                    {formatHora(proximoSorteo.hora)}
                   </p>
+                  {proximoSorteo.es_manana && (
+                    <p className="text-white/50 text-xs">(Manana)</p>
+                  )}
                 </>
               )}
             </CardHeader>
@@ -343,19 +315,7 @@ const RuletaPublica = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-black/30 backdrop-blur-md border-yellow-400/50">
-            <CardContent className="p-4">
-              <Button
-                onClick={simularSorteo}
-                variant="outline"
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black"
-                disabled={isAnimating}
-              >
-                🎰 SIMULAR SORTEO (TEST)
-              </Button>
-            </CardContent>
-          </Card>
-          {/* Ruleta / Animal */}
+          {/* Ganador */}
           <Card className="bg-black/30 backdrop-blur-md border-white/10 overflow-hidden">
             <CardContent className="p-8 flex flex-col items-center justify-center min-h-[300px]">
               <AnimatePresence mode="wait">
@@ -418,7 +378,7 @@ const RuletaPublica = () => {
                       {ultimoResultado.animal}
                     </h2>
                     <Badge className="mt-2 text-lg px-4 py-1 bg-yellow-500 text-black">
-                      #{ultimoResultado.codigo_animal.toString().padStart(2, '0')}
+                      #{animalGanador?.codigo || '??'}
                     </Badge>
                     <p className="text-white/70 mt-2">
                       Sorteo: {ultimoResultado.horario}
@@ -443,7 +403,7 @@ const RuletaPublica = () => {
                       {ultimoResultado.animal}
                     </h2>
                     <Badge className="mt-2 bg-white/20 text-white">
-                      #{ultimoResultado.codigo_animal.toString().padStart(2, '0')}
+                      #{animalGanador?.codigo || '??'}
                     </Badge>
                     <p className="text-white/50 text-sm mt-2">
                       {ultimoResultado.horario} - {formatHora(ultimoResultado.hora)}
@@ -504,26 +464,28 @@ const RuletaPublica = () => {
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {horarios.map((horario) => {
-                const animalData = horario.CODIGOA ? getAnimalByNumero(parseInt(horario.CODIGOA.toString())) : null;
+                const animalData = horario.ANIMAL ? getAnimalByNombre(horario.ANIMAL) : null;
                 const mostrarResultado = puedeVerResultado(horario);
 
                 return (
                   <div
                     key={horario.NUM}
-                    className={`p-3 rounded-lg text-center transition-all ${horario.estado === 'JUGADO'
-                      ? 'bg-green-500/20 border border-green-500/30'
-                      : horario.estado === 'PENDIENTE'
-                        ? 'bg-yellow-500/20 border border-yellow-500/30'
-                        : 'bg-blue-500/20 border border-blue-500/30'
-                      }`}
+                    className={`p-3 rounded-lg text-center transition-all ${
+                      horario.estado === 'JUGADO'
+                        ? 'bg-green-500/20 border border-green-500/30'
+                        : horario.estado === 'PENDIENTE'
+                          ? 'bg-yellow-500/20 border border-yellow-500/30'
+                          : 'bg-blue-500/20 border border-blue-500/30'
+                    }`}
                   >
                     <Badge
-                      className={`mb-2 ${horario.estado === 'JUGADO'
-                        ? 'bg-green-500'
-                        : horario.estado === 'PENDIENTE'
-                          ? 'bg-yellow-500 text-black'
-                          : 'bg-blue-500'
-                        }`}
+                      className={`mb-2 ${
+                        horario.estado === 'JUGADO'
+                          ? 'bg-green-500'
+                          : horario.estado === 'PENDIENTE'
+                            ? 'bg-yellow-500 text-black'
+                            : 'bg-blue-500'
+                      }`}
                     >
                       {formatHora(horario.HORA)}
                     </Badge>
@@ -538,14 +500,17 @@ const RuletaPublica = () => {
                           {horario.ANIMAL}
                         </p>
                         <p className="text-white/60 text-[10px]">
-                          #{horario.CODIGOA?.toString().padStart(2, '0')}
+                          #{animalData.codigo}
                         </p>
                       </>
                     ) : (
                       <div className="py-4">
                         <p className="text-white/60 text-xs">
-                          {horario.estado === 'PENDIENTE' ? 'Por jugar' :
-                           horario.estado === 'JUGADO' && !mostrarResultado ? 'Esperando hora' : 'Proximo'}
+                          {horario.estado === 'PENDIENTE'
+                            ? 'Por jugar'
+                            : horario.estado === 'JUGADO' && !mostrarResultado
+                              ? 'Esperando resultado'
+                              : 'Proximo'}
                         </p>
                       </div>
                     )}
@@ -559,7 +524,7 @@ const RuletaPublica = () => {
         {/* Footer */}
         <div className="text-center py-4">
           <p className="text-white/40 text-sm">
-            Lotto Animal - Sorteos automaticos cada horario
+            Lotto Animal - Sorteos automaticos cada hora
           </p>
         </div>
       </div>

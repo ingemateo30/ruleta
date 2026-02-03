@@ -82,6 +82,7 @@ try {
         }
  
         // Verificar si ya hay un resultado para el horario actual (el más reciente ya jugado)
+        // Solo mostrar resultados cuya hora de sorteo + 1 minuto ya haya pasado
         $stmt = $conn->prepare("
             SELECT
                 g.CODIGOA,
@@ -93,6 +94,7 @@ try {
             JOIN horariojuego h ON g.CODIGOH = h.NUM
             WHERE g.FECHA = CURDATE()
             AND g.ESTADO = 'A'
+            AND ADDTIME(h.HORA, '00:01:00') <= CURTIME()
             ORDER BY h.HORA DESC
             LIMIT 1
         ");

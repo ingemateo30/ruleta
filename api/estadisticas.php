@@ -103,7 +103,7 @@ try {
         $stmt->execute([$fecha]);
         $topAnimales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Últimos ganadores
+        // Últimos ganadores (solo mostrar 1 minuto después de la hora del sorteo)
         $stmt = $db->prepare("
             SELECT
                 g.CODIGOA,
@@ -116,6 +116,7 @@ try {
             JOIN horariojuego h ON g.CODIGOH = h.NUM
             LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
             WHERE g.FECHA = ?
+            AND (g.FECHA < CURDATE() OR ADDTIME(h.HORA, '00:01:00') <= CURTIME())
             ORDER BY h.HORA DESC
             LIMIT 5
         ");

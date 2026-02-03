@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Trophy, TrendingUp, Loader2 } from "lucide-react";
-import { getAnimalByNumero } from "@/constants/animals";
+import { getAnimalByNombre } from "@/constants/animals";
 import { estadisticasAPI } from "@/api/admin";
 
 interface Winner {
@@ -121,7 +121,7 @@ const WinnersTable = () => {
                   <TableCell>
                     <div className="flex items-center gap-1 sm:gap-2">
                       {(() => {
-                        const animalData = getAnimalByNumero(winner.numero);
+                        const animalData = getAnimalByNombre(winner.animal);
                         return animalData ? (
                           <img
                             src={animalData.imagen}
@@ -131,9 +131,14 @@ const WinnersTable = () => {
                         ) : null;
                       })()}
                       <span className="font-medium text-foreground text-xs sm:text-sm hidden sm:inline">{winner.animal}</span>
-                      <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                        #{winner.numero.toString().padStart(2, "0")}
-                      </Badge>
+                      {(() => {
+                        const animalData = getAnimalByNombre(winner.animal);
+                        return (
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                            #{animalData?.codigo || winner.numero.toString().padStart(2, "0")}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">

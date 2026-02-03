@@ -283,6 +283,19 @@ export default function Sucursales() {
             {isLoading ? (
               <div className="text-center py-8">Cargando...</div>
             ) : (
+              <Tabs defaultValue="activas" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="activas">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Activas ({sucursalesActivas})
+                  </TabsTrigger>
+                  <TabsTrigger value="inactivas">
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Inactivas ({sucursalesInactivas})
+                  </TabsTrigger>
+                </TabsList>
+                {['activas', 'inactivas'].map((tab) => (
+                  <TabsContent key={tab} value={tab}>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -300,7 +313,9 @@ export default function Sucursales() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sucursales.map((sucursal) => (
+                    {sucursales
+                      .filter(s => tab === 'activas' ? (s.ESTADO === 'A' || !s.ESTADO) : s.ESTADO === 'I')
+                      .map((sucursal) => (
                       <TableRow key={sucursal.CODIGO}>
                         <TableCell className="font-medium">{sucursal.CODIGO}</TableCell>
                         <TableCell className="font-semibold">{sucursal.BODEGA}</TableCell>
@@ -362,6 +377,14 @@ export default function Sucursales() {
                   </TableBody>
                 </Table>
               </div>
+                    {(tab === 'activas' ? sucursalesActivas : sucursalesInactivas) === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No hay sucursales {tab}
+                      </div>
+                    )}
+                  </TabsContent>
+                ))}
+              </Tabs>
             )}
           </CardContent>
         </Card>

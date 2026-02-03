@@ -55,6 +55,61 @@ export default function InformeVentas() {
 
   useEffect(() => {
     cargarSucursales();
+    // Auto-cargar ventas del dia actual al montar
+    const cargarInicial = async () => {
+      try {
+        setIsLoading(true);
+        const params: any = {
+          fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
+          fecha_fin: format(new Date(), 'yyyy-MM-dd'),
+        };
+        const response = await informesAPI.ventas(params);
+        if (response.success) {
+          const apiData = response.data;
+          const mappedData = {
+            por_sucursal: (apiData.ventas_por_sucursal || []).map((v: any) => ({
+              sucursal: v.SUCURSAL,
+              total_ventas: parseFloat(v.TOTAL_VENTAS || 0),
+              total_tickets: parseInt(v.TOTAL_TICKETS || 0),
+            })),
+            por_horario: (apiData.ventas_por_horario || []).map((h: any) => ({
+              hora: h.HORA,
+              descripcion: h.HORARIO,
+              total_tickets: parseInt(h.TOTAL_JUGADAS || 0),
+              total_ventas: parseFloat(h.TOTAL_APOSTADO || 0),
+              promedio: parseInt(h.TOTAL_JUGADAS || 0) > 0
+                ? parseFloat((h.TOTAL_APOSTADO || "0").toString().replace(/\./g, "").replace(/,/g, "."))
+                / parseInt(h.TOTAL_JUGADAS || 1)
+                : 0,
+            })),
+            tickets_anulados: (apiData.tickets_anulados || []).map((t: any) => ({
+              radicado: t.RADICADO,
+              fecha: t.FECHA,
+              hora: t.HORA,
+              sucursal: t.NOMBRE_SUCURSAL,
+              total: parseFloat(t.TOTALJUEGO || 0),
+              usuario: t.USUARIO,
+              motivo: t.MOTIVO_ANULACION,
+              fecha_anulacion: t.FECHA_ANULACION,
+              usuario_anulacion: t.USUARIO_ANULACION,
+            })),
+            kpis: {
+              total_ventas: apiData.resumen?.total_ventas || 0,
+              total_tickets: apiData.resumen?.total_tickets || 0,
+              ventas_canceladas: apiData.resumen?.total_cancelado || 0,
+              tickets_anulados: apiData.resumen?.tickets_anulados || 0,
+              total_anulado: apiData.resumen?.total_anulado || 0,
+            }
+          };
+          setDatos(mappedData);
+        }
+      } catch (error: any) {
+        console.error('Error carga inicial:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    cargarInicial();
   }, []);
 
   const cargarSucursales = async () => {

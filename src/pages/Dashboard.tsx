@@ -11,9 +11,11 @@ const Dashboard = () => {
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="animate-fade-in">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Bienvenido al centro de operaciones de Lotto Animal
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+            Lotto Animal
+          </h1>
+          <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
+            Una hora para ganar
           </p>
         </div>
 

@@ -289,7 +289,7 @@ const Login = () => {
 
                   {/* Subtitle */}
                   <p className="text-gray-500 text-sm max-w-xs mx-auto animate-fade-in animation-delay-300">
-                    Sistema de gestión y administración
+                    Sistema de Gestión de Apuestas
                   </p>
 
                   {/* Security badges */}

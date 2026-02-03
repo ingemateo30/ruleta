@@ -33,6 +33,7 @@ import { Plus, Pencil, Trash2, Users, ShieldAlert, ShieldCheck, Ban, CheckCircle
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { USER_TYPES, USER_TYPE_NAMES } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Usuarios() {
   const { user } = useAuth();
@@ -260,12 +261,27 @@ export default function Usuarios() {
             <CardTitle>Lista de Usuarios</CardTitle>
             <CardDescription>
               Total: {usuarios.length} usuarios registrados
+              ({usuarios.filter(u => u.ESTADO === 'A').length} activos,
+              {' '}{usuarios.filter(u => u.ESTADO !== 'A').length} inactivos)
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8">Cargando...</div>
             ) : (
+              <Tabs defaultValue="activos" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="activos">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Activos ({usuarios.filter(u => u.ESTADO === 'A').length})
+                  </TabsTrigger>
+                  <TabsTrigger value="inactivos">
+                    <Ban className="h-4 w-4 mr-2" />
+                    Inactivos ({usuarios.filter(u => u.ESTADO !== 'A').length})
+                  </TabsTrigger>
+                </TabsList>
+                {['activos', 'inactivos'].map((tab) => (
+                  <TabsContent key={tab} value={tab}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -280,7 +296,9 @@ export default function Usuarios() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usuarios.map((usuario) => (
+                  {usuarios
+                    .filter(u => tab === 'activos' ? u.ESTADO === 'A' : u.ESTADO !== 'A')
+                    .map((usuario) => (
                     <TableRow
                       key={usuario.ID}
                       className={usuario.BLOQUEADO === 1 ? 'opacity-60 bg-red-50 dark:bg-red-950/20' : ''}
@@ -366,6 +384,14 @@ export default function Usuarios() {
                   ))}
                 </TableBody>
               </Table>
+                  {usuarios.filter(u => tab === 'activos' ? u.ESTADO === 'A' : u.ESTADO !== 'A').length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay usuarios {tab}
+                    </div>
+                  )}
+                  </TabsContent>
+                ))}
+              </Tabs>
             )}
           </CardContent>
         </Card>

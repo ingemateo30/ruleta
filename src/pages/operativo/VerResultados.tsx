@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Trophy, Calendar, Loader2, RefreshCw } from "lucide-react";
-import { getAnimalByCodigo, getAnimalByNombre, getAnimalByNumero } from "@/constants/animals";
+import { getAnimalByNombre } from "@/constants/animals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +47,26 @@ const VerResultados = () => {
       });
 
       if (response.success && response.data) {
-        setResultados(response.data);
+        // Filtrar resultados: solo mostrar ganadores cuyo horario ya paso + 1 minuto
+        const now = new Date();
+        const hoy = format(now, 'yyyy-MM-dd');
+
+        const resultadosFiltrados = response.data.map((dia: ResultadoDia) => {
+          if (dia.fecha !== hoy) return dia;
+
+          const sorteosFiltrados = dia.sorteos.filter((sorteo: Sorteo) => {
+            const [horaH, minH] = (sorteo.hora || '00:00:00').split(':').map(Number);
+            const horaSorteo = new Date();
+            horaSorteo.setHours(horaH, minH || 0, 0, 0);
+            // Buffer de 1 minuto post-sorteo
+            horaSorteo.setMinutes(horaSorteo.getMinutes() + 1);
+            return now >= horaSorteo;
+          });
+
+          return { ...dia, sorteos: sorteosFiltrados };
+        }).filter((dia: ResultadoDia) => dia.sorteos.length > 0);
+
+        setResultados(resultadosFiltrados);
       } else {
         setResultados([]);
       }
@@ -167,7 +186,6 @@ const VerResultados = () => {
                   {dia.sorteos.map((sorteo, index) => {
 
             const animalData = getAnimalByNombre(sorteo.animal);
-            console.log('Sorteo:', sorteo, 'AnimalData:', animalData);
                     return (
                       <div
                         key={`${dia.fecha}-${sorteo.hora}-${index}`}
@@ -187,9 +205,7 @@ const VerResultados = () => {
                         <div className="flex items-center justify-center gap-1 mt-1">
                           <Trophy className="h-3 w-3 text-chart-4" />
                           <span className="text-sm text-muted-foreground">
-
-                            #{sorteo.animal === "Ballena" ? "00" : sorteo.numero.toString()}
-
+                            #{animalData?.codigo || sorteo.numero.toString()}
                           </span>
                         </div>
                       </div>

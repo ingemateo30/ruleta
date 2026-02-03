@@ -268,6 +268,7 @@ function listarResultados($conn, $fecha_inicio = null, $fecha_fin = null) {
             LEFT JOIN horariojuego h ON g.CODIGOH = h.NUM
             LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
             WHERE g.ESTADO = 'A'
+            AND (g.FECHA < CURDATE() OR ADDTIME(h.HORA, '00:01:00') <= CURTIME())
         ";
 
         $params = [];
