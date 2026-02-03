@@ -143,6 +143,7 @@ const getMenuItems = (userType: string): MenuItem[] => {
         { title: "Ventas del Dia", icon: <DollarSign className="h-4 w-4" />, href: "/informes/ventas" },
         { title: "Informe Resultados", icon: <PieChart className="h-4 w-4" />, href: "/informes/resultados" },
         { title: "Informe de Pagos", icon: <Wallet className="h-4 w-4" />, href: "/informes/pagos" },
+        { title: "Informe de Cierre", icon: <FileBarChart className="h-4 w-4" />, href: "/informes/cierre" },
       ],
     },
     // Estadisticas - Solo SuperAdmin

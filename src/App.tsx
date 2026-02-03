@@ -24,6 +24,7 @@ import InformeJuegos from "./pages/informes/InformeJuegos";
 import InformeVentas from "./pages/informes/InformeVentas";
 import InformeResultados from "./pages/informes/InformeResultados";
 import InformePagos from "./pages/informes/InformePagos";
+import InformeCierre from "./pages/informes/InformeCierre";
 import Estadisticas from "./pages/Estadisticas";
 import RuletaPublica from "./pages/RuletaPublica";
 import NotFound from "./pages/NotFound";
@@ -144,6 +145,11 @@ const App = () => (
             <Route path="/informes/pagos" element={
               <AdminRoute>
                 <InformePagos />
+              </AdminRoute>
+            } />
+            <Route path="/informes/cierre" element={
+              <AdminRoute>
+                <InformeCierre />
               </AdminRoute>
             } />
 

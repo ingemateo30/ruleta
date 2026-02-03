@@ -29,8 +29,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Horarios() {
   const { user } = useAuth();
@@ -190,17 +191,32 @@ export default function Horarios() {
           <CardTitle>Lista de Horarios</CardTitle>
           <CardDescription>
             Total: {horarios.length} horarios registrados
+            ({horarios.filter(h => h.ESTADO === 'A').length} activos,
+            {' '}{horarios.filter(h => h.ESTADO !== 'A').length} inactivos)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Cargando...</div>
           ) : (
+            <Tabs defaultValue="activos" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="activos">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Activos ({horarios.filter(h => h.ESTADO === 'A').length})
+                </TabsTrigger>
+                <TabsTrigger value="inactivos">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Inactivos ({horarios.filter(h => h.ESTADO !== 'A').length})
+                </TabsTrigger>
+              </TabsList>
+              {['activos', 'inactivos'].map((tab) => (
+                <TabsContent key={tab} value={tab}>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Num</TableHead>
-                  <TableHead>Descripción</TableHead>
+                  <TableHead>Descripcion</TableHead>
                   <TableHead>Hora</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Total Jugadas</TableHead>
@@ -208,7 +224,9 @@ export default function Horarios() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {horarios.map((horario) => (
+                {horarios
+                  .filter(h => tab === 'activos' ? h.ESTADO === 'A' : h.ESTADO !== 'A')
+                  .map((horario) => (
                   <TableRow key={horario.NUM}>
                     <TableCell className="font-medium">{horario.NUM}</TableCell>
                     <TableCell>{horario.DESCRIPCION}</TableCell>
@@ -251,6 +269,14 @@ export default function Horarios() {
                 ))}
               </TableBody>
             </Table>
+                  {horarios.filter(h => tab === 'activos' ? h.ESTADO === 'A' : h.ESTADO !== 'A').length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay horarios {tab}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
           )}
         </CardContent>
       </Card>

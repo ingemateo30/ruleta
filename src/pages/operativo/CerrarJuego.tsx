@@ -21,11 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Lock, CheckCircle2, XCircle, Building2, AlertTriangle, Loader2, Calendar, Search, TrendingUp, DollarSign } from 'lucide-react';
+import { Lock, CheckCircle2, XCircle, Building2, AlertTriangle, AlertCircle, Loader2, Calendar, Search, TrendingUp, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format, subDays } from 'date-fns';
-import { getAnimalByNumero } from '@/constants/animals';
+import { getAnimalByNombre } from '@/constants/animals';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function CerrarJuego() {
@@ -296,10 +296,33 @@ export default function CerrarJuego() {
               Cerrar Juego
             </h1>
             <p className="text-muted-foreground mt-1">
-              Cierra los juegos por dia y sucursal
+              Cierre de sorteos y liquidacion de resultados
             </p>
           </div>
         </div>
+
+        {/* Guia de uso */}
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
+                <AlertCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="text-sm space-y-1">
+                <p className="font-semibold text-blue-800 dark:text-blue-300">Como funciona el cierre de juego:</p>
+                <ol className="list-decimal list-inside text-blue-700 dark:text-blue-400 space-y-1">
+                  <li><strong>Seleccione</strong> el horario del sorteo y la fecha</li>
+                  <li><strong>Verifique</strong> que el resultado (animal ganador) ya este registrado</li>
+                  <li><strong>Revise</strong> el resumen de apuestas, pagos y utilidades</li>
+                  <li><strong>Confirme</strong> el cierre - esta accion es irreversible</li>
+                </ol>
+                <p className="text-blue-600 dark:text-blue-500 text-xs mt-2">
+                  Nota: Debe registrar el resultado del sorteo antes de poder cerrar el juego.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="cerrar" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -309,9 +332,9 @@ export default function CerrarJuego() {
 <TabsContent value="cerrar" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Seleccionar Juego</CardTitle>
+                <CardTitle>Paso 1: Seleccionar Sorteo</CardTitle>
                 <CardDescription>
-                  Seleccione el horario, fecha y sucursal del juego a cerrar
+                  Elija el horario del sorteo que desea cerrar y la fecha correspondiente
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -439,9 +462,9 @@ export default function CerrarJuego() {
                         Animal Ganador
                       </div>
                       <div className="flex items-center gap-2">
-                        {resumen.codigo_animal_ganador && (
+                        {resumen.animal_ganador && (
                           (() => {
-                            const animalData = getAnimalByNumero(parseInt(resumen.codigo_animal_ganador));
+                            const animalData = getAnimalByNombre(resumen.animal_ganador);
                             return animalData ? (
                               <img
                                 src={animalData.imagen}
@@ -749,9 +772,9 @@ export default function CerrarJuego() {
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
-                                        {cierre.CODANIMAL_GANADOR && (
+                                        {cierre.ANIMAL_GANADOR && (
                                           (() => {
-                                            const animalData = getAnimalByNumero(parseInt(cierre.CODANIMAL_GANADOR));
+                                            const animalData = getAnimalByNombre(cierre.ANIMAL_GANADOR);
                                             return animalData ? (
                                               <img
                                                 src={animalData.imagen}

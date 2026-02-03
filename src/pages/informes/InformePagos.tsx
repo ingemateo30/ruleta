@@ -24,7 +24,7 @@ import { Receipt, Download, Loader2, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getAnimalByNumero } from '@/constants/animals';
+import { getAnimalByNombre } from '@/constants/animals';
 
 export default function InformePagos() {
   const [datos, setDatos] = useState<any>(null);
@@ -315,7 +315,7 @@ export default function InformePagos() {
                     </TableHeader>
                     <TableBody>
                       {datos.pagos.map((pago: any, index: number) => {
-                        const animalData = getAnimalByNumero(parseInt(pago.CODANIMAL));
+                        const animalData = getAnimalByNombre(pago.ANIMAL);
                         return (
                           <TableRow key={pago.ID || index}>
                             <TableCell className="font-mono font-medium">
