@@ -9,6 +9,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
 $uriParts = explode('/', trim(parse_url($uri, PHP_URL_PATH), '/'));
 
+// Obtener sucursal del operario (null para admins)
+$sucursalOperario = getOperatorSucursal($currentUser);
+
 try {
     $db = Database::getInstance()->getConnection();
 
@@ -67,12 +70,20 @@ try {
             AND h.ESTADOC = 'A'
         ";
 
+        $params = [];
+
+        // Filtro por sucursal para operarios
+        if ($sucursalOperario !== null) {
+            $sql .= " AND j.SUCURSAL = ?";
+            $params[] = $sucursalOperario;
+        }
+
         if (!empty($radicado)) {
             $sql .= " AND j.RADICADO = ?";
-            $params = [$radicado];
+            $params[] = $radicado;
         } else {
             $sql .= " AND DATE(j.FECHA) = ?";
-            $params = [$fecha];
+            $params[] = $fecha;
         }
 
         $sql .= " ORDER BY j.FECHA DESC, j.HORA DESC";
@@ -101,13 +112,21 @@ try {
         }
 
         // Buscar la jugada
-        $stmt = $db->prepare("
+        $sqlVerificar = "
             SELECT j.*, b.BODEGA as NOMBRE_SUCURSAL
             FROM jugarlotto j
             LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
             WHERE j.RADICADO = ? AND j.ESTADO = 'A'
-        ");
-        $stmt->execute([$radicado]);
+        ";
+        $paramsVerificar = [$radicado];
+
+        if ($sucursalOperario !== null) {
+            $sqlVerificar .= " AND j.SUCURSAL = ?";
+            $paramsVerificar[] = $sucursalOperario;
+        }
+
+        $stmt = $db->prepare($sqlVerificar);
+        $stmt->execute($paramsVerificar);
         $jugada = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$jugada) {
@@ -198,7 +217,7 @@ try {
 
         try {
             // Buscar jugadas ganadoras pendientes de pago
-            $stmt = $db->prepare("
+            $sqlPago = "
                  SELECT DISTINCT
                     j.RADICADO,
                     j.FECHA,
@@ -229,8 +248,16 @@ try {
                     AND CODIGOJ = h.CODIGOJ
                     AND ESTADO = 'A'
                 )
-            ");
-            $stmt->execute([$data['radicado']]);
+            ";
+            $paramsPago = [$data['radicado']];
+
+            if ($sucursalOperario !== null) {
+                $sqlPago .= " AND j.SUCURSAL = ?";
+                $paramsPago[] = $sucursalOperario;
+            }
+
+            $stmt = $db->prepare($sqlPago);
+            $stmt->execute($paramsPago);
             $ganadores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($ganadores)) {
@@ -310,6 +337,12 @@ try {
 
         $params = [];
 
+        // Filtro obligatorio por sucursal para operarios
+        if ($sucursalOperario !== null) {
+            $sql .= " AND p.SUCURSAL = ?";
+            $params[] = $sucursalOperario;
+        }
+
         if (!empty($fechaInicio)) {
             $sql .= " AND p.FECHA >= ?";
             $params[] = $fechaInicio;
@@ -320,7 +353,7 @@ try {
             $params[] = $fechaFin;
         }
 
-        if (!empty($sucursal)) {
+        if (!empty($sucursal) && $sucursalOperario === null) {
             $sql .= " AND p.SUCURSAL = ?";
             $params[] = $sucursal;
         }
@@ -341,7 +374,7 @@ try {
     elseif ($method === 'GET' && end($uriParts) === 'estadisticas') {
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
 
-        $stmt = $db->prepare("
+        $sqlStats = "
             SELECT
                 COUNT(*) as total_pagos,
                 COUNT(DISTINCT RADICADO) as total_radicados,
@@ -351,12 +384,20 @@ try {
                 COALESCE(MIN(VALOR_GANADO), 0) as pago_minimo
             FROM pagos
             WHERE FECHA = ? AND ESTADO = 'A'
-        ");
-        $stmt->execute([$fecha]);
+        ";
+        $paramsStats = [$fecha];
+
+        if ($sucursalOperario !== null) {
+            $sqlStats .= " AND SUCURSAL = ?";
+            $paramsStats[] = $sucursalOperario;
+        }
+
+        $stmt = $db->prepare($sqlStats);
+        $stmt->execute($paramsStats);
         $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Pagos por sucursal
-        $stmt = $db->prepare("
+        $sqlPorSuc = "
             SELECT
                 b.BODEGA,
                 COUNT(*) as total_pagos,
@@ -364,9 +405,18 @@ try {
             FROM pagos p
             JOIN bodegas b ON p.SUCURSAL = b.CODIGO
             WHERE p.FECHA = ? AND p.ESTADO = 'A'
-            GROUP BY b.CODIGO, b.BODEGA
-        ");
-        $stmt->execute([$fecha]);
+        ";
+        $paramsPorSuc = [$fecha];
+
+        if ($sucursalOperario !== null) {
+            $sqlPorSuc .= " AND p.SUCURSAL = ?";
+            $paramsPorSuc[] = $sucursalOperario;
+        }
+
+        $sqlPorSuc .= " GROUP BY b.CODIGO, b.BODEGA";
+
+        $stmt = $db->prepare($sqlPorSuc);
+        $stmt->execute($paramsPorSuc);
         $porSucursal = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode([

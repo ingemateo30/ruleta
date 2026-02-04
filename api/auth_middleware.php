@@ -306,6 +306,22 @@ function validateCsrfToken($token) {
 }
 
 /**
+ * Determina si el usuario es un operario y retorna su codigo de sucursal.
+ * Para SuperAdmin y Admin retorna null (pueden ver todo).
+ *
+ * @param array|null $user Datos del usuario autenticado
+ * @return string|null Codigo de sucursal del operario, o null si no aplica
+ */
+function getOperatorSucursal($user) {
+    if (!$user) return null;
+    // Solo los operarios (TIPO='2') tienen restriccion por sucursal
+    if (strval($user['TIPO']) === '2') {
+        return $user['CODBODEGA'] ?? null;
+    }
+    return null;
+}
+
+/**
  * Inicializa la seguridad para un endpoint de API
  *
  * @param bool $requireAuth Si se requiere autenticacion

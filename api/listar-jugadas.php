@@ -80,7 +80,7 @@ function listarHorarios($conn) {
  * Consulta las jugadas realizadas en una fecha y horario específicos
  * Replica: ListarJuegos()
  */
-function consultarJugadas($conn, $fecha, $codigoJuego) {
+function consultarJugadas($conn, $fecha, $codigoJuego, $sucursalOperario = null) {
     try {
         if (empty($fecha)) {
             return [
@@ -96,18 +96,25 @@ function consultarJugadas($conn, $fecha, $codigoJuego) {
             ];
         }
 
-        $stmt = $conn->prepare(
-            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO
-             FROM hislottojuego 
-             WHERE CODIGOJ = :codigoJuego AND FECHA = :fecha
-             ORDER BY HORA DESC"
-        );
-        
-        $stmt->execute([
+        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO
+             FROM hislottojuego
+             WHERE CODIGOJ = :codigoJuego AND FECHA = :fecha";
+
+        $params = [
             'codigoJuego' => $codigoJuego,
             'fecha' => $fecha
-        ]);
-        
+        ];
+
+        if ($sucursalOperario !== null) {
+            $sql .= " AND SUCURSAL = :sucursal";
+            $params['sucursal'] = $sucursalOperario;
+        }
+
+        $sql .= " ORDER BY HORA DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+
         $jugadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Formatear valores numéricos para coincidir con el formato Java si es necesario
@@ -138,19 +145,25 @@ function consultarJugadas($conn, $fecha, $codigoJuego) {
 /**
  * Obtiene las jugadas más recientes del día actual
  */
-function obtenerJugadasRecientes($conn, $limite = 20) {
+function obtenerJugadasRecientes($conn, $limite = 20, $sucursalOperario = null) {
     try {
         $fechaActual = date('Y-m-d');
-        
-        $stmt = $conn->prepare(
-            "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO
-             FROM hislottojuego 
-             WHERE FECHA = :fecha
-             ORDER BY HORA DESC, RADICADO DESC
-             LIMIT :limite"
-        );
-        
+
+        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO
+             FROM hislottojuego
+             WHERE FECHA = :fecha";
+
+        if ($sucursalOperario !== null) {
+            $sql .= " AND SUCURSAL = :sucursal";
+        }
+
+        $sql .= " ORDER BY HORA DESC, RADICADO DESC LIMIT :limite";
+
+        $stmt = $conn->prepare($sql);
         $stmt->bindValue(':fecha', $fechaActual, PDO::PARAM_STR);
+        if ($sucursalOperario !== null) {
+            $stmt->bindValue(':sucursal', $sucursalOperario, PDO::PARAM_STR);
+        }
         $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
         $stmt->execute();
         
@@ -179,20 +192,27 @@ function obtenerJugadasRecientes($conn, $limite = 20) {
  * Obtiene los datos de un juego específico formateados para el voucher
  * Permite la reimpresión con la misma estructura que realizar-juego/guardar
  */
-function obtenerDatosVoucher($conn, $radicado) {
+function obtenerDatosVoucher($conn, $radicado, $sucursalOperario = null) {
     try {
         if (empty($radicado)) {
             return ['success' => false, 'error' => 'El número de radicado es requerido'];
         }
 
         // 1. Obtener datos de la tabla principal
-        $stmtPrincipal = $conn->prepare(
-            "SELECT jl.RADICADO, jl.FECHA, jl.HORA, jl.SUCURSAL as CODIGO_SUCURSAL, jl.TOTALJUEGO, b.BODEGA as NOMBRE_SUCURSAL
+        $sql = "SELECT jl.RADICADO, jl.FECHA, jl.HORA, jl.SUCURSAL as CODIGO_SUCURSAL, jl.TOTALJUEGO, b.BODEGA as NOMBRE_SUCURSAL
              FROM jugarlotto jl
              LEFT JOIN bodegas b ON jl.SUCURSAL = b.CODIGO
-             WHERE jl.RADICADO = :radicado"
-        );
-        $stmtPrincipal->execute(['radicado' => $radicado]);
+             WHERE jl.RADICADO = :radicado";
+
+        $params = ['radicado' => $radicado];
+
+        if ($sucursalOperario !== null) {
+            $sql .= " AND jl.SUCURSAL = :sucursal";
+            $params['sucursal'] = $sucursalOperario;
+        }
+
+        $stmtPrincipal = $conn->prepare($sql);
+        $stmtPrincipal->execute($params);
         $datosPrincipal = $stmtPrincipal->fetch(PDO::FETCH_ASSOC);
 
         if (!$datosPrincipal) {
@@ -247,44 +267,47 @@ function obtenerDatosVoucher($conn, $radicado) {
 
 try {
     $conn = getDBConnection();
-    
+
     if (!$conn) {
         sendError('Error de conexión a la base de datos', 500);
     }
-    
+
+    // Obtener sucursal del operario (null para admins)
+    $sucursalOperario = getOperatorSucursal($currentUser);
+
     $method = $_SERVER['REQUEST_METHOD'];
     $path = $_SERVER['PATH_INFO'] ?? '/';
-    
+
     // Parsear la ruta
     $segments = array_filter(explode('/', $path));
     $action = $segments[1] ?? '';
     $param = $segments[2] ?? '';
-    
+
     // GET: Listar horarios
     if ($method === 'GET' && $action === 'horarios') {
         $result = listarHorarios($conn);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
     // GET: Consultar jugadas
     elseif ($method === 'GET' && $action === 'consultar') {
         $fecha = $_GET['fecha'] ?? null;
         $codigoJuego = $_GET['codigoJuego'] ?? null;
-        
-        $result = consultarJugadas($conn, $fecha, $codigoJuego);
+
+        $result = consultarJugadas($conn, $fecha, $codigoJuego, $sucursalOperario);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
     // GET: Listar jugadas recientes del día
     elseif ($method === 'GET' && $action === 'recientes') {
         $limite = $_GET['limite'] ?? 20;
-        $result = obtenerJugadasRecientes($conn, $limite);
+        $result = obtenerJugadasRecientes($conn, $limite, $sucursalOperario);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
     // GET: Datos para Voucher (Reimpresión)
     elseif ($method === 'GET' && $action === 'voucher' && !empty($param)) {
-        $result = obtenerDatosVoucher($conn, $param);
+        $result = obtenerDatosVoucher($conn, $param, $sucursalOperario);
         sendResponse($result, $result['success'] ? 200 : 404);
     }
     

@@ -49,7 +49,7 @@ function sendError($message, $statusCode = 400, $details = null) {
 /**
  * Busca un juego y sus detalles por radicado y fecha
  */
-function buscarJuego($conn, $radicado, $fecha) {
+function buscarJuego($conn, $radicado, $fecha, $sucursalOperario = null) {
     try {
         if (empty($radicado) || empty($fecha)) {
             return [
@@ -59,12 +59,19 @@ function buscarJuego($conn, $radicado, $fecha) {
         }
 
         // 1. Buscar en jugarlotto (Cabecera)
-        $stmtJuego = $conn->prepare(
-            "SELECT RADICADO, FECHA, HORA, SUCURSAL, TOTALJUEGO, ESTADO 
-             FROM jugarlotto 
-             WHERE RADICADO = :radicado AND FECHA = :fecha"
-        );
-        $stmtJuego->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+        $sql = "SELECT RADICADO, FECHA, HORA, SUCURSAL, TOTALJUEGO, ESTADO
+             FROM jugarlotto
+             WHERE RADICADO = :radicado AND FECHA = :fecha";
+
+        $params = ['radicado' => $radicado, 'fecha' => $fecha];
+
+        if ($sucursalOperario !== null) {
+            $sql .= " AND SUCURSAL = :sucursal";
+            $params['sucursal'] = $sucursalOperario;
+        }
+
+        $stmtJuego = $conn->prepare($sql);
+        $stmtJuego->execute($params);
         $juego = $stmtJuego->fetch(PDO::FETCH_ASSOC);
 
         if (!$juego) {
@@ -103,7 +110,7 @@ function buscarJuego($conn, $radicado, $fecha) {
 /**
  * Anula un juego cambiando su estado
  */
-function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = null) {
+function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = null, $sucursalOperario = null) {
     try {
         if (empty($radicado) || empty($fecha)) {
             return [
@@ -120,12 +127,18 @@ function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = 
         }
 
        // Verificar que el juego exista y esté activo antes de proceder
-        $stmtCheck = $conn->prepare(
-            "SELECT RADICADO, ESTADO FROM jugarlotto WHERE RADICADO = :radicado AND FECHA = :fecha"
-        );
-        $stmtCheck->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+        $sqlCheck = "SELECT RADICADO, ESTADO, SUCURSAL FROM jugarlotto WHERE RADICADO = :radicado AND FECHA = :fecha";
+        $paramsCheck = ['radicado' => $radicado, 'fecha' => $fecha];
+
+        if ($sucursalOperario !== null) {
+            $sqlCheck .= " AND SUCURSAL = :sucursal";
+            $paramsCheck['sucursal'] = $sucursalOperario;
+        }
+
+        $stmtCheck = $conn->prepare($sqlCheck);
+        $stmtCheck->execute($paramsCheck);
         $juegoExistente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
- 
+
         if (!$juegoExistente) {
             return [
                 'success' => false,
@@ -214,25 +227,28 @@ function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = 
 
 try {
     $conn = getDBConnection();
-    
+
     if (!$conn) {
         sendError('Error de conexión a la base de datos', 500);
     }
-    
+
+    // Obtener sucursal del operario (null para admins)
+    $sucursalOperario = getOperatorSucursal($currentUser);
+
     $method = $_SERVER['REQUEST_METHOD'];
     $path = $_SERVER['PATH_INFO'] ?? '/';
-    
+
     $segments = array_filter(explode('/', $path));
     $action = $segments[1] ?? '';
-    
+
     // GET: Buscar juego
     if ($method === 'GET' && $action === 'buscar') {
         $radicado = $_GET['radicado'] ?? null;
         $fecha = $_GET['fecha'] ?? null;
-        $result = buscarJuego($conn, $radicado, $fecha);
+        $result = buscarJuego($conn, $radicado, $fecha, $sucursalOperario);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
-    
+
     // POST: Ejecutar anulación
     elseif ($method === 'POST' && $action === 'ejecutar') {
         $input = file_get_contents('php://input');
@@ -243,7 +259,7 @@ try {
         $motivo = $data['motivo'] ?? null;
         $usuario = $data['usuario'] ?? null;
 
-        $result = ejecutarAnulacion($conn, $radicado, $fecha, $motivo, $usuario);
+        $result = ejecutarAnulacion($conn, $radicado, $fecha, $motivo, $usuario, $sucursalOperario);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
     
