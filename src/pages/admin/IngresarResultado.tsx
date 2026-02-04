@@ -115,11 +115,17 @@ const IngresarResultado = () => {
     cargarDatos();
   }, []);
 
+  // Obtener fecha de hoy en formato YYYY-MM-DD (local)
+  const getFechaHoy = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  const fechaHoy = getFechaHoy();
+
   // Establecer fecha actual por defecto (usando fecha local, no UTC)
   useEffect(() => {
-    const now = new Date();
-    const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    setFecha(hoy);
+    setFecha(fechaHoy);
   }, []);
 
   // Cargar horarios con estado cuando cambia la fecha
@@ -156,29 +162,26 @@ const IngresarResultado = () => {
   const isHorarioVencido = (horaStr: string) => {
     if (!horaStr) return false;
 
-    // Solo validar horarios vencidos si la fecha seleccionada es HOY
-    const fechaSeleccionada = new Date(fecha + 'T00:00:00');
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    
-    // Si la fecha seleccionada no es hoy, NO marcar como vencido
-    if (fechaSeleccionada.getTime() !== hoy.getTime()) {
-      return false;
+    // Si la fecha seleccionada es anterior a hoy, TODOS los horarios están vencidos
+    if (fecha < fechaHoy) {
+      return true;
     }
 
-    try {
-      const fechaHorario = new Date();
-      // Asumimos que horaStr viene en formato "HH:mm" o "HH:mm:ss" (ej: "09:00:00" o "09:00")
-      const [horas, minutos] = horaStr.split(':').map(Number);
-      
-      fechaHorario.setHours(horas, minutos || 0, 0, 0);
-
-      // Si la hora actual es mayor a la hora del sorteo, está vencido
-      return horaActual >= fechaHorario;
-    } catch (e) {
-      console.error("Error al parsear hora", horaStr);
-      return false;
+    // Si la fecha es hoy, verificar si la hora ya pasó
+    if (fecha === fechaHoy) {
+      try {
+        const fechaHorario = new Date();
+        const [horas, minutos] = horaStr.split(':').map(Number);
+        fechaHorario.setHours(horas, minutos || 0, 0, 0);
+        return horaActual >= fechaHorario;
+      } catch (e) {
+        console.error("Error al parsear hora", horaStr);
+        return false;
+      }
     }
+
+    // Fecha futura (no debería llegar aquí por el max del input)
+    return false;
   };
 
   const handleGuardarResultado = async () => {
@@ -392,7 +395,12 @@ const IngresarResultado = () => {
                 <Input
                   type="date"
                   value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
+                  max={fechaHoy}
+                  onChange={(e) => {
+                    // Validar que no se seleccione fecha futura
+                    if (e.target.value > fechaHoy) return;
+                    setFecha(e.target.value);
+                  }}
                 />
               </div>
 
