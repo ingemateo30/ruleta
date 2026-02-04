@@ -174,6 +174,15 @@ function guardarResultado($conn, $data) {
             }
         }
 
+        // Validar que la fecha no sea futura
+        $fechaHoy = date('Y-m-d');
+        if ($data['fecha'] > $fechaHoy) {
+            return [
+                'success' => false,
+                'error' => 'No se pueden ingresar resultados para fechas futuras'
+            ];
+        }
+
         // Verificar si ya existe un ganador para este horario y fecha
         $stmtCheck = $conn->prepare(
             "SELECT g.CODIGOA, g.ANIMAL, h.HORA
