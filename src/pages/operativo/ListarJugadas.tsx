@@ -31,7 +31,7 @@ import { Search, Loader2, FileText, Calendar, Clock, Printer, History, Ban } fro
 import { listarJugadasService } from "@/api";
 import type { HorarioJugada, JugadaListada } from "@/api";
 import ReciboCaja from "@/components/ReciboCaja";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Verifica si un ticket puede ser reimpreso por un operario
