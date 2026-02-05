@@ -96,7 +96,7 @@ function consultarJugadas($conn, $fecha, $codigoJuego, $sucursalOperario = null)
             ];
         }
 
-        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO
+        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO, FECHA
              FROM hislottojuego
              WHERE CODIGOJ = :codigoJuego AND FECHA = :fecha";
 
@@ -149,7 +149,7 @@ function obtenerJugadasRecientes($conn, $limite = 20, $sucursalOperario = null) 
     try {
         $fechaActual = date('Y-m-d');
 
-        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO
+        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO, FECHA
              FROM hislottojuego
              WHERE FECHA = :fecha";
 
@@ -189,10 +189,57 @@ function obtenerJugadasRecientes($conn, $limite = 20, $sucursalOperario = null) 
 }
 
 /**
+ * Valida si se puede reimprimir un ticket (solo operarios)
+ * - No permite reimpresión de fechas pasadas
+ * - No permite reimpresión si el horario del juego ya pasó
+ * @param string $fechaTicket Fecha del ticket (Y-m-d)
+ * @param array $juegos Array de juegos con HORAJUEGO
+ * @return array ['permitido' => bool, 'motivo' => string|null]
+ */
+function validarReimpresionOperario($fechaTicket, $juegos) {
+    // Usar zona horaria de Colombia
+    date_default_timezone_set('America/Bogota');
+
+    $fechaActual = date('Y-m-d');
+    $horaActual = date('H:i:s');
+
+    // 1. No permitir fechas pasadas
+    if ($fechaTicket < $fechaActual) {
+        return [
+            'permitido' => false,
+            'motivo' => 'No se puede reimprimir tickets de fechas pasadas'
+        ];
+    }
+
+    // 2. Si es del día actual, verificar que ningún juego haya vencido
+    if ($fechaTicket === $fechaActual) {
+        foreach ($juegos as $juego) {
+            $horaJuego = $juego['HORAJUEGO'] ?? null;
+            if ($horaJuego) {
+                // Normalizar formato de hora (puede venir como HH:MM o HH:MM:SS)
+                $horaJuegoNormalizada = strlen($horaJuego) === 5 ? $horaJuego . ':00' : $horaJuego;
+
+                // Si la hora del juego ya pasó, no permitir
+                if ($horaJuegoNormalizada <= $horaActual) {
+                    return [
+                        'permitido' => false,
+                        'motivo' => "El horario de juego ({$horaJuego}) ya venció. No se puede reimprimir."
+                    ];
+                }
+            }
+        }
+    }
+
+    // 3. Si es fecha futura o todos los horarios están vigentes, permitir
+    return ['permitido' => true, 'motivo' => null];
+}
+
+/**
  * Obtiene los datos de un juego específico formateados para el voucher
  * Permite la reimpresión con la misma estructura que realizar-juego/guardar
+ * SEGURIDAD: Operarios no pueden reimprimir tickets de fechas pasadas o con horarios vencidos
  */
-function obtenerDatosVoucher($conn, $radicado, $sucursalOperario = null) {
+function obtenerDatosVoucher($conn, $radicado, $sucursalOperario = null, $esOperario = false) {
     try {
         if (empty($radicado)) {
             return ['success' => false, 'error' => 'El número de radicado es requerido'];
@@ -228,7 +275,19 @@ function obtenerDatosVoucher($conn, $radicado, $sucursalOperario = null) {
         $stmtDetalle->execute(['radicado' => $radicado]);
         $detalles = $stmtDetalle->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Formatear a la estructura del voucher
+        // 3. SEGURIDAD: Si es operario, validar restricciones de tiempo
+        if ($esOperario) {
+            $validacion = validarReimpresionOperario($datosPrincipal['FECHA'], $detalles);
+            if (!$validacion['permitido']) {
+                return [
+                    'success' => false,
+                    'error' => $validacion['motivo'],
+                    'codigo' => 'REIMPRESION_NO_PERMITIDA'
+                ];
+            }
+        }
+
+        // 4. Formatear a la estructura del voucher
         $juegosVoucher = [];
         foreach ($detalles as $juego) {
             $juegosVoucher[] = [
@@ -306,9 +365,12 @@ try {
     }
 
     // GET: Datos para Voucher (Reimpresión)
+    // SEGURIDAD: Los operarios tienen restricciones de tiempo para reimprimir
     elseif ($method === 'GET' && $action === 'voucher' && !empty($param)) {
-        $result = obtenerDatosVoucher($conn, $param, $sucursalOperario);
-        sendResponse($result, $result['success'] ? 200 : 404);
+        // Determinar si el usuario es operario (TIPO='2')
+        $esOperario = isset($currentUser['TIPO']) && strval($currentUser['TIPO']) === '2';
+        $result = obtenerDatosVoucher($conn, $param, $sucursalOperario, $esOperario);
+        sendResponse($result, $result['success'] ? 200 : ($result['codigo'] ?? '') === 'REIMPRESION_NO_PERMITIDA' ? 403 : 404);
     }
     
     // Ruta no encontrada
