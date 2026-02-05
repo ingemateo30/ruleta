@@ -370,8 +370,7 @@ try {
         // Determinar si el usuario es operario (TIPO='2')
         $esOperario = isset($currentUser['TIPO']) && strval($currentUser['TIPO']) === '2';
         $result = obtenerDatosVoucher($conn, $param, $sucursalOperario, $esOperario);
-        sendResponse($result, $result['success'] ? 200 : ($result['codigo'] ?? '') === 'REIMPRESION_NO_PERMITIDA' ? 403 : 404);
-    }
+        sendResponse($result, $result['success'] ? 200 : ((isset($result['codigo']) && $result['codigo'] === 'REIMPRESION_NO_PERMITIDA') ? 403 : 404));    }
     
     // Ruta no encontrada
     else {

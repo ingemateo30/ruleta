@@ -44,6 +44,9 @@ const ReciboCaja = ({
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [qrImage, setQrImage] = useState<HTMLImageElement | null>(null);
 
+  // Factor de escala para alta resolución
+  const SCALE_FACTOR = 3;
+
   // Cargar el logo
   useEffect(() => {
     const loadLogo = async () => {
@@ -66,7 +69,7 @@ const ReciboCaja = ({
     }
   }, [open]);
 
-  // Generar QR Code
+  // Generar QR Code en alta resolución
   useEffect(() => {
     const generateQR = async () => {
       if (!radicado || !sucursal || !fecha || !hora) return;
@@ -75,7 +78,7 @@ const ReciboCaja = ({
         const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
 
         const qrDataUrl = await QRCode.toDataURL(qrData, {
-          width: 120,
+          width: 120 * SCALE_FACTOR, // Alta resolución para el QR
           margin: 1,
           color: {
             dark: '#000000',
@@ -145,7 +148,6 @@ const ReciboCaja = ({
 
       const logoHeight = logoImage ? logoDisplayHeight + 8 : 0;
       const qrHeight = qrImage ? 120 + 15 : 0;
-      // Title "Lotto Animal / Una hora para ganar" below logo
       const titleHeight = 35;
       const headerHeight = logoHeight + titleHeight + 10 + 65 + 15 + 40 + 12;
       const jugadasHeight = jugadas.length * 20;
@@ -153,17 +155,22 @@ const ReciboCaja = ({
       const paddingTotal = 20;
       const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
 
-      // 80mm thermal paper = ~302px
+      // 80mm thermal paper = ~302px (base)
       const width = 302;
-      canvas.width = width;
-      canvas.height = totalHeight;
+      
+      // Configurar canvas en alta resolución
+      canvas.width = width * SCALE_FACTOR;
+      canvas.height = totalHeight * SCALE_FACTOR;
+      
+      // Escalar el contexto
+      ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
 
       const padding = 10;
       let y = padding;
 
       // Fondo blanco
       ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, width, totalHeight);
 
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
@@ -217,7 +224,7 @@ const ReciboCaja = ({
       ctx.textAlign = "left";
       y += 16;
 
-      // Hora (primero la hora, luego el valor va abajo en el total)
+      // Hora
       const horaFormateada = formatearHora(hora);
       ctx.fillText("Hora:", padding, y);
       ctx.textAlign = "right";
@@ -243,7 +250,7 @@ const ReciboCaja = ({
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 14;
 
-      // Datos de las jugadas (hora primero, luego el resto con espaciado)
+      // Datos de las jugadas
       ctx.font = "11px monospace";
       jugadas.forEach((jugada) => {
         ctx.textAlign = "left";
@@ -285,7 +292,7 @@ const ReciboCaja = ({
       ctx.fillText("Este es su comprobante de juego", width / 2, y);
       y += 15;
 
-      // QR Code centrado
+      // QR Code centrado (ya viene en alta resolución)
       if (qrImage) {
         const qrSize = 120;
         const qrX = (width - qrSize) / 2;
@@ -297,7 +304,7 @@ const ReciboCaja = ({
       ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
       y += 12;
 
-      // Terminos y condiciones (sin guiones, fuente mas grande)
+      // Terminos y condiciones
       ctx.font = "bold 9px monospace";
       ctx.textAlign = "center";
       ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
@@ -433,8 +440,9 @@ const ReciboCaja = ({
               className="bg-white shadow-lg"
               style={{
                 width: "302px",
+                height: "auto",
                 display: "block",
-                imageRendering: "crisp-edges"
+                imageRendering: "auto"
               }}
             />
           </div>
