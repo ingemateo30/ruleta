@@ -67,7 +67,7 @@ const puedeReimprimirTicket = (jugada: JugadaListada, fechaConsultada: string | 
 
 const ListarJugadas = () => {
   const { user } = useAuth();
-  const esOperario = user?.TIPO === '2';
+  const esOperario = String(user?.tipo) === '2';
 
   const [horarios, setHorarios] = useState<HorarioJugada[]>([]);
   const [fechaConsulta, setFechaConsulta] = useState("");
