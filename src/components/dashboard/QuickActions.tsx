@@ -2,17 +2,24 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Eye, CreditCard, LogOut, Gamepad2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { USER_TYPES } from "@/api/types";
 
 const QuickActions = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const actions = [
+  // Determinar el tipo de usuario
+  const isOperario = String(user?.tipo) === USER_TYPES.OPERARIO;
+
+  const allActions = [
     {
       title: "Realizar Jugadas",
       description: "Registrar nuevas apuestas",
       icon: <Play className="h-6 w-6 sm:h-8 sm:w-8" />,
       href: "/operativo/jugadas",
       variant: "default" as const,
+      showForOperario: true,
     },
     {
       title: "Ver Resultados",
@@ -20,6 +27,7 @@ const QuickActions = () => {
       icon: <Eye className="h-6 w-6 sm:h-8 sm:w-8" />,
       href: "/operativo/resultados",
       variant: "success" as const,
+      showForOperario: true,
     },
     {
       title: "Realizar Pagos",
@@ -27,15 +35,22 @@ const QuickActions = () => {
       icon: <CreditCard className="h-6 w-6 sm:h-8 sm:w-8" />,
       href: "/operativo/pagos",
       variant: "info" as const,
+      showForOperario: true,
     },
     {
       title: "Cerrar Juego",
       description: "Finalizar apuestas",
       icon: <LogOut className="h-6 w-6 sm:h-8 sm:w-8" />,
-      href: "/operativo/cerrar",
+      href: "/operativo/cerrar-juego",
       variant: "danger" as const,
+      showForOperario: false, // Solo Admin y SuperAdmin
     },
   ];
+
+  // Filtrar acciones segun el rol del usuario
+  const actions = isOperario
+    ? allActions.filter(action => action.showForOperario)
+    : allActions;
 
   return (
     <Card className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>

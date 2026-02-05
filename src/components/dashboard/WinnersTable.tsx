@@ -32,6 +32,11 @@ const WinnersTable = () => {
   const isOperario = String(user?.tipo) === USER_TYPES.OPERARIO;
 
   useEffect(() => {
+    // Esperar a que el usuario esté cargado antes de decidir
+    if (!user) {
+      return;
+    }
+
     // Los operarios no tienen acceso a estadísticas
     if (isOperario) {
       setIsLoading(false);
@@ -42,7 +47,7 @@ const WinnersTable = () => {
     // Actualizar cada 60 segundos
     const interval = setInterval(cargarGanadores, 60000);
     return () => clearInterval(interval);
-  }, [isOperario]);
+  }, [user, isOperario]);
 
   const cargarGanadores = async () => {
     try {
@@ -64,8 +69,8 @@ const WinnersTable = () => {
     }
   };
 
-  // Operarios no ven esta tabla
-  if (isOperario) {
+  // Operarios no ven esta tabla - tambien verificar que el usuario esté cargado
+  if (isOperario || !user) {
     return null;
   }
 

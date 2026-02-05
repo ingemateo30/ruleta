@@ -15,13 +15,18 @@ const StatsCards = () => {
   const isOperario = String(user?.tipo) === USER_TYPES.OPERARIO;
 
   useEffect(() => {
+    // Esperar a que el usuario esté cargado antes de decidir
+    if (!user) {
+      return;
+    }
+
     // Los operarios no tienen acceso a estadísticas del dashboard
     if (isOperario) {
       setIsLoading(false);
       return;
     }
     cargarEstadisticas();
-  }, [isOperario]);
+  }, [user, isOperario]);
 
   const cargarEstadisticas = async () => {
     try {
@@ -36,8 +41,8 @@ const StatsCards = () => {
     }
   };
 
-  // Operarios no ven estadísticas - mostrar mensaje simple
-  if (isOperario) {
+  // Operarios no ven estadísticas - tambien verificar que el usuario esté cargado
+  if (isOperario || !user) {
     return null;
   }
 
