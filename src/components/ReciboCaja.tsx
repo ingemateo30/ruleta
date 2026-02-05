@@ -44,8 +44,8 @@ const ReciboCaja = ({
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [qrImage, setQrImage] = useState<HTMLImageElement | null>(null);
 
-  // Factor de escala para alta resolución
-  const SCALE_FACTOR = 3;
+  // Factor de escala para alta resolución (aumentado para mejor calidad de impresión)
+  const SCALE_FACTOR = 4;
 
   // Cargar el logo
   useEffect(() => {
@@ -162,6 +162,9 @@ const ReciboCaja = ({
       canvas.width = width * SCALE_FACTOR;
       canvas.height = totalHeight * SCALE_FACTOR;
       
+      // Deshabilitar smoothing para texto más nítido
+      ctx.imageSmoothingEnabled = false;
+      
       // Escalar el contexto
       ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
 
@@ -183,10 +186,10 @@ const ReciboCaja = ({
       }
 
       // Titulo: "LOTTO ANIMAL" y subtitulo "Una hora para ganar"
-      ctx.font = "bold 16px monospace";
+      ctx.font = "bold 18px monospace";
       ctx.fillText("LOTTO ANIMAL", width / 2, y + 14);
       y += 18;
-      ctx.font = "bold 11px monospace";
+      ctx.font = "bold 12px monospace";
       ctx.fillText("Una hora para ganar", width / 2, y + 10);
       y += 18;
 
@@ -200,7 +203,7 @@ const ReciboCaja = ({
 
       // Info del juego
       ctx.textAlign = "left";
-      ctx.font = "12px monospace";
+      ctx.font = "13px monospace";
 
       // Radicado
       ctx.fillText("Radicado:", padding, y);
@@ -237,7 +240,7 @@ const ReciboCaja = ({
       y += 12;
 
       // Encabezado de tabla: Hora J. | Cod | Animal | Valor
-      ctx.font = "bold 10px monospace";
+      ctx.font = "bold 11px monospace";
       ctx.fillText("Hora", padding, y);
       ctx.fillText("Cod", padding + 55, y);
       ctx.fillText("Animal", padding + 90, y);
@@ -251,7 +254,7 @@ const ReciboCaja = ({
       y += 14;
 
       // Datos de las jugadas
-      ctx.font = "11px monospace";
+      ctx.font = "12px monospace";
       jugadas.forEach((jugada) => {
         ctx.textAlign = "left";
         const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
@@ -272,7 +275,7 @@ const ReciboCaja = ({
       y += 14;
 
       // Valor Total
-      ctx.font = "bold 14px monospace";
+      ctx.font = "bold 15px monospace";
       ctx.fillText("TOTAL:", padding, y);
       ctx.textAlign = "right";
       const totalFormateado = valorTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -285,7 +288,7 @@ const ReciboCaja = ({
       y += 15;
 
       // Pie de pagina
-      ctx.font = "10px monospace";
+      ctx.font = "11px monospace";
       ctx.textAlign = "center";
       ctx.fillText("*** CONSERVE SU TICKET ***", width / 2, y);
       y += 12;
@@ -305,11 +308,11 @@ const ReciboCaja = ({
       y += 12;
 
       // Terminos y condiciones
-      ctx.font = "bold 9px monospace";
+      ctx.font = "bold 10px monospace";
       ctx.textAlign = "center";
       ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
-      y += 12;
-      ctx.font = "8px monospace";
+      y += 14;
+      ctx.font = "9px monospace";
       ctx.textAlign = "center";
       tyc.forEach((linea) => {
         ctx.fillText(linea, width / 2, y);
@@ -363,7 +366,8 @@ const ReciboCaja = ({
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const dataUrl = canvas.toDataURL("image/png");
+    // Usar calidad máxima para PNG
+    const dataUrl = canvas.toDataURL("image/png", 1.0);
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -373,6 +377,10 @@ const ReciboCaja = ({
         <head>
           <title>Ticket ${radicado}</title>
           <style>
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
             @media print {
               @page {
                 size: 80mm auto;
@@ -387,6 +395,8 @@ const ReciboCaja = ({
                 width: 80mm;
                 height: auto;
                 display: block;
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
               }
             }
             body {
@@ -403,6 +413,8 @@ const ReciboCaja = ({
               height: auto;
               background: white;
               box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              image-rendering: -webkit-optimize-contrast;
+              image-rendering: crisp-edges;
             }
           </style>
         </head>
