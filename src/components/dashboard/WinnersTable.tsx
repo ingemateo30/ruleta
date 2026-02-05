@@ -29,7 +29,7 @@ const WinnersTable = () => {
   const { user } = useAuth();
 
   // Los operarios no tienen acceso a este endpoint
-  const isOperario = String(user?.tipo) === USER_TYPES.OPERATOR;
+  const isOperario = String(user?.tipo) === USER_TYPES.OPERARIO;
 
   useEffect(() => {
     // Los operarios no tienen acceso a estadísticas
