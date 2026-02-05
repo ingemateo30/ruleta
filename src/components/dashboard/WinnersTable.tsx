@@ -12,6 +12,8 @@ import {
 import { Trophy, TrendingUp, Loader2 } from "lucide-react";
 import { getAnimalByNombre } from "@/constants/animals";
 import { estadisticasAPI } from "@/api/admin";
+import { useAuth } from "@/hooks/use-auth";
+import { USER_TYPES } from "@/api/types";
 
 interface Winner {
   animal: string;
@@ -24,13 +26,23 @@ interface Winner {
 const WinnersTable = () => {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Los operarios no tienen acceso a este endpoint
+  const isOperario = String(user?.tipo) === USER_TYPES.OPERATOR;
 
   useEffect(() => {
+    // Los operarios no tienen acceso a estadísticas
+    if (isOperario) {
+      setIsLoading(false);
+      return;
+    }
+
     cargarGanadores();
     // Actualizar cada 60 segundos
     const interval = setInterval(cargarGanadores, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isOperario]);
 
   const cargarGanadores = async () => {
     try {
@@ -51,6 +63,11 @@ const WinnersTable = () => {
       setIsLoading(false);
     }
   };
+
+  // Operarios no ven esta tabla
+  if (isOperario) {
+    return null;
+  }
 
   const formatHora = (hora: string): string => {
     if (!hora) return "";
