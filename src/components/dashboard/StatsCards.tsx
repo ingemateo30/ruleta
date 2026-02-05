@@ -12,7 +12,7 @@ const StatsCards = () => {
 
   // Determinar roles
   const isSuperAdmin = String(user?.tipo) === USER_TYPES.SUPER_ADMIN;
-  const isOperario = String(user?.tipo) === USER_TYPES.OPERATOR;
+  const isOperario = String(user?.tipo) === USER_TYPES.OPERARIO;
 
   useEffect(() => {
     // Los operarios no tienen acceso a estadísticas del dashboard
