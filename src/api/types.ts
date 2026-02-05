@@ -237,6 +237,9 @@ export interface JugadaListada {
   HORA: string;
   ESTADOP: string;
   VALOR_FORMATEADO?: string;
+  HORAJUEGO?: string;
+  DESJUEGO?: string;
+  FECHA?: string;
 }
 
 export interface ConsultarJugadasResponse {
