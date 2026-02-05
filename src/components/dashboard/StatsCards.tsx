@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ticket, Trophy, Clock, Users, Loader2 } from "lucide-react";
+import { Ticket, Trophy, Clock, Users } from "lucide-react";
 import { estadisticasAPI } from '@/api/admin';
 import { useAuth } from '@/hooks/use-auth';
 import { USER_TYPES } from '@/api/types';
@@ -10,12 +10,18 @@ const StatsCards = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  // Determinar si es superadmin (solo superadmin ve datos financieros)
+  // Determinar roles
   const isSuperAdmin = String(user?.tipo) === USER_TYPES.SUPER_ADMIN;
+  const isOperario = String(user?.tipo) === USER_TYPES.OPERATOR;
 
   useEffect(() => {
+    // Los operarios no tienen acceso a estadísticas del dashboard
+    if (isOperario) {
+      setIsLoading(false);
+      return;
+    }
     cargarEstadisticas();
-  }, []);
+  }, [isOperario]);
 
   const cargarEstadisticas = async () => {
     try {
@@ -29,6 +35,11 @@ const StatsCards = () => {
       setIsLoading(false);
     }
   };
+
+  // Operarios no ven estadísticas - mostrar mensaje simple
+  if (isOperario) {
+    return null;
+  }
 
   // Configuración para SuperAdmin (con datos financieros)
   const superAdminStatsConfig = [
