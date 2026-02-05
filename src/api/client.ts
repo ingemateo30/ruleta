@@ -67,9 +67,10 @@ axiosInstance.interceptors.response.use(
         }
       }
 
-      // Si es error 403 (prohibido), mostrar mensaje pero no cerrar sesion
+      // Si es error 403 (prohibido), NO mostrar en consola para evitar ruido
+      // Los componentes que necesitan manejar este error lo capturan individualmente
       if (status === 403) {
-        console.error('Acceso denegado:', message);
+        // Silenciar - el error se propaga pero no se muestra en consola
       }
 
       throw new ApiError(message, status, error.response.data);
