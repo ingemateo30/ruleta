@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer, X } from "lucide-react";
 import {
@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
 // Importar el logo
@@ -40,288 +41,240 @@ const ReciboCaja = ({
   jugadas,
   valorTotal,
 }: ReciboCajaProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
-  const [qrImage, setQrImage] = useState<HTMLImageElement | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Factor de escala para alta resolución (aumentado para mejor calidad de impresión)
-  const SCALE_FACTOR = 4;
-
-  // Cargar el logo
   useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = logoLottoAnimal;
-        });
-        setLogoImage(img);
-      } catch (error) {
-        console.warn("No se pudo cargar el logo:", error);
+    if (!open) {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+        setPdfUrl("");
       }
-    };
-
-    if (open) {
-      loadLogo();
+      return;
     }
-  }, [open]);
 
-  // Generar QR Code en alta resolución
-  useEffect(() => {
-    const generateQR = async () => {
-      if (!radicado || !sucursal || !fecha || !hora) return;
-
-      try {
-        const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
-
-        const qrDataUrl = await QRCode.toDataURL(qrData, {
-          width: 120 * SCALE_FACTOR, // Alta resolución para el QR
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          }
-        });
-
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = qrDataUrl;
-        });
-        setQrImage(img);
-      } catch (error) {
-        console.error("Error generando QR:", error);
-      }
-    };
-
-    if (open && radicado && sucursal && fecha && hora) {
-      generateQR();
-    }
-  }, [open, radicado, sucursal, fecha, hora]);
-
-  // Dibujar el recibo en el canvas
-  useEffect(() => {
-    if (!open) return;
-
-    const timeoutId = setTimeout(() => {
-      if (!canvasRef.current) return;
-
+    const generatePDF = async () => {
       if (!radicado || !fecha || !hora || !sucursal || !jugadas || jugadas.length === 0) return;
+      
+      setIsGenerating(true);
+      
+      try {
+        // Crear PDF de 80mm de ancho
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [80, 297] // 80mm de ancho, altura variable
+        });
 
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+        const pageWidth = 80;
+        let y = 4;
+        const leftMargin = 3;
+        const rightMargin = 3;
+        const contentWidth = pageWidth - leftMargin - rightMargin;
 
-      // Terminos y condiciones (sin guiones)
-      const tyc = [
-        "Ticket ganador tiene 3 dias habiles",
-        "para ser redimido.",
-        "Ticket ganador sera cancelado 10 min",
-        "despues del ultimo resultado.",
-        "Ticket ganador debe ser presentado en",
-        "fisico y en perfecto estado, de lo",
-        "contrario sera anulado.",
-        "Prohibida la venta a menores de",
-        "18 anos.",
-      ];
-      const tycLineHeight = 12;
-      const tycHeight = tyc.length * tycLineHeight + 25;
-
-      // Calcular dimensiones del logo
-      let logoDisplayWidth = 0;
-      let logoDisplayHeight = 0;
-      if (logoImage) {
-        const maxLogoWidth = 160;
-        const maxLogoHeight = 80;
-        const imgRatio = logoImage.naturalWidth / logoImage.naturalHeight;
-        logoDisplayWidth = maxLogoWidth;
-        logoDisplayHeight = maxLogoWidth / imgRatio;
-        if (logoDisplayHeight > maxLogoHeight) {
-          logoDisplayHeight = maxLogoHeight;
-          logoDisplayWidth = maxLogoHeight * imgRatio;
+        // Cargar logo
+        try {
+          const logoImg = await loadImageAsDataURL(logoLottoAnimal);
+          const logoWidth = 40;
+          const logoHeight = 20;
+          const logoX = (pageWidth - logoWidth) / 2;
+          doc.addImage(logoImg, 'PNG', logoX, y, logoWidth, logoHeight);
+          y += logoHeight + 2;
+        } catch (error) {
+          console.warn("No se pudo cargar el logo:", error);
         }
+
+        // Título
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LOTTO ANIMAL', pageWidth / 2, y += 5, { align: 'center' });
+        y += 5;
+        
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Una hora para ganar', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+
+        // Línea doble
+        doc.setLineWidth(0.3);
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 0.5;
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 4;
+
+        // Información del ticket
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+
+        // Radicado
+        doc.text('Radicado:', leftMargin, y);
+        doc.text(radicado.padStart(8, "0"), pageWidth - rightMargin, y, { align: 'right' });
+        y += 4.5;
+
+        // Sucursal
+        doc.text('Sucursal:', leftMargin, y);
+        doc.text(sucursal, pageWidth - rightMargin, y, { align: 'right' });
+        y += 4.5;
+
+        // Fecha
+        const fechaFormateada = fecha.replace(/-/g, "/");
+        doc.text('Fecha:', leftMargin, y);
+        doc.text(fechaFormateada, pageWidth - rightMargin, y, { align: 'right' });
+        y += 4.5;
+
+        // Hora
+        const horaFormateada = formatearHora(hora);
+        doc.text('Hora:', leftMargin, y);
+        doc.text(horaFormateada, pageWidth - rightMargin, y, { align: 'right' });
+        y += 4;
+
+        // Línea separadora
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 3.5;
+
+        // Encabezado de tabla
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Hora', leftMargin, y);
+        doc.text('Cod', leftMargin + 17, y);
+        doc.text('Animal', leftMargin + 28, y);
+        doc.text('Valor $', pageWidth - rightMargin, y, { align: 'right' });
+        y += 1.5;
+
+        // Línea separadora
+        doc.setLineWidth(0.2);
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 4;
+
+        // Datos de las jugadas
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        
+        jugadas.forEach((jugada) => {
+          const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
+          const animalNombre = (jugada.animal || "").toUpperCase().substring(0, 10);
+          const valorFormateado = "$" + (jugada.valor || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+          doc.text(horaJuegoFormateada, leftMargin, y);
+          doc.text(jugada.codigo || "", leftMargin + 17, y);
+          doc.text(animalNombre, leftMargin + 28, y);
+          doc.text(valorFormateado, pageWidth - rightMargin, y, { align: 'right' });
+          y += 4.5;
+        });
+
+        y += 1;
+
+        // Línea antes del total
+        doc.setLineWidth(0.3);
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 4;
+
+        // Total
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL:', leftMargin, y);
+        const totalFormateado = "$" + valorTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        doc.text(totalFormateado, pageWidth - rightMargin, y, { align: 'right' });
+        y += 4;
+
+        // Línea separadora
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 4;
+
+        // Pie de página
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text('*** CONSERVE SU TICKET ***', pageWidth / 2, y, { align: 'center' });
+        y += 3.5;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('Este es su comprobante de juego', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+
+        // QR Code
+        try {
+          const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
+          const qrDataUrl = await QRCode.toDataURL(qrData, {
+            width: 300,
+            margin: 1,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            }
+          });
+          
+          const qrSize = 35;
+          const qrX = (pageWidth - qrSize) / 2;
+          doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
+          y += qrSize + 4;
+        } catch (error) {
+          console.error("Error generando QR:", error);
+        }
+
+        // Línea antes de TyC
+        doc.line(leftMargin, y, pageWidth - rightMargin, y);
+        y += 3.5;
+
+        // Términos y condiciones
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TERMINOS Y CONDICIONES', pageWidth / 2, y, { align: 'center' });
+        y += 3.5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        const tyc = [
+          "Ticket ganador tiene 3 dias habiles",
+          "para ser redimido.",
+          "Ticket ganador sera cancelado 10 min",
+          "despues del ultimo resultado.",
+          "Ticket ganador debe ser presentado en",
+          "fisico y en perfecto estado, de lo",
+          "contrario sera anulado.",
+          "Prohibida la venta a menores de",
+          "18 anos.",
+        ];
+
+        tyc.forEach((linea) => {
+          doc.text(linea, pageWidth / 2, y, { align: 'center' });
+          y += 3;
+        });
+
+        // Generar blob del PDF
+        const pdfBlob = doc.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
+        setPdfUrl(url);
+        
+      } catch (error) {
+        console.error("Error generando PDF:", error);
+      } finally {
+        setIsGenerating(false);
       }
+    };
 
-      const logoHeight = logoImage ? logoDisplayHeight + 8 : 0;
-      const qrHeight = qrImage ? 120 + 15 : 0;
-      const titleHeight = 35;
-      const headerHeight = logoHeight + titleHeight + 10 + 65 + 15 + 40 + 12;
-      const jugadasHeight = jugadas.length * 20;
-      const footerHeight = 5 + 15 + 15 + 25 + qrHeight + tycHeight;
-      const paddingTotal = 20;
-      const totalHeight = headerHeight + jugadasHeight + footerHeight + paddingTotal;
+    generatePDF();
+  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal]);
 
-      // 80mm thermal paper = ~302px (base)
-      const width = 302;
-      
-      // Configurar canvas en alta resolución
-      canvas.width = width * SCALE_FACTOR;
-      canvas.height = totalHeight * SCALE_FACTOR;
-      
-      // Deshabilitar smoothing para texto más nítido
-      ctx.imageSmoothingEnabled = false;
-      
-      // Escalar el contexto
-      ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
-
-      const padding = 10;
-      let y = padding;
-
-      // Fondo blanco
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, width, totalHeight);
-
-      ctx.fillStyle = "#000000";
-      ctx.textAlign = "center";
-
-      // Logo
-      if (logoImage) {
-        const logoX = (width - logoDisplayWidth) / 2;
-        ctx.drawImage(logoImage, logoX, y, logoDisplayWidth, logoDisplayHeight);
-        y += logoDisplayHeight + 4;
-      }
-
-      // Titulo: "LOTTO ANIMAL" y subtitulo "Una hora para ganar"
-      ctx.font = "bold 18px monospace";
-      ctx.fillText("LOTTO ANIMAL", width / 2, y + 14);
-      y += 18;
-      ctx.font = "bold 12px monospace";
-      ctx.fillText("Una hora para ganar", width / 2, y + 10);
-      y += 18;
-
-      // Linea doble
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 2;
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 15;
-
-      // Info del juego
-      ctx.textAlign = "left";
-      ctx.font = "13px monospace";
-
-      // Radicado
-      ctx.fillText("Radicado:", padding, y);
-      ctx.textAlign = "right";
-      ctx.fillText(radicado.padStart(8, "0"), width - padding, y);
-      ctx.textAlign = "left";
-      y += 16;
-
-      // Sucursal
-      ctx.fillText("Sucursal:", padding, y);
-      ctx.textAlign = "right";
-      ctx.fillText(sucursal, width - padding, y);
-      ctx.textAlign = "left";
-      y += 16;
-
-      // Fecha
-      const fechaFormateada = fecha.replace(/-/g, "/");
-      ctx.fillText("Fecha:", padding, y);
-      ctx.textAlign = "right";
-      ctx.fillText(fechaFormateada, width - padding, y);
-      ctx.textAlign = "left";
-      y += 16;
-
-      // Hora
-      const horaFormateada = formatearHora(hora);
-      ctx.fillText("Hora:", padding, y);
-      ctx.textAlign = "right";
-      ctx.fillText(horaFormateada, width - padding, y);
-      ctx.textAlign = "left";
-      y += 15;
-
-      // Linea separadora
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 12;
-
-      // Encabezado de tabla: Hora J. | Cod | Animal | Valor
-      ctx.font = "bold 11px monospace";
-      ctx.fillText("Hora", padding, y);
-      ctx.fillText("Cod", padding + 55, y);
-      ctx.fillText("Animal", padding + 90, y);
-      ctx.textAlign = "right";
-      ctx.fillText("Valor $", width - padding, y);
-      ctx.textAlign = "left";
-      y += 5;
-
-      // Linea separadora
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 14;
-
-      // Datos de las jugadas
-      ctx.font = "12px monospace";
-      jugadas.forEach((jugada) => {
-        ctx.textAlign = "left";
-        const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
-        ctx.fillText(horaJuegoFormateada, padding, y);
-        ctx.fillText(jugada.codigo || "", padding + 55, y);
-        ctx.fillText((jugada.animal || "").toUpperCase().substring(0, 10), padding + 90, y);
-        ctx.textAlign = "right";
-        const valorFormateado = (jugada.valor || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        ctx.fillText("$" + valorFormateado, width - padding, y);
-        ctx.textAlign = "left";
-        y += 20;
-      });
-
-      y += 5;
-
-      // Linea antes del total
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 14;
-
-      // Valor Total
-      ctx.font = "bold 15px monospace";
-      ctx.fillText("TOTAL:", padding, y);
-      ctx.textAlign = "right";
-      const totalFormateado = valorTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      ctx.fillText("$" + totalFormateado, width - padding, y);
-      ctx.textAlign = "left";
-      y += 15;
-
-      // Linea separadora
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 15;
-
-      // Pie de pagina
-      ctx.font = "11px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("*** CONSERVE SU TICKET ***", width / 2, y);
-      y += 12;
-      ctx.fillText("Este es su comprobante de juego", width / 2, y);
-      y += 15;
-
-      // QR Code centrado (ya viene en alta resolución)
-      if (qrImage) {
-        const qrSize = 120;
-        const qrX = (width - qrSize) / 2;
-        ctx.drawImage(qrImage, qrX, y, qrSize, qrSize);
-        y += qrSize + 15;
-      }
-
-      // Linea separadora antes de TyC
-      ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 12;
-
-      // Terminos y condiciones
-      ctx.font = "bold 10px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("TERMINOS Y CONDICIONES", width / 2, y);
-      y += 14;
-      ctx.font = "9px monospace";
-      ctx.textAlign = "center";
-      tyc.forEach((linea) => {
-        ctx.fillText(linea, width / 2, y);
-        y += tycLineHeight;
-      });
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [open, radicado, fecha, hora, sucursal, jugadas, valorTotal, logoImage, qrImage]);
+  const loadImageAsDataURL = (src: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('No se pudo obtener contexto del canvas'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
 
   const formatearHora = (hora: string): string => {
     if (!hora) return "";
@@ -363,109 +316,54 @@ const ReciboCaja = ({
   };
 
   const handleImprimir = () => {
-    if (!canvasRef.current) return;
+    if (!pdfUrl) return;
 
-    const canvas = canvasRef.current;
-    // Usar calidad máxima para PNG
-    const dataUrl = canvas.toDataURL("image/png", 1.0);
-
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open(pdfUrl, '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Ticket ${radicado}</title>
-          <style>
-            * {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            @media print {
-              @page {
-                size: 80mm auto;
-                margin: 0;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-                background: white;
-              }
-              img {
-                width: 80mm;
-                height: auto;
-                display: block;
-                image-rendering: -webkit-optimize-contrast;
-                image-rendering: crisp-edges;
-              }
-            }
-            body {
-              margin: 0;
-              padding: 10px;
-              display: flex;
-              justify-content: center;
-              align-items: flex-start;
-              min-height: 100vh;
-              background: #f0f0f0;
-            }
-            img {
-              width: 302px;
-              height: auto;
-              background: white;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-              image-rendering: -webkit-optimize-contrast;
-              image-rendering: crisp-edges;
-            }
-          </style>
-        </head>
-        <body>
-          <img src="${dataUrl}" alt="Ticket" />
-          <script>
-            const img = document.querySelector('img');
-            if (img.complete) {
-              window.print();
-              window.onafterprint = () => window.close();
-            } else {
-              img.onload = () => {
-                window.print();
-                window.onafterprint = () => window.close();
-              };
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[380px] p-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-[450px] p-0">
         <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
           <DialogTitle className="text-sm sm:text-base">Recibo de Caja</DialogTitle>
         </DialogHeader>
         <div className="p-4 sm:p-6 pt-0 space-y-3 sm:space-y-4">
-          {/* Previsualizacion del canvas */}
-          <div className="flex justify-center bg-gray-100 p-2 sm:p-4 rounded-lg overflow-auto max-h-[60vh]">
-            <canvas
-              ref={canvasRef}
-              className="bg-white shadow-lg"
-              style={{
-                width: "302px",
-                height: "auto",
-                display: "block",
-                imageRendering: "auto"
-              }}
-            />
+          {/* Previsualización del PDF */}
+          <div className="flex justify-center bg-gray-100 p-2 sm:p-4 rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
+            {isGenerating ? (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-gray-500">Generando ticket...</p>
+              </div>
+            ) : pdfUrl ? (
+              <iframe
+                src={pdfUrl}
+                className="bg-white shadow-lg"
+                style={{
+                  width: '100%',
+                  height: '600px',
+                  border: 'none'
+                }}
+                title="Vista previa del ticket"
+              />
+            ) : (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-gray-500">No se pudo generar el ticket</p>
+              </div>
+            )}
           </div>
 
-          {/* Botones de accion */}
+          {/* Botones de acción */}
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1" size="sm">
               <X className="h-4 w-4 mr-2" />
               Cerrar
             </Button>
-            <Button onClick={handleImprimir} className="flex-1" size="sm">
+            <Button onClick={handleImprimir} className="flex-1" size="sm" disabled={!pdfUrl}>
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>
