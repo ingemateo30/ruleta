@@ -95,13 +95,13 @@ const RealizarJugadas = () => {
                 console.warn(`Animal sin código de juego: ${animalAPI.VALOR} (NUM: ${animalAPI.NUM})`);
                 return null;
               }
-              
+
               const codigoJuego = animalAPI.CODIGOJUEGO.trim();
-              
+
               // Buscar el animal local por CÓDIGO primero (más preciso), luego por nombre
-              const animalLocal = getAnimalByCodigo(codigoJuego) || 
-                                 getAnimalByNombre(animalAPI.VALOR);
-              
+              const animalLocal = getAnimalByCodigo(codigoJuego) ||
+                getAnimalByNombre(animalAPI.VALOR);
+
               return {
                 numero: animalAPI.NUM,
                 codigo: codigoJuego, // Agregamos este campo para que coincida con la interfaz Animal
@@ -112,9 +112,9 @@ const RealizarJugadas = () => {
               } as AnimalMapeado;
             })
             .filter((animal): animal is AnimalMapeado => animal !== null); // Filtrar nulos
-          
+
           setAnimalesAPI(animalesMapeados);
-          
+
           if (animalesMapeados.length === 0) {
             toast({
               title: "Advertencia",
@@ -193,14 +193,24 @@ const RealizarJugadas = () => {
       return;
     }
 
-    const montoNum = parseFloat(monto);
-    
+    const montoNum = parseInt(monto.replace(/\./g, ''));
+
+    // Validar que sea múltiplo de 1000
+    if (montoNum % 1000 !== 0) {
+      toast({
+        title: "Error",
+        description: "El monto debe ser múltiplo de $1.000",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validar monto con parámetros
     if (parametros) {
       if (montoNum < parametros.minimo) {
         toast({
           title: "Error",
-          description: `El monto mínimo es $${parametros.minimo.toLocaleString()}`,
+          description: `El monto mínimo es $${parametros.minimo.toLocaleString('es-CO')}`,
           variant: "destructive",
         });
         return;
@@ -208,7 +218,7 @@ const RealizarJugadas = () => {
       if (montoNum > parametros.maximo) {
         toast({
           title: "Error",
-          description: `El monto máximo es $${parametros.maximo.toLocaleString()}`,
+          description: `El monto máximo es $${parametros.maximo.toLocaleString('es-CO')}`,
           variant: "destructive",
         });
         return;
@@ -239,7 +249,7 @@ const RealizarJugadas = () => {
 
     toast({
       title: "Jugada agregada",
-      description: `${selectedAnimal.nombre} - $${montoNum.toLocaleString()}`,
+      description: `${selectedAnimal.nombre} - $${montoNum.toLocaleString('es-CO')}`,
     });
   };
 
@@ -249,7 +259,7 @@ const RealizarJugadas = () => {
 
   const handleConfirmar = async () => {
     if (jugadas.length === 0) return;
-    
+
     setGuardando(true);
     try {
       // Obtener consecutivo
@@ -297,7 +307,7 @@ const RealizarJugadas = () => {
             console.error('Jugada sin código de animal:', jugada);
             throw new Error(`Jugada sin código de animal: ${jugada.animal.nombre}`);
           }
-          
+
           return {
             codigoAnimal: jugada.animal.codigoJuego,
             nombreAnimal: jugada.animal.nombre,
@@ -314,16 +324,16 @@ const RealizarJugadas = () => {
 
       // Guardar juego
       const guardarRes = await realizarJuegoService.guardarJuego(juegoData);
-      
+
       if (guardarRes.success && guardarRes.data) {
         // Registrar los montos jugados para valores rápidos
         const montos = jugadas.map(j => j.monto);
         registrarMontosJugados(montos);
-        
+
         // Actualizar valores rápidos
         const nuevosValores = obtenerValoresMasJugados();
         setValoresRapidos(nuevosValores);
-        
+
         // Usar los datos que devuelve el API para el recibo
         const datosReciboData = {
           radicado: guardarRes.data.radicado,
@@ -338,17 +348,17 @@ const RealizarJugadas = () => {
           })),
           valorTotal: guardarRes.data.total,
         };
-        
+
         setDatosRecibo(datosReciboData);
         setMostrarRecibo(true);
-        
+
         toast({
           title: "¡Ticket emitido!",
           description: guardarRes.message || `Se registraron ${jugadas.length} jugadas correctamente. Radicado: ${radicado}`,
         });
         setJugadas([]);
       } else {
-        const errorMsg = guardarRes.details 
+        const errorMsg = guardarRes.details
           ? guardarRes.details.join(', ')
           : guardarRes.error || "Error al guardar el juego";
         toast({
@@ -374,13 +384,13 @@ const RealizarJugadas = () => {
   const filteredAnimals = animalesAPI.filter((animal) => {
     const search = searchTerm.toLowerCase().trim();
     if (!search) return true;
-    
+
     // Buscar por código de juego exacto (string)
     const codigoJuego = animal.codigoJuego.toLowerCase();
-    
+
     // Buscar por nombre
     const nombreLower = animal.nombre.toLowerCase();
-    
+
     return (
       codigoJuego.includes(search) ||
       codigoJuego === search || // Búsqueda exacta
@@ -397,9 +407,9 @@ const RealizarJugadas = () => {
       // Asumimos que horaStr viene en formato "HH:mm" o "HH:mm:ss" (ej: "09:00:00" o "09:00")
       // Si tu API devuelve formato 12h ("09:00 PM"), necesitarás una conversión extra.
       // Esta lógica básica funciona para formato 24h estándar de SQL:
-      
+
       const [horas, minutos] = horaStr.split(':').map(Number);
-      
+
       fechaHorario.setHours(horas, minutos || 0, 0, 0);
 
       // Si la hora actual es mayor a la hora del sorteo, está vencido
@@ -491,8 +501,8 @@ const RealizarJugadas = () => {
                         onClick={() => setSelectedAnimal(animal)}
                       >
                         {animal.imagen && (
-                          <img 
-                            src={animal.imagen} 
+                          <img
+                            src={animal.imagen}
                             alt={animal.nombre}
                             className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                           />
@@ -516,8 +526,8 @@ const RealizarJugadas = () => {
               {selectedAnimal && (
                 <div className="bg-accent/50 rounded-lg p-4 text-center">
                   {selectedAnimal.imagen && (
-                    <img 
-                      src={selectedAnimal.imagen} 
+                    <img
+                      src={selectedAnimal.imagen}
                       alt={selectedAnimal.nombre}
                       className="w-20 h-20 mx-auto object-contain"
                     />
@@ -527,7 +537,7 @@ const RealizarJugadas = () => {
                   </p>
                   {parametros && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Rango: ${parametros.minimo.toLocaleString()} - ${parametros.maximo.toLocaleString()}
+                      Rango: ${parametros.minimo.toLocaleString('es-CO')} - ${parametros.maximo.toLocaleString('es-CO')}
                     </p>
                   )}
                 </div>
@@ -542,12 +552,12 @@ const RealizarJugadas = () => {
                   <SelectContent>
                     {horariosAPI.map((h) => {
                       // 4. APLICACIÓN: Verificamos si este horario específico está vencido
-                      const vencido = isHorarioVencido(h.data.HORA); 
-                      
+                      const vencido = isHorarioVencido(h.data.HORA);
+
                       return (
-                        <SelectItem 
-                          key={h.id} 
-                          value={h.id} 
+                        <SelectItem
+                          key={h.id}
+                          value={h.id}
                           disabled={vencido} // Bloquea la selección
                           className={vencido ? "text-muted-foreground opacity-50" : ""}
                         >
@@ -562,10 +572,28 @@ const RealizarJugadas = () => {
               <div className="space-y-2">
                 <Label>Monto ($)</Label>
                 <Input
-                  type="number"
-                  placeholder="Ej: 5000"
+                  type="text"
+                  placeholder="Ej: 5.000"
                   value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
+                  onChange={(e) => {
+                    // Permitir solo números y puntos
+                    let valor = e.target.value.replace(/[^\d]/g, '');
+
+                    // Formatear con puntos de miles
+                    if (valor) {
+                      valor = parseInt(valor).toLocaleString('es-CO');
+                    }
+
+                    setMonto(valor);
+                  }}
+                  onBlur={(e) => {
+                    // Al salir del campo, redondear a múltiplo de 1000
+                    const valorNumerico = parseInt(e.target.value.replace(/\./g, ''));
+                    if (valorNumerico && valorNumerico > 0) {
+                      const redondeado = Math.round(valorNumerico / 1000) * 1000;
+                      setMonto(redondeado.toLocaleString('es-CO'));
+                    }
+                  }}
                 />
                 {valoresRapidos.length > 0 && (
                   <div className="space-y-2 pt-2">
@@ -578,9 +606,9 @@ const RealizarJugadas = () => {
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs"
-                          onClick={() => setMonto(valor.toString())}
+                         onClick={() => setMonto(valor.toLocaleString('es-CO'))}
                         >
-                          ${valor.toLocaleString()}
+                          ${valor.toLocaleString('es-CO')}
                         </Button>
                       ))}
                     </div>
@@ -603,7 +631,7 @@ const RealizarJugadas = () => {
               Jugadas del Ticket
             </CardTitle>
             <Badge variant="secondary" className="text-lg px-3 py-1">
-              Total: ${total.toLocaleString()}
+              Total: ${total.toLocaleString('es-CO')}
             </Badge>
           </CardHeader>
           <CardContent>
@@ -619,8 +647,8 @@ const RealizarJugadas = () => {
                     className="flex items-center justify-between bg-accent/30 rounded-lg p-4"
                   >
                     <div className="flex items-center gap-4">
-                      <img 
-                        src={jugada.animal.imagen} 
+                      <img
+                        src={jugada.animal.imagen}
                         alt={jugada.animal.nombre}
                         className="w-12 h-12 object-contain"
                       />
@@ -635,7 +663,7 @@ const RealizarJugadas = () => {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="font-bold text-lg text-primary">
-                        ${jugada.monto.toLocaleString()}
+                        ${jugada.monto.toLocaleString('es-CO')}
                       </span>
                       <Button
                         variant="ghost"
@@ -653,7 +681,7 @@ const RealizarJugadas = () => {
 
             {jugadas.length > 0 && (
               <div className="flex gap-3 mt-6">
-                 <Button
+                <Button
                   variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => {
@@ -680,8 +708,8 @@ const RealizarJugadas = () => {
                   <Printer className="h-4 w-4" />
                   Vista Previa
                 </Button>
-                <Button 
-                  className="flex-1 gap-2" 
+                <Button
+                  className="flex-1 gap-2"
                   onClick={handleConfirmar}
                   disabled={guardando}
                 >

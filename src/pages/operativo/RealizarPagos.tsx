@@ -14,11 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Search, DollarSign, CheckCircle2, Loader2 } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Loader2, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getAnimalByNombre, getAnimalByNumero } from '@/constants/animals';
+import { getAnimalByNombre } from '@/constants/animals';
 
 export default function RealizarPagos() {
   const { user } = useAuth();
@@ -29,6 +29,51 @@ export default function RealizarPagos() {
     radicado: '',
     fecha: format(new Date(), 'yyyy-MM-dd'),
   });
+
+  // Configuración: minutos de espera después del sorteo
+  const MINUTOS_ESPERA_PAGO = 1;
+
+  // Función para verificar si ya se puede pagar
+  const sePuedePagar = (fechaJuego: string, horaJuego: string): { 
+    puedePagar: boolean; 
+    mensaje?: string;
+    minutosRestantes?: number;
+  } => {
+    try {
+      // Combinar fecha y hora del juego
+      const [year, month, day] = fechaJuego.split('-').map(Number);
+      const horaParts = horaJuego.split(':');
+      const horas = parseInt(horaParts[0] || '0', 10);
+      const minutos = parseInt(horaParts[1] || '0', 10);
+      const segundos = parseInt(horaParts[2] || '0', 10);
+
+      // Crear fecha del sorteo
+      const fechaSorteo = new Date(year, month - 1, day, horas, minutos, segundos);
+      
+      // Agregar tiempo de espera
+      const fechaPermitidaPago = new Date(fechaSorteo.getTime() + MINUTOS_ESPERA_PAGO * 60 * 1000);
+      
+      // Fecha actual
+      const ahora = new Date();
+
+      if (ahora < fechaPermitidaPago) {
+        const minutosRestantes = Math.ceil((fechaPermitidaPago.getTime() - ahora.getTime()) / (60 * 1000));
+        return {
+          puedePagar: false,
+          mensaje: `Debe esperar ${minutosRestantes} minuto${minutosRestantes !== 1 ? 's' : ''} más`,
+          minutosRestantes
+        };
+      }
+
+      return { puedePagar: true };
+    } catch (error) {
+      console.error('Error al validar horario de pago:', error);
+      return { 
+        puedePagar: false, 
+        mensaje: 'Error al validar horario' 
+      };
+    }
+  };
 
   // Calcular totales
   const totales = ganadores.reduce((acc, g) => {
@@ -72,6 +117,17 @@ export default function RealizarPagos() {
   };
 
   const handleRealizarPago = async (jugada: any) => {
+    // Verificar si ya se puede pagar
+    const validacion = sePuedePagar(jugada.FECHA, jugada.HORAJUEGO);
+    
+    if (!validacion.puedePagar) {
+      toast.error(validacion.mensaje || 'Aún no se puede realizar el pago', {
+        description: `El sorteo fue a las ${formatHora(jugada.HORAJUEGO)}. Debe esperar ${MINUTOS_ESPERA_PAGO} minutos después del sorteo.`,
+        duration: 5000,
+      });
+      return;
+    }
+
     const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
     if (!confirm(`¿Confirmar pago de $${valorPagar.toLocaleString('es-CO')} para el radicado ${jugada.RADICADO}?`)) {
       return;
@@ -214,7 +270,8 @@ export default function RealizarPagos() {
                 <Badge variant="secondary">{ganadores.length}</Badge>
               </CardTitle>
               <CardDescription>
-                Se encontraron {ganadores.length} jugadas ganadoras para procesar
+                Se encontraron {ganadores.length} jugadas ganadoras para procesar. 
+                Los pagos se pueden realizar {MINUTOS_ESPERA_PAGO} minutos después del sorteo.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -238,6 +295,7 @@ export default function RealizarPagos() {
                       const animalData = getAnimalByNombre(jugada.ANIMAL);
                       const valorApostado = parseFloat(jugada.VALOR_APOSTADO || 0);
                       const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
+                      const validacionPago = sePuedePagar(jugada.FECHA, jugada.HORAJUEGO);
 
                       return (
                         <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${index}`}>
@@ -280,6 +338,11 @@ export default function RealizarPagos() {
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 PAGADO
                               </Badge>
+                            ) : !validacionPago.puedePagar ? (
+                              <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                                <Clock className="h-3 w-3 mr-1" />
+                                ESPERA {validacionPago.minutosRestantes}m
+                              </Badge>
                             ) : (
                               <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
                                 PENDIENTE
@@ -290,14 +353,23 @@ export default function RealizarPagos() {
                             {jugada.ESTADO_PAGO !== 'PAGADO' && (
                               <Button
                                 onClick={() => handleRealizarPago(jugada)}
-                                disabled={processingRadicado === jugada.RADICADO}
+                                disabled={
+                                  processingRadicado === jugada.RADICADO || 
+                                  !validacionPago.puedePagar
+                                }
                                 size="sm"
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                                title={!validacionPago.puedePagar ? validacionPago.mensaje : 'Realizar pago'}
                               >
                                 {processingRadicado === jugada.RADICADO ? (
                                   <>
                                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                                     Procesando...
+                                  </>
+                                ) : !validacionPago.puedePagar ? (
+                                  <>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Esperar
                                   </>
                                 ) : (
                                   <>

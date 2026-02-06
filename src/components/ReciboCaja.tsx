@@ -63,166 +63,167 @@ const ReciboCaja = ({
         const doc = new jsPDF({
           orientation: 'portrait',
           unit: 'mm',
-          format: [80, 297] // 80mm de ancho, altura variable
+          format: [80, 297]
         });
 
         const pageWidth = 80;
-        let y = 4;
-        const leftMargin = 3;
-        const rightMargin = 3;
+        let y = 3;
+        const leftMargin = 3; // Reducido de 4 a 3
+        const rightMargin = 3; // Reducido de 4 a 3
         const contentWidth = pageWidth - leftMargin - rightMargin;
 
-        // Cargar logo
+        // Cargar logo más pequeño
         try {
           const logoImg = await loadImageAsDataURL(logoLottoAnimal);
-          const logoWidth = 40;
-          const logoHeight = 20;
-          const logoX = (pageWidth - logoWidth) / 2;
-          doc.addImage(logoImg, 'PNG', logoX, y, logoWidth, logoHeight);
-          y += logoHeight + 2;
+          const logoSize = 15; // Reducido de 18 a 15
+          const logoX = (pageWidth - logoSize) / 2;
+          doc.addImage(logoImg, 'PNG', logoX, y, logoSize, logoSize);
+          y += logoSize + 1.5; // Reducido
         } catch (error) {
           console.warn("No se pudo cargar el logo:", error);
         }
 
         // Título
-        doc.setFontSize(14);
+        doc.setFontSize(11); // Reducido de 12 a 11
         doc.setFont('helvetica', 'bold');
-        doc.text('LOTTO ANIMAL', pageWidth / 2, y += 5, { align: 'center' });
-        y += 5;
+        doc.text('LOTTO ANIMAL', pageWidth / 2, y, { align: 'center' });
+        y += 3.5; // Reducido
         
-        doc.setFontSize(9);
+        doc.setFontSize(7.5); // Reducido de 8 a 7.5
         doc.setFont('helvetica', 'bold');
         doc.text('Una hora para ganar', pageWidth / 2, y, { align: 'center' });
-        y += 5;
+        y += 3.5; // Reducido
 
         // Línea doble
-        doc.setLineWidth(0.3);
+        doc.setLineWidth(0.2);
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 0.5;
+        y += 0.3;
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 4;
+        y += 2.5; // Reducido
 
         // Información del ticket
-        doc.setFontSize(9);
+        doc.setFontSize(7.5); // Reducido de 8 a 7.5
         doc.setFont('helvetica', 'normal');
 
         // Radicado
         doc.text('Radicado:', leftMargin, y);
         doc.text(radicado.padStart(8, "0"), pageWidth - rightMargin, y, { align: 'right' });
-        y += 4.5;
+        y += 3.5; // Reducido
 
         // Sucursal
         doc.text('Sucursal:', leftMargin, y);
-        doc.text(sucursal, pageWidth - rightMargin, y, { align: 'right' });
-        y += 4.5;
+        const sucursalTexto = sucursal.length > 16 ? sucursal.substring(0, 16) : sucursal; // Reducido
+        doc.text(sucursalTexto, pageWidth - rightMargin, y, { align: 'right' });
+        y += 3.5;
 
         // Fecha
         const fechaFormateada = fecha.replace(/-/g, "/");
         doc.text('Fecha:', leftMargin, y);
         doc.text(fechaFormateada, pageWidth - rightMargin, y, { align: 'right' });
-        y += 4.5;
+        y += 3.5;
 
         // Hora
         const horaFormateada = formatearHora(hora);
         doc.text('Hora:', leftMargin, y);
         doc.text(horaFormateada, pageWidth - rightMargin, y, { align: 'right' });
-        y += 4;
+        y += 2.5; // Reducido
 
         // Línea separadora
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 3.5;
+        y += 2.5; // Reducido
 
         // Encabezado de tabla
-        doc.setFontSize(8);
+        doc.setFontSize(7); // Reducido de 7.5 a 7
         doc.setFont('helvetica', 'bold');
         doc.text('Hora', leftMargin, y);
-        doc.text('Cod', leftMargin + 17, y);
-        doc.text('Animal', leftMargin + 28, y);
-        doc.text('Valor $', pageWidth - rightMargin, y, { align: 'right' });
+        doc.text('Cod', leftMargin + 13, y); // Ajustado
+        doc.text('Animal', leftMargin + 22, y); // Ajustado
+        doc.text('Valor', pageWidth - rightMargin - 1, y, { align: 'right' }); // Ajustado
         y += 1.5;
 
         // Línea separadora
         doc.setLineWidth(0.2);
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 4;
+        y += 3; // Reducido
 
         // Datos de las jugadas
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
+        doc.setFontSize(7); // Reducido de 7.5 a 7
         
         jugadas.forEach((jugada) => {
           const horaJuegoFormateada = formatearHoraJuego(jugada.horaJuego || "");
-          const animalNombre = (jugada.animal || "").toUpperCase().substring(0, 10);
+          const animalNombre = (jugada.animal || "").toUpperCase().substring(0, 6); // Reducido de 7 a 6
           const valorFormateado = "$" + (jugada.valor || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
           doc.text(horaJuegoFormateada, leftMargin, y);
-          doc.text(jugada.codigo || "", leftMargin + 17, y);
-          doc.text(animalNombre, leftMargin + 28, y);
-          doc.text(valorFormateado, pageWidth - rightMargin, y, { align: 'right' });
-          y += 4.5;
+          doc.text(jugada.codigo || "", leftMargin + 13, y); // Ajustado
+          doc.text(animalNombre, leftMargin + 22, y); // Ajustado
+          doc.text(valorFormateado, pageWidth - rightMargin - 1, y, { align: 'right' }); // Ajustado
+          y += 3.5; // Reducido
         });
 
-        y += 1;
+        y += 0.5; // Reducido
 
         // Línea antes del total
         doc.setLineWidth(0.3);
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 4;
+        y += 3; // Reducido
 
         // Total
-        doc.setFontSize(11);
+        doc.setFontSize(9.5); // Reducido de 10 a 9.5
         doc.setFont('helvetica', 'bold');
         doc.text('TOTAL:', leftMargin, y);
         const totalFormateado = "$" + valorTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        doc.text(totalFormateado, pageWidth - rightMargin, y, { align: 'right' });
-        y += 4;
+        doc.text(totalFormateado, pageWidth - rightMargin - 1, y, { align: 'right' }); // Ajustado
+        y += 3.5; // Reducido
 
         // Línea separadora
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 4;
+        y += 2.5; // Reducido
 
         // Pie de página
-        doc.setFontSize(8);
+        doc.setFontSize(7); // Reducido de 7.5 a 7
         doc.setFont('helvetica', 'bold');
         doc.text('*** CONSERVE SU TICKET ***', pageWidth / 2, y, { align: 'center' });
-        y += 3.5;
+        y += 2.5; // Reducido
         
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5); // Reducido
         doc.text('Este es su comprobante de juego', pageWidth / 2, y, { align: 'center' });
-        y += 5;
+        y += 3.5; // Reducido
 
-        // QR Code
+        // QR Code mucho más pequeño
         try {
           const qrData = `${radicado.padStart(8, "0")}-${sucursal}-${fecha}-${hora}`;
           const qrDataUrl = await QRCode.toDataURL(qrData, {
-            width: 300,
-            margin: 1,
+            width: 200, // Reducido de 250 a 200
+            margin: 0, // Sin margen
             color: {
               dark: '#000000',
               light: '#FFFFFF'
             }
           });
           
-          const qrSize = 35;
+          const qrSize = 22; // Reducido de 28 a 22
           const qrX = (pageWidth - qrSize) / 2;
           doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
-          y += qrSize + 4;
+          y += qrSize + 2.5; // Reducido
         } catch (error) {
           console.error("Error generando QR:", error);
         }
 
         // Línea antes de TyC
         doc.line(leftMargin, y, pageWidth - rightMargin, y);
-        y += 3.5;
+        y += 2.5; // Reducido
 
         // Términos y condiciones
-        doc.setFontSize(7);
+        doc.setFontSize(6); // Reducido de 6.5 a 6
         doc.setFont('helvetica', 'bold');
         doc.text('TERMINOS Y CONDICIONES', pageWidth / 2, y, { align: 'center' });
-        y += 3.5;
+        y += 2.5; // Reducido
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(5.5); // Reducido de 6 a 5.5
         const tyc = [
           "Ticket ganador tiene 3 dias habiles",
           "para ser redimido.",
@@ -232,12 +233,12 @@ const ReciboCaja = ({
           "fisico y en perfecto estado, de lo",
           "contrario sera anulado.",
           "Prohibida la venta a menores de",
-          "18 anos.",
+          "18 años.",
         ];
 
         tyc.forEach((linea) => {
           doc.text(linea, pageWidth / 2, y, { align: 'center' });
-          y += 3;
+          y += 2.2; // Reducido de 2.5 a 2.2
         });
 
         // Generar blob del PDF
