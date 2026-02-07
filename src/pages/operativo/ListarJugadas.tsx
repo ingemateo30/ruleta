@@ -482,8 +482,8 @@ const ListarJugadas = () => {
           </CardContent>
         </Card>
 
-        {/* Resumen de Jugadas por Animalito */}
-        {jugadas.length > 0 && (() => {
+        {/* Resumen de Jugadas por Animalito - SOLO PARA NO OPERARIOS */}
+        {!esOperario && jugadas.length > 0 && (() => {
           const conteo = jugadas
             .filter((j) => j.ESTADOP === 'A')
             .reduce<Record<string, { animal: string; codigo: string; jugadas: number; total: number }>>((acc, j) => {

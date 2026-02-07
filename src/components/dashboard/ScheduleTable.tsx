@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Clock, CheckCircle, Timer, AlertCircle, Loader2 } from "lucide-react";
 import { apiClient } from "@/api/client";
+import { useAuth } from "@/hooks/use-auth";
 
 interface HorarioConEstado {
   NUM: number;
@@ -41,13 +42,20 @@ const estadoBadges: Record<string, { variant: "default" | "secondary" | "destruc
 };
 
 const ScheduleTable = () => {
+  const { user } = useAuth();
+  const esOperario = String(user?.tipo) === '2';
+  
   const [horarios, setHorarios] = useState<HorarioConEstado[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [horaActual, setHoraActual] = useState(new Date());
 
   useEffect(() => {
     cargarHorarios();
     // Actualizar cada 30 segundos
-    const interval = setInterval(cargarHorarios, 30000);
+    const interval = setInterval(() => {
+      cargarHorarios();
+      setHoraActual(new Date());
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -73,6 +81,26 @@ const ScheduleTable = () => {
     const ampm = horas >= 12 ? "PM" : "AM";
     const horas12 = horas % 12 || 12;
     return `${horas12}:${minutos} ${ampm}`;
+  };
+
+  // Función para determinar si el operario puede ver el ganador
+  const puedeVerGanador = (horaJuego: string): boolean => {
+    if (!esOperario) return true; // Los no-operarios siempre pueden ver
+
+    try {
+      const ahora = horaActual;
+      const [horas, minutos, segundos] = horaJuego.split(':').map(Number);
+      
+      // Crear fecha del sorteo con la hora del día actual
+      const horaSorteo = new Date();
+      horaSorteo.setHours(horas, minutos, segundos || 0, 0);
+
+      // El operario solo puede ver si ya pasó la hora del sorteo
+      return ahora >= horaSorteo;
+    } catch (error) {
+      console.error('Error al validar hora:', error);
+      return false; // En caso de error, no mostrar
+    }
   };
 
   return (
@@ -108,6 +136,8 @@ const ScheduleTable = () => {
               ) : (
                 horarios.map((horario) => {
                   const estadoConfig = estadoBadges[horario.estado];
+                  const mostrarGanador = puedeVerGanador(horario.HORA);
+                  
                   return (
                     <TableRow 
                       key={horario.NUM} 
@@ -120,7 +150,7 @@ const ScheduleTable = () => {
                         {formatHora(horario.HORA)}
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm">
-                        {horario.ANIMAL ? (
+                        {horario.ANIMAL && mostrarGanador ? (
                           <span className="flex items-center gap-1">
                             <span 
                               className="w-3 h-3 rounded-full" 
@@ -129,7 +159,16 @@ const ScheduleTable = () => {
                             {horario.ANIMAL}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground">
+                            {!mostrarGanador && horario.ANIMAL ? (
+                              <span className="flex items-center gap-1 text-xs">
+                                <Clock className="h-3 w-3" />
+                                Pendiente
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

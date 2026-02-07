@@ -56,60 +56,10 @@ export default function InformeVentas() {
   useEffect(() => {
     cargarSucursales();
     // Auto-cargar ventas del dia actual al montar
-    const cargarInicial = async () => {
-      try {
-        setIsLoading(true);
-        const params: any = {
-          fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
-          fecha_fin: format(new Date(), 'yyyy-MM-dd'),
-        };
-        const response = await informesAPI.ventas(params);
-        if (response.success) {
-          const apiData = response.data;
-          const mappedData = {
-            por_sucursal: (apiData.ventas_por_sucursal || []).map((v: any) => ({
-              sucursal: v.SUCURSAL,
-              total_ventas: parseFloat(v.TOTAL_VENTAS || 0),
-              total_tickets: parseInt(v.TOTAL_TICKETS || 0),
-            })),
-            por_horario: (apiData.ventas_por_horario || []).map((h: any) => ({
-              hora: h.HORA,
-              descripcion: h.HORARIO,
-              total_tickets: parseInt(h.TOTAL_JUGADAS || 0),
-              total_ventas: parseFloat(h.TOTAL_APOSTADO || 0),
-              promedio: parseInt(h.TOTAL_JUGADAS || 0) > 0
-                ? parseFloat((h.TOTAL_APOSTADO || "0").toString().replace(/\./g, "").replace(/,/g, "."))
-                / parseInt(h.TOTAL_JUGADAS || 1)
-                : 0,
-            })),
-            tickets_anulados: (apiData.tickets_anulados || []).map((t: any) => ({
-              radicado: t.RADICADO,
-              fecha: t.FECHA,
-              hora: t.HORA,
-              sucursal: t.NOMBRE_SUCURSAL,
-              total: parseFloat(t.TOTALJUEGO || 0),
-              usuario: t.USUARIO,
-              motivo: t.MOTIVO_ANULACION,
-              fecha_anulacion: t.FECHA_ANULACION,
-              usuario_anulacion: t.USUARIO_ANULACION,
-            })),
-            kpis: {
-              total_ventas: apiData.resumen?.total_ventas || 0,
-              total_tickets: apiData.resumen?.total_tickets || 0,
-              ventas_canceladas: apiData.resumen?.total_cancelado || 0,
-              tickets_anulados: apiData.resumen?.tickets_anulados || 0,
-              total_anulado: apiData.resumen?.total_anulado || 0,
-            }
-          };
-          setDatos(mappedData);
-        }
-      } catch (error: any) {
-        console.error('Error carga inicial:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    cargarInicial();
+    cargarInforme({
+      fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
+      fecha_fin: format(new Date(), 'yyyy-MM-dd'),
+    });
   }, []);
 
   const cargarSucursales = async () => {
@@ -121,20 +71,17 @@ export default function InformeVentas() {
     }
   };
 
-  const handleBuscar = async () => {
+  const cargarInforme = async (params: any) => {
     try {
       setIsLoading(true);
-      const params: any = {
-        fecha_inicio: filtros.fecha_inicio,
-        fecha_fin: filtros.fecha_fin,
-      };
-
-      if (filtros.sucursal) params.sucursal = filtros.sucursal;
-
+      
+      console.log('Parámetros enviados al backend:', params); // Para debug
+      
       const response = await informesAPI.ventas(params);
 
       if (response.success) {
-        // Mapear datos de la API al formato esperado por el frontend
+        console.log('Respuesta del backend:', response.data); // Para debug
+        
         const apiData = response.data;
         const mappedData = {
           por_sucursal: (apiData.ventas_por_sucursal || []).map((v: any) => ({
@@ -151,7 +98,6 @@ export default function InformeVentas() {
               ? parseFloat((h.TOTAL_APOSTADO || "0").toString().replace(/\./g, "").replace(/,/g, "."))
               / parseInt(h.TOTAL_JUGADAS || 1)
               : 0,
-
           })),
           tickets_anulados: (apiData.tickets_anulados || []).map((t: any) => ({
             radicado: t.RADICADO,
@@ -172,14 +118,34 @@ export default function InformeVentas() {
             total_anulado: apiData.resumen?.total_anulado || 0,
           }
         };
+        
         setDatos(mappedData);
-        toast.success('Informe generado exitosamente');
+        
+        // Validar si hay datos de horarios
+        if (!apiData.ventas_por_horario || apiData.ventas_por_horario.length === 0) {
+          console.warn('No se recibieron datos de ventas por horario del backend');
+        }
       }
     } catch (error: any) {
+      console.error('Error al cargar informe:', error);
       toast.error('Error al generar informe: ' + error.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBuscar = async () => {
+    const params: any = {
+      fecha_inicio: filtros.fecha_inicio,
+      fecha_fin: filtros.fecha_fin,
+    };
+
+    if (filtros.sucursal && filtros.sucursal !== '0') {
+      params.sucursal = filtros.sucursal;
+    }
+
+    await cargarInforme(params);
+    toast.success('Informe generado exitosamente');
   };
 
   const exportarCSV = () => {
@@ -238,7 +204,7 @@ export default function InformeVentas() {
           <CardHeader>
             <CardTitle>Filtros de Búsqueda</CardTitle>
             <CardDescription>
-              Seleccione el rango de fechas y sucursal
+              Seleccione el rango de fechas y sucursal para el informe
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -361,7 +327,7 @@ export default function InformeVentas() {
                     Tickets Anulados - Detalle
                   </CardTitle>
                   <CardDescription>
-                    Listado de tickets anulados con motivos de anulación
+                    Listado de tickets anulados en el período seleccionado
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -446,7 +412,7 @@ export default function InformeVentas() {
               <CardHeader>
                 <CardTitle>Ventas por Sucursal</CardTitle>
                 <CardDescription>
-                  Comparativo de ventas entre sucursales
+                  Comparativo de ventas entre sucursales en el período seleccionado
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -469,7 +435,7 @@ export default function InformeVentas() {
               <CardHeader>
                 <CardTitle>Ventas por Horario</CardTitle>
                 <CardDescription>
-                  Detalle de ventas por horario
+                  Detalle de ventas por horario en el período: {filtros.fecha_inicio} {filtros.fecha_inicio !== filtros.fecha_fin && `a ${filtros.fecha_fin}`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -506,7 +472,12 @@ export default function InformeVentas() {
                   </Table>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    No hay datos de ventas por horario
+                    <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg font-medium">No hay datos de ventas por horario</p>
+                    <p className="text-sm">
+                      No se encontraron ventas para el período seleccionado: {filtros.fecha_inicio} 
+                      {filtros.fecha_inicio !== filtros.fecha_fin && ` a ${filtros.fecha_fin}`}
+                    </p>
                   </div>
                 )}
               </CardContent>

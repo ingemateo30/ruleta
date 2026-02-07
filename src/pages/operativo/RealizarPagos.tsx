@@ -33,9 +33,9 @@ export default function RealizarPagos() {
   // Configuración: minutos de espera después del sorteo
   const MINUTOS_ESPERA_PAGO = 1;
 
-  // Función para verificar si ya se puede pagar
-  const sePuedePagar = (fechaJuego: string, horaJuego: string): { 
-    puedePagar: boolean; 
+  // Función para verificar si ya se puede mostrar/pagar
+  const sePuedeMostrar = (fechaJuego: string, horaJuego: string): { 
+    puedeMostrar: boolean; 
     mensaje?: string;
     minutosRestantes?: number;
   } => {
@@ -51,25 +51,25 @@ export default function RealizarPagos() {
       const fechaSorteo = new Date(year, month - 1, day, horas, minutos, segundos);
       
       // Agregar tiempo de espera
-      const fechaPermitidaPago = new Date(fechaSorteo.getTime() + MINUTOS_ESPERA_PAGO * 60 * 1000);
+      const fechaPermitidaMostrar = new Date(fechaSorteo.getTime() + MINUTOS_ESPERA_PAGO * 60 * 1000);
       
       // Fecha actual
       const ahora = new Date();
 
-      if (ahora < fechaPermitidaPago) {
-        const minutosRestantes = Math.ceil((fechaPermitidaPago.getTime() - ahora.getTime()) / (60 * 1000));
+      if (ahora < fechaPermitidaMostrar) {
+        const minutosRestantes = Math.ceil((fechaPermitidaMostrar.getTime() - ahora.getTime()) / (60 * 1000));
         return {
-          puedePagar: false,
+          puedeMostrar: false,
           mensaje: `Debe esperar ${minutosRestantes} minuto${minutosRestantes !== 1 ? 's' : ''} más`,
           minutosRestantes
         };
       }
 
-      return { puedePagar: true };
+      return { puedeMostrar: true };
     } catch (error) {
-      console.error('Error al validar horario de pago:', error);
+      console.error('Error al validar horario:', error);
       return { 
-        puedePagar: false, 
+        puedeMostrar: false, 
         mensaje: 'Error al validar horario' 
       };
     }
@@ -102,11 +102,37 @@ export default function RealizarPagos() {
       const response = await pagosAPI.buscarGanadores(params);
 
       if (response.success) {
-        setGanadores(response.data || []);
-        if (!response.data || response.data.length === 0) {
-          toast.info('No se encontraron jugadas ganadoras');
+        // Filtrar jugadas que ya se pueden mostrar
+        const jugadasValidas = (response.data || []).filter((jugada: any) => {
+          const validacion = sePuedeMostrar(jugada.FECHA, jugada.HORAJUEGO);
+          return validacion.puedeMostrar;
+        });
+
+        setGanadores(jugadasValidas);
+        
+        if (jugadasValidas.length === 0) {
+          const todasLasJugadas = response.data || [];
+          if (todasLasJugadas.length > 0) {
+            // Hay jugadas pero aún no se pueden mostrar
+            const primeraJugada = todasLasJugadas[0];
+            const validacion = sePuedeMostrar(primeraJugada.FECHA, primeraJugada.HORAJUEGO);
+            toast.info('Jugadas ganadoras encontradas pero aún no disponibles', {
+              description: `${validacion.mensaje}. Los resultados se mostrarán ${MINUTOS_ESPERA_PAGO} minuto(s) después de cada sorteo.`,
+              duration: 5000,
+            });
+          } else {
+            toast.info('No se encontraron jugadas ganadoras');
+          }
         } else {
-          toast.success(`Se encontraron ${response.data.length} jugadas ganadoras`);
+          const jugadasOcultadas = (response.data?.length || 0) - jugadasValidas.length;
+          if (jugadasOcultadas > 0) {
+            toast.success(`Se encontraron ${jugadasValidas.length} jugadas disponibles para pago`, {
+              description: `${jugadasOcultadas} jugada(s) aún no están disponibles (tiempo de espera de ${MINUTOS_ESPERA_PAGO} minuto(s))`,
+              duration: 4000,
+            });
+          } else {
+            toast.success(`Se encontraron ${jugadasValidas.length} jugadas ganadoras`);
+          }
         }
       }
     } catch (error: any) {
@@ -117,17 +143,6 @@ export default function RealizarPagos() {
   };
 
   const handleRealizarPago = async (jugada: any) => {
-    // Verificar si ya se puede pagar
-    const validacion = sePuedePagar(jugada.FECHA, jugada.HORAJUEGO);
-    
-    if (!validacion.puedePagar) {
-      toast.error(validacion.mensaje || 'Aún no se puede realizar el pago', {
-        description: `El sorteo fue a las ${formatHora(jugada.HORAJUEGO)}. Debe esperar ${MINUTOS_ESPERA_PAGO} minutos después del sorteo.`,
-        duration: 5000,
-      });
-      return;
-    }
-
     const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
     if (!confirm(`¿Confirmar pago de $${valorPagar.toLocaleString('es-CO')} para el radicado ${jugada.RADICADO}?`)) {
       return;
@@ -189,7 +204,7 @@ export default function RealizarPagos() {
           <CardHeader>
             <CardTitle>Buscar Jugadas Ganadoras</CardTitle>
             <CardDescription>
-              Busca por radicado o por fecha para encontrar las jugadas pendientes de pago
+              Busca por radicado o por fecha. Las jugadas se mostrarán {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -266,12 +281,11 @@ export default function RealizarPagos() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                Jugadas Ganadoras Encontradas
+                Jugadas Ganadoras Disponibles
                 <Badge variant="secondary">{ganadores.length}</Badge>
               </CardTitle>
               <CardDescription>
-                Se encontraron {ganadores.length} jugadas ganadoras para procesar. 
-                Los pagos se pueden realizar {MINUTOS_ESPERA_PAGO} minutos después del sorteo.
+                Jugadas que ya cumplieron el tiempo de espera de {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -295,7 +309,6 @@ export default function RealizarPagos() {
                       const animalData = getAnimalByNombre(jugada.ANIMAL);
                       const valorApostado = parseFloat(jugada.VALOR_APOSTADO || 0);
                       const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
-                      const validacionPago = sePuedePagar(jugada.FECHA, jugada.HORAJUEGO);
 
                       return (
                         <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${index}`}>
@@ -338,11 +351,6 @@ export default function RealizarPagos() {
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 PAGADO
                               </Badge>
-                            ) : !validacionPago.puedePagar ? (
-                              <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
-                                <Clock className="h-3 w-3 mr-1" />
-                                ESPERA {validacionPago.minutosRestantes}m
-                              </Badge>
                             ) : (
                               <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
                                 PENDIENTE
@@ -353,23 +361,14 @@ export default function RealizarPagos() {
                             {jugada.ESTADO_PAGO !== 'PAGADO' && (
                               <Button
                                 onClick={() => handleRealizarPago(jugada)}
-                                disabled={
-                                  processingRadicado === jugada.RADICADO || 
-                                  !validacionPago.puedePagar
-                                }
+                                disabled={processingRadicado === jugada.RADICADO}
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-                                title={!validacionPago.puedePagar ? validacionPago.mensaje : 'Realizar pago'}
                               >
                                 {processingRadicado === jugada.RADICADO ? (
                                   <>
                                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                                     Procesando...
-                                  </>
-                                ) : !validacionPago.puedePagar ? (
-                                  <>
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Esperar
                                   </>
                                 ) : (
                                   <>
@@ -395,8 +394,10 @@ export default function RealizarPagos() {
             <CardContent className="py-12">
               <div className="text-center text-muted-foreground">
                 <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay jugadas ganadoras para mostrar</p>
-                <p className="text-sm">Utilice los filtros para buscar jugadas ganadoras</p>
+                <p>No hay jugadas ganadoras disponibles para mostrar</p>
+                <p className="text-sm mt-2">
+                  Las jugadas aparecerán {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo
+                </p>
               </div>
             </CardContent>
           </Card>

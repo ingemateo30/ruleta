@@ -165,11 +165,11 @@ try {
                 h.HORA,
                 COUNT(DISTINCT hj.RADICADO) as TOTAL_JUGADAS,
                 COALESCE(SUM(hj.VALOR), 0) as TOTAL_APOSTADO
-            FROM horariojuego h
-            LEFT JOIN hislottojuego hj ON h.NUM = hj.CODIGOJ
-            LEFT JOIN jugarlotto j ON hj.RADICADO = j.RADICADO
-                AND DATE(j.FECHA) >= ?
-                AND DATE(j.FECHA) <= ?
+            FROM hislottojuego hj
+INNER JOIN jugarlotto j ON hj.RADICADO = j.RADICADO
+INNER JOIN horariojuego h ON hj.CODIGOJ = h.NUM
+WHERE DATE(j.FECHA) >= ?
+    AND DATE(j.FECHA) <= ?
                 AND j.ESTADO = 'A'
                 AND hj.ESTADOP = 'A'
         ";
