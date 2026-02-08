@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { pagosAPI } from '@/api/admin';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -14,15 +14,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Search, DollarSign, CheckCircle2, Loader2, Clock } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Loader2, Clock, AlertTriangle, CalendarX } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { getAnimalByNombre } from '@/constants/animals';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function RealizarPagos() {
   const { user } = useAuth();
   const [ganadores, setGanadores] = useState<any[]>([]);
+  const [proximosAVencer, setProximosAVencer] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [processingRadicado, setProcessingRadicado] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useState({
@@ -32,46 +34,78 @@ export default function RealizarPagos() {
 
   // Configuración: minutos de espera después del sorteo
   const MINUTOS_ESPERA_PAGO = 1;
+  const DIAS_LIMITE_COBRO = 3;
 
-  // Función para verificar si ya se puede mostrar/pagar
-  const sePuedeMostrar = (fechaJuego: string, horaJuego: string): { 
-    puedeMostrar: boolean; 
+ useEffect(() => {
+     if (user?.tipo === '0' || user?.tipo === '1') {
+       cargarProximosAVencer();
+     }
+   }, [user]);
+
+  // Función para validar si se puede mostrar/pagar
+  const calcularEstadoPago = (fechaSorteo: string, horaJuego: string, fechaPago?: string): {
+    puedeMostrar: boolean;
+    puedePagar: boolean;
+    diasRestantes: number;
     mensaje?: string;
-    minutosRestantes?: number;
+    estaVencido: boolean;
   } => {
     try {
-      // Combinar fecha y hora del juego
-      const [year, month, day] = fechaJuego.split('-').map(Number);
+      const [year, month, day] = fechaSorteo.split('-').map(Number);
       const horaParts = horaJuego.split(':');
       const horas = parseInt(horaParts[0] || '0', 10);
       const minutos = parseInt(horaParts[1] || '0', 10);
       const segundos = parseInt(horaParts[2] || '0', 10);
 
-      // Crear fecha del sorteo
-      const fechaSorteo = new Date(year, month - 1, day, horas, minutos, segundos);
-      
-      // Agregar tiempo de espera
-      const fechaPermitidaMostrar = new Date(fechaSorteo.getTime() + MINUTOS_ESPERA_PAGO * 60 * 1000);
-      
-      // Fecha actual
+      const fechaSorteoDate = new Date(year, month - 1, day, horas, minutos, segundos);
+      const fechaPermitidaMostrar = new Date(fechaSorteoDate.getTime() + MINUTOS_ESPERA_PAGO * 60 * 1000);
+      const fechaLimiteCobro = new Date(year, month - 1, day + DIAS_LIMITE_COBRO, 23, 59, 59);
       const ahora = new Date();
 
-      if (ahora < fechaPermitidaMostrar) {
+      const diasRestantes = Math.ceil((fechaLimiteCobro.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24));
+      const estaVencido = ahora > fechaLimiteCobro;
+      const puedeMostrar = ahora >= fechaPermitidaMostrar;
+      const puedePagar = puedeMostrar && !estaVencido;
+
+      let mensaje = '';
+      if (!puedeMostrar) {
         const minutosRestantes = Math.ceil((fechaPermitidaMostrar.getTime() - ahora.getTime()) / (60 * 1000));
-        return {
-          puedeMostrar: false,
-          mensaje: `Debe esperar ${minutosRestantes} minuto${minutosRestantes !== 1 ? 's' : ''} más`,
-          minutosRestantes
-        };
+        mensaje = `Espere ${minutosRestantes} minuto${minutosRestantes !== 1 ? 's' : ''}`;
+      } else if (estaVencido) {
+        mensaje = 'Plazo vencido';
+      } else if (diasRestantes <= 0) {
+        mensaje = 'Último día';
+      } else {
+        mensaje = `${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restante${diasRestantes !== 1 ? 's' : ''}`;
       }
 
-      return { puedeMostrar: true };
-    } catch (error) {
-      console.error('Error al validar horario:', error);
-      return { 
-        puedeMostrar: false, 
-        mensaje: 'Error al validar horario' 
+      return {
+        puedeMostrar,
+        puedePagar,
+        diasRestantes: Math.max(0, diasRestantes),
+        mensaje,
+        estaVencido
       };
+    } catch (error) {
+      console.error('Error al calcular estado de pago:', error);
+      return {
+        puedeMostrar: false,
+        puedePagar: false,
+        diasRestantes: 0,
+        mensaje: 'Error',
+        estaVencido: false
+      };
+    }
+  };
+
+  const cargarProximosAVencer = async () => {
+    try {
+      const response = await pagosAPI.proximosAVencer();
+      if (response.success) {
+        setProximosAVencer(response.data || []);
+      }
+    } catch (error: any) {
+      console.error('Error al cargar próximos a vencer:', error);
     }
   };
 
@@ -102,36 +136,48 @@ export default function RealizarPagos() {
       const response = await pagosAPI.buscarGanadores(params);
 
       if (response.success) {
-        // Filtrar jugadas que ya se pueden mostrar
-        const jugadasValidas = (response.data || []).filter((jugada: any) => {
-          const validacion = sePuedeMostrar(jugada.FECHA, jugada.HORAJUEGO);
-          return validacion.puedeMostrar;
-        });
+        const todasLasJugadas = response.data || [];
+        
+        // Filtrar y validar cada jugada
+        const jugadasValidas = todasLasJugadas.filter((jugada: any) => {
+          const estado = calcularEstadoPago(
+            jugada.FECHA_SORTEO,
+            jugada.HORAJUEGO,
+            jugada.FECHA_PAGO
+          );
+          return estado.puedeMostrar && !estado.estaVencido;
+        }).map((jugada: any) => ({
+          ...jugada,
+          estadoPago: calcularEstadoPago(jugada.FECHA_SORTEO, jugada.HORAJUEGO, jugada.FECHA_PAGO)
+        }));
 
         setGanadores(jugadasValidas);
-        
+
         if (jugadasValidas.length === 0) {
-          const todasLasJugadas = response.data || [];
           if (todasLasJugadas.length > 0) {
-            // Hay jugadas pero aún no se pueden mostrar
             const primeraJugada = todasLasJugadas[0];
-            const validacion = sePuedeMostrar(primeraJugada.FECHA, primeraJugada.HORAJUEGO);
-            toast.info('Jugadas ganadoras encontradas pero aún no disponibles', {
-              description: `${validacion.mensaje}. Los resultados se mostrarán ${MINUTOS_ESPERA_PAGO} minuto(s) después de cada sorteo.`,
-              duration: 5000,
-            });
+            const estado = calcularEstadoPago(primeraJugada.FECHA_SORTEO, primeraJugada.HORAJUEGO);
+            
+            if (estado.estaVencido) {
+              toast.error('Las jugadas encontradas ya expiraron (más de 3 días)');
+            } else {
+              toast.info('Jugadas encontradas pero aún no disponibles', {
+                description: `${estado.mensaje}. Los pagos se habilitan ${MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo.`,
+                duration: 5000,
+              });
+            }
           } else {
             toast.info('No se encontraron jugadas ganadoras');
           }
         } else {
-          const jugadasOcultadas = (response.data?.length || 0) - jugadasValidas.length;
+          const jugadasOcultadas = todasLasJugadas.length - jugadasValidas.length;
           if (jugadasOcultadas > 0) {
-            toast.success(`Se encontraron ${jugadasValidas.length} jugadas disponibles para pago`, {
-              description: `${jugadasOcultadas} jugada(s) aún no están disponibles (tiempo de espera de ${MINUTOS_ESPERA_PAGO} minuto(s))`,
+            toast.success(`${jugadasValidas.length} jugada(s) disponible(s) para pago`, {
+              description: `${jugadasOcultadas} jugada(s) no disponible(s) (en espera o vencidas)`,
               duration: 4000,
             });
           } else {
-            toast.success(`Se encontraron ${jugadasValidas.length} jugadas ganadoras`);
+            toast.success(`${jugadasValidas.length} jugada(s) ganadora(s) encontrada(s)`);
           }
         }
       }
@@ -144,7 +190,20 @@ export default function RealizarPagos() {
 
   const handleRealizarPago = async (jugada: any) => {
     const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
-    if (!confirm(`¿Confirmar pago de $${valorPagar.toLocaleString('es-CO')} para el radicado ${jugada.RADICADO}?`)) {
+    const diasRestantes = jugada.estadoPago?.diasRestantes || 0;
+    
+    if (!jugada.estadoPago?.puedePagar) {
+      toast.error('Esta jugada no puede ser pagada en este momento');
+      return;
+    }
+
+    const mensaje = diasRestantes === 0
+      ? '⚠️ ÚLTIMO DÍA PARA COBRAR'
+      : diasRestantes === 1
+      ? '⚠️ Quedan 24 horas para cobrar'
+      : `Quedan ${diasRestantes} días para cobrar`;
+
+    if (!confirm(`${mensaje}\n\n¿Confirmar pago de ${formatCurrency(valorPagar)} para el radicado ${jugada.RADICADO}?`)) {
       return;
     }
 
@@ -156,11 +215,16 @@ export default function RealizarPagos() {
       });
 
       if (result.success) {
-        toast.success('Pago realizado exitosamente');
+        toast.success('Pago realizado exitosamente', {
+          description: `Total pagado: ${formatCurrency(result.data?.total_pagado || 0)}`,
+          duration: 5000,
+        });
         handleBuscar();
+        cargarProximosAVencer();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al realizar pago');
+      const errorMsg = error.response?.data?.message || 'Error al realizar pago';
+      toast.error(errorMsg);
     } finally {
       setProcessingRadicado(null);
     }
@@ -195,16 +259,46 @@ export default function RealizarPagos() {
               Realizar Pagos
             </h1>
             <p className="text-muted-foreground mt-1">
-              Buscar y pagar jugadas ganadoras
+              Buscar y pagar jugadas ganadoras (plazo: 3 días)
             </p>
           </div>
         </div>
+
+        {/* Alerta de información */}
+        <Alert className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+          <Clock className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-700 dark:text-blue-400">
+            <strong>Importante:</strong> Los ganadores tienen 3 días calendario para cobrar sus premios desde la fecha del sorteo. 
+            Los pagos se habilitan {MINUTOS_ESPERA_PAGO} minuto(s) después de cada sorteo.
+          </AlertDescription>
+        </Alert>
+
+        {/* Alertas de jugadas próximas a vencer */}
+        {proximosAVencer.length > 0 && (user?.tipo === '0' || user?.tipo === '1') && (
+          <Alert className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700 dark:text-amber-400">
+              <strong>¡Atención!</strong> Hay {proximosAVencer.length} jugada(s) ganadora(s) próxima(s) a vencer (≤1 día restante).
+              <div className="mt-2 space-y-1">
+                {proximosAVencer.slice(0, 3).map((jugada: any) => (
+                  <div key={jugada.RADICADO} className="text-sm">
+                    • Radicado {jugada.RADICADO} - {jugada.NOMBRE_SUCURSAL} - {formatCurrency(parseFloat(jugada.TOTAL_A_PAGAR))} 
+                    ({jugada.DIAS_RESTANTES} día{jugada.DIAS_RESTANTES !== 1 ? 's' : ''} restante{jugada.DIAS_RESTANTES !== 1 ? 's' : ''})
+                  </div>
+                ))}
+                {proximosAVencer.length > 3 && (
+                  <div className="text-sm">... y {proximosAVencer.length - 3} más</div>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
             <CardTitle>Buscar Jugadas Ganadoras</CardTitle>
             <CardDescription>
-              Busca por radicado o por fecha. Las jugadas se mostrarán {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo.
+              Busque por radicado o fecha de sorteo. Solo se mostrarán jugadas dentro del plazo de cobro.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -218,11 +312,12 @@ export default function RealizarPagos() {
                     setSearchParams({ ...searchParams, radicado: e.target.value })
                   }
                   placeholder="Ingrese el radicado"
+                  onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="fecha">Fecha</Label>
+                <Label htmlFor="fecha">Fecha de Sorteo</Label>
                 <Input
                   id="fecha"
                   type="date"
@@ -285,7 +380,7 @@ export default function RealizarPagos() {
                 <Badge variant="secondary">{ganadores.length}</Badge>
               </CardTitle>
               <CardDescription>
-                Jugadas que ya cumplieron el tiempo de espera de {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo.
+                Jugadas dentro del plazo de cobro ({DIAS_LIMITE_COBRO} días desde el sorteo)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -294,12 +389,13 @@ export default function RealizarPagos() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Radicado</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Fecha Sorteo</TableHead>
                       <TableHead>Sucursal</TableHead>
                       <TableHead>Horario</TableHead>
                       <TableHead>Animal Ganador</TableHead>
                       <TableHead className="text-right">Apostado</TableHead>
                       <TableHead className="text-right">A Pagar</TableHead>
+                      <TableHead>Plazo</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -309,14 +405,17 @@ export default function RealizarPagos() {
                       const animalData = getAnimalByNombre(jugada.ANIMAL);
                       const valorApostado = parseFloat(jugada.VALOR_APOSTADO || 0);
                       const valorPagar = parseFloat(jugada.VALOR_GANADO || 0);
+                      const estado = jugada.estadoPago;
+                      const urgente = estado.diasRestantes <= 1;
 
                       return (
-                        <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${index}`}>
+                        <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${index}`} 
+                                  className={urgente && jugada.ESTADO_PAGO !== 'PAGADO' ? 'bg-amber-50 dark:bg-amber-950/20' : ''}>
                           <TableCell className="font-mono font-medium">
                             {jugada.RADICADO}
                           </TableCell>
                           <TableCell>
-                            {jugada.FECHA ? format(new Date(jugada.FECHA + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
+                            {jugada.FECHA_SORTEO ? format(new Date(jugada.FECHA_SORTEO + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
                           </TableCell>
                           <TableCell>{jugada.NOMBRE_SUCURSAL || '-'}</TableCell>
                           <TableCell>
@@ -346,11 +445,36 @@ export default function RealizarPagos() {
                             {formatCurrency(valorPagar)}
                           </TableCell>
                           <TableCell>
-                            {jugada.ESTADO_PAGO === 'PAGADO' ? (
-                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                PAGADO
+                            {estado.diasRestantes === 0 ? (
+                              <Badge variant="destructive" className="flex items-center gap-1">
+                                <CalendarX className="h-3 w-3" />
+                                ÚLTIMO DÍA
                               </Badge>
+                            ) : estado.diasRestantes === 1 ? (
+                              <Badge variant="outline" className="flex items-center gap-1 border-amber-500 text-amber-600">
+                                <AlertTriangle className="h-3 w-3" />
+                                1 día
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {estado.diasRestantes} días
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {jugada.ESTADO_PAGO === 'PAGADO' ? (
+                              <div>
+                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  PAGADO
+                                </Badge>
+                                {jugada.FECHA_PAGO && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {format(new Date(jugada.FECHA_PAGO), 'dd/MM/yyyy')}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
                                 PENDIENTE
@@ -363,7 +487,7 @@ export default function RealizarPagos() {
                                 onClick={() => handleRealizarPago(jugada)}
                                 disabled={processingRadicado === jugada.RADICADO}
                                 size="sm"
-                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                                className={urgente ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}
                               >
                                 {processingRadicado === jugada.RADICADO ? (
                                   <>
@@ -373,7 +497,7 @@ export default function RealizarPagos() {
                                 ) : (
                                   <>
                                     <DollarSign className="h-3 w-3 mr-1" />
-                                    Pagar
+                                    {urgente ? '⚠️ Pagar' : 'Pagar'}
                                   </>
                                 )}
                               </Button>
@@ -396,7 +520,7 @@ export default function RealizarPagos() {
                 <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No hay jugadas ganadoras disponibles para mostrar</p>
                 <p className="text-sm mt-2">
-                  Las jugadas aparecerán {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo
+                  Las jugadas aparecen {MINUTOS_ESPERA_PAGO} minuto(s) después del sorteo y tienen {DIAS_LIMITE_COBRO} días de plazo
                 </p>
               </div>
             </CardContent>

@@ -10,6 +10,11 @@ interface UserData {
     codbodega?: number;
     estado?: string;
 }
+interface CerrarJuegoListarParams {
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  sucursal?: string;
+}
 // ============= USUARIOS =============
 export const usuariosAPI = {
   listar: async () => {
@@ -160,68 +165,39 @@ export const ruletaAPI = {
 
 // ============= PAGOS =============
 export const pagosAPI = {
+  proximosAVencer: async () => {
+    return await apiClient.get('/pagos.php/proximos-a-vencer');
+  },
+  
   buscarGanadores: async (params: { radicado?: string; fecha?: string }) => {
-    return await apiClient.get<ApiResponse>('/pagos.php/buscar-ganadores', { params });
+    return await apiClient.get('/pagos.php/buscar-ganadores', { params });
   },
-
-  verificarGanador: async (radicado: string) => {
-    return await apiClient.get<ApiResponse>('/pagos.php/verificar-ganador', {
-      params: { radicado },
-    });
-  },
-
-  realizarPago: async (data: {
-    radicado: string;
-    usuario: string;
-    observaciones?: string;
-  }) => {
-    return await apiClient.post<ApiResponse>('/pagos.php/realizar-pago', data);
-  },
-
-  listar: async (params?: {
-    fecha_inicio?: string;
-    fecha_fin?: string;
-    sucursal?: string;
-  }) => {
-    return await apiClient.get<ApiResponse>('/pagos.php/listar', { params });
-  },
-
-  estadisticas: async (fecha?: string) => {
-    return await apiClient.get<ApiResponse>('/pagos.php/estadisticas', {
-      params: { fecha },
-    });
+  
+  realizarPago: async (data: { radicado: string; usuario: string }) => {
+    return await apiClient.post('/pagos.php/realizar-pago', data);
   },
 };
 
 // ============= CERRAR JUEGO =============
 export const cerrarJuegoAPI = {
-  verificar: async (params: { codigo_horario: number; fecha?: string }) => {
-    return await apiClient.get<ApiResponse>('/cerrar-juego.php/verificar', { params });
+  pendientes: async (params: { fecha: string }) => {
+    return await apiClient.get('/cerrar-juego.php/pendientes', { params });
   },
-
+  
   ejecutar: async (data: {
-    codigo_horario: number;
     fecha: string;
     usuario: string;
-    observaciones?: string;
+    codigo_sucursal?: number;
   }) => {
-    return await apiClient.post<ApiResponse>('/cerrar-juego.php/ejecutar', data);
+    return await apiClient.post('/cerrar-juego.php/ejecutar', data);
   },
-
-  listar: async (params?: { fecha_inicio?: string; fecha_fin?: string }) => {
-    return await apiClient.get<ApiResponse>('/cerrar-juego.php/listar', { params });
-  },
-
-  estadisticas: async (fecha?: string) => {
-    return await apiClient.get<ApiResponse>('/cerrar-juego.php/estadisticas', {
-      params: { fecha },
-    });
-  },
-
-  detalle: async (id: number) => {
-    return await apiClient.get<ApiResponse>(`/cerrar-juego.php/detalle/${id}`);
+  
+ listar: async (params: CerrarJuegoListarParams) => {
+    return await apiClient.get('/cerrar-juego.php/listar', { params });
   },
 };
+
+ 
 
 // ============= INFORMES =============
 export const informesAPI = {
