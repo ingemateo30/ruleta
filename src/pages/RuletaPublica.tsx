@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Timer, Trophy, Clock, Loader2, Calendar, Search } from "lucide-react";
+import { Timer, Trophy, Clock, Loader2, Calendar, Search, HelpCircle } from "lucide-react";
 import { apiClient } from "@/api/client";
 import { getAnimalByNombre, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
@@ -47,9 +47,12 @@ const RuletaPublica = () => {
   const [mostrarGanador, setMostrarGanador] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fechaFiltro, setFechaFiltro] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [mostrarInterrogacion, setMostrarInterrogacion] = useState(false);
+  const [tiempoMostrandoGanador, setTiempoMostrandoGanador] = useState(0);
 
   const animacionEnProgreso = useRef(false);
   const ultimoHorarioConocido = useRef<number | null>(null);
+  const timerGanadorRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cargar datos iniciales y actualizar cada 10 segundos
   const cargarDatos = useCallback(async (fechaParam?: string) => {
@@ -124,6 +127,42 @@ const RuletaPublica = () => {
     return () => clearInterval(timer);
   }, [segundosRestantes, isAnimating, cargarDatos]);
 
+  // Temporizador de 15 minutos para mostrar el último ganador
+  useEffect(() => {
+    if (mostrarGanador && ultimoResultado) {
+      // Resetear el contador
+      setTiempoMostrandoGanador(0);
+      setMostrarInterrogacion(false);
+
+      // Limpiar temporizador anterior si existe
+      if (timerGanadorRef.current) {
+        clearInterval(timerGanadorRef.current);
+      }
+
+      // Iniciar nuevo temporizador
+      timerGanadorRef.current = setInterval(() => {
+        setTiempoMostrandoGanador(prev => {
+          const nuevoTiempo = prev + 1;
+          // 15 minutos = 900 segundos
+          if (nuevoTiempo >= 900) {
+            setMostrarInterrogacion(true);
+            setMostrarGanador(false);
+            if (timerGanadorRef.current) {
+              clearInterval(timerGanadorRef.current);
+            }
+          }
+          return nuevoTiempo;
+        });
+      }, 1000);
+
+      return () => {
+        if (timerGanadorRef.current) {
+          clearInterval(timerGanadorRef.current);
+        }
+      };
+    }
+  }, [mostrarGanador, ultimoResultado]);
+
   // Animacion de la ruleta al llegar a 0
   const iniciarAnimacion = async () => {
     if (animacionEnProgreso.current) return;
@@ -131,81 +170,90 @@ const RuletaPublica = () => {
     animacionEnProgreso.current = true;
     setIsAnimating(true);
     setMostrarGanador(false);
+    setMostrarInterrogacion(false);
 
+    // Obtener el ganador inmediatamente (sin delay)
     let ganadorReal: Resultado | null = null;
 
-    // Esperar unos segundos antes de consultar el ganador (1 minuto post-sorteo)
-    await new Promise(resolve => setTimeout(resolve, 60000));
-
-    try {
-      const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
-      if (response.success && response.data?.ultimo_resultado) {
-        ganadorReal = response.data.ultimo_resultado;
-      }
-    } catch (error) {
-      console.error('Error al cargar ganador:', error);
-    }
-
-    if (!ganadorReal) {
-      await new Promise(resolve => setTimeout(resolve, 30000));
+    // Intentar obtener el ganador con reintentos
+    for (let intento = 0; intento < 5; intento++) {
       try {
         const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
         if (response.success && response.data?.ultimo_resultado) {
           ganadorReal = response.data.ultimo_resultado;
+          break;
         }
       } catch (error) {
-        console.error('Error al cargar ganador (retry):', error);
+        console.error(`Error al cargar ganador (intento ${intento + 1}):`, error);
+      }
+
+      // Esperar 3 segundos entre reintentos (excepto en el último)
+      if (intento < 4 && !ganadorReal) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
-    // Animacion rapida de animalitos cambiando
-    const animalesParaAnimacion = ganadorReal
-      ? ANIMALS.filter(a => a.nombre.toLowerCase() !== ganadorReal!.animal.toLowerCase())
-      : ANIMALS;
+    // Animación tipo ruleta - pasa por todos los animales secuencialmente
+    // Excluir Ballena (00) y Delfín (0) para tener exactamente 36 animales
+    const animalesRuleta = ANIMALS.filter(a => a.codigo !== '00' && a.codigo !== '0');
 
-    const duracionAnimacion = 4000;
-    const intervaloCambio = 80;
-    let tiempoTranscurrido = 0;
+    // Encontrar el índice del ganador en la ruleta
+    const indiceGanador = ganadorReal
+      ? animalesRuleta.findIndex(a => a.nombre.toLowerCase() === ganadorReal!.animal.toLowerCase())
+      : 0;
 
-    const animacionInterval = setInterval(() => {
-      tiempoTranscurrido += intervaloCambio;
+    // Configuración de la animación
+    const vueltasCompletas = 3; // Número de vueltas completas antes de detenerse
+    const totalAnimales = animalesRuleta.length;
+    const animalesARecorrer = (vueltasCompletas * totalAnimales) + indiceGanador;
 
-      const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
-      setAnimalAnimacion(animalesParaAnimacion[randomIndex].nombre);
+    let animalActual = 0;
+    let velocidad = 50; // Velocidad inicial en ms (muy rápido)
+    const velocidadFinal = 300; // Velocidad final en ms (lento)
+    const aceleracion = 1.02; // Factor de aceleración (desaceleración gradual)
 
-      if (tiempoTranscurrido > duracionAnimacion * 0.7) {
-        clearInterval(animacionInterval);
+    const animarSiguiente = () => {
+      if (animalActual >= animalesARecorrer) {
+        // Animación completada - mostrar ganador
+        if (ganadorReal) {
+          setAnimalAnimacion(ganadorReal.animal);
+          setUltimoResultado(ganadorReal);
+        }
 
-        let contadorLento = 0;
-        const maxCambiosLentos = 5;
+        setTimeout(() => {
+          setMostrarGanador(true);
+          setIsAnimating(false);
+          cargarDatos();
 
-        const slowInterval = setInterval(() => {
-          contadorLento++;
-
-          const randomIndex = Math.floor(Math.random() * animalesParaAnimacion.length);
-          setAnimalAnimacion(animalesParaAnimacion[randomIndex].nombre);
-
-          if (contadorLento >= maxCambiosLentos) {
-            clearInterval(slowInterval);
-
-            if (ganadorReal) {
-              setAnimalAnimacion(ganadorReal.animal);
-              setUltimoResultado(ganadorReal);
-            }
-
-            setTimeout(() => {
-              setMostrarGanador(true);
-              setIsAnimating(false);
-              cargarDatos();
-
-              setTimeout(() => {
-                animacionEnProgreso.current = false;
-              }, 3000);
-            }, 200);
-          }
-        }, 300);
+          setTimeout(() => {
+            animacionEnProgreso.current = false;
+          }, 1000);
+        }, 500);
+        return;
       }
-    }, intervaloCambio);
+
+      // Mostrar el siguiente animal
+      const indice = animalActual % totalAnimales;
+      setAnimalAnimacion(animalesRuleta[indice].nombre);
+
+      // Calcular la velocidad para el siguiente frame
+      // Desacelerar gradualmente en la última vuelta
+      const progreso = animalActual / animalesARecorrer;
+
+      if (progreso > 0.7) {
+        // En el último 30% del recorrido, desacelerar más rápido
+        velocidad = Math.min(velocidad * aceleracion, velocidadFinal);
+      } else if (progreso > 0.5) {
+        // En el 50-70%, empezar a desacelerar suavemente
+        velocidad = Math.min(velocidad * 1.01, velocidadFinal * 0.7);
+      }
+
+      animalActual++;
+      setTimeout(animarSiguiente, velocidad);
+    };
+
+    // Iniciar la animación
+    animarSiguiente();
   };
 
   const formatTiempo = (segundos: number): string => {
@@ -327,11 +375,7 @@ const RuletaPublica = () => {
                     exit={{ scale: 0.5, opacity: 0 }}
                     className="text-center"
                   >
-                    <motion.div
-                      animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}
-                      className="relative"
-                    >
+                    <motion.div className="relative">
                       {animalEnAnimacion && (
                         <img
                           src={animalEnAnimacion.imagen}
@@ -384,6 +428,33 @@ const RuletaPublica = () => {
                       Sorteo: {ultimoResultado.horario}
                     </p>
                   </motion.div>
+                ) : mostrarInterrogacion ? (
+                  <motion.div
+                    key="interrogacion"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", duration: 0.8 }}
+                    className="text-center"
+                  >
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [-5, 5, -5]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="relative"
+                    >
+                      <div className="w-48 h-48 mx-auto flex items-center justify-center bg-red-500/20 rounded-full border-4 border-red-500">
+                        <HelpCircle className="h-32 w-32 text-red-500" strokeWidth={2.5} />
+                      </div>
+                    </motion.div>
+                    <h2 className="text-3xl font-bold text-white mt-6">
+                      ¿Quién será el próximo ganador?
+                    </h2>
+                    <p className="text-white/60 mt-2">
+                      Esperando próximo sorteo...
+                    </p>
+                  </motion.div>
                 ) : ultimoResultado ? (
                   <motion.div
                     key="ultimo"
@@ -391,7 +462,7 @@ const RuletaPublica = () => {
                     animate={{ opacity: 1 }}
                     className="text-center"
                   >
-                    <p className="text-white/60 text-sm mb-2">Ultimo Ganador</p>
+                    <p className="text-white/60 text-sm mb-2">Último Ganador</p>
                     {animalGanador && (
                       <img
                         src={animalGanador.imagen}
@@ -412,7 +483,7 @@ const RuletaPublica = () => {
                 ) : (
                   <div className="text-center text-white/60">
                     <Clock className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p>Esperando primer sorteo del dia</p>
+                    <p>Esperando primer sorteo del día</p>
                   </div>
                 )}
               </AnimatePresence>
