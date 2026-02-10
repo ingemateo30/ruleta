@@ -266,10 +266,7 @@ try {
     // GET: Listar tickets anulados (solo admin/superadmin)
     elseif ($method === 'GET' && $action === 'anulados') {
         // Solo admin y superadmin pueden ver el reporte
-        if (!isset($currentUser['tipo']) || !in_array($currentUser['tipo'], ['0', '1'])) {
-            sendError('No tiene permisos para ver este reporte', 403);
-        }
-
+    
         $fechaInicio = $_GET['fecha_inicio'] ?? null;
         $fechaFin = $_GET['fecha_fin'] ?? null;
         $sucursalFiltro = $_GET['sucursal'] ?? null;

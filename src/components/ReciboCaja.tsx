@@ -73,6 +73,7 @@ const ReciboCaja = ({
         const contentWidth = pageWidth - leftMargin - rightMargin;
 
         // Cargar logo más pequeño
+        /*
         try {
           const logoImg = await loadImageAsDataURL(logoLottoAnimal);
           const logoSize = 15; // Reducido de 18 a 15
@@ -82,17 +83,18 @@ const ReciboCaja = ({
         } catch (error) {
           console.warn("No se pudo cargar el logo:", error);
         }
-
+          */
+y +=  6.5;
         // Título
-        doc.setFontSize(11); // Reducido de 12 a 11
+        doc.setFontSize(22); // Reducido de 12 a 11
         doc.setFont('helvetica', 'bold');
         doc.text('LOTTO ANIMAL', pageWidth / 2, y, { align: 'center' });
         y += 3.5; // Reducido
         
-        doc.setFontSize(7.5); // Reducido de 8 a 7.5
+        doc.setFontSize(12); // Reducido de 8 a 7.5
         doc.setFont('helvetica', 'bold');
         doc.text('Una hora para ganar', pageWidth / 2, y, { align: 'center' });
-        y += 3.5; // Reducido
+        y += 5.5; // Reducido
 
         // Línea doble
         doc.setLineWidth(0.2);
@@ -220,10 +222,10 @@ const ReciboCaja = ({
         doc.setFontSize(6); // Reducido de 6.5 a 6
         doc.setFont('helvetica', 'bold');
         doc.text('TERMINOS Y CONDICIONES', pageWidth / 2, y, { align: 'center' });
-        y += 2.5; // Reducido
+        y += 3.5; // Reducido
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5.5); // Reducido de 6 a 5.5
+        doc.setFontSize(7.5); // Reducido de 6 a 5.5
         const tyc = [
           "Ticket ganador tiene 3 dias habiles",
           "para ser redimido.",
@@ -238,7 +240,7 @@ const ReciboCaja = ({
 
         tyc.forEach((linea) => {
           doc.text(linea, pageWidth / 2, y, { align: 'center' });
-          y += 2.2; // Reducido de 2.5 a 2.2
+          y += 2.4; // Reducido de 2.5 a 2.2
         });
 
         // Generar blob del PDF
