@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { estadisticasAPI } from '@/api/admin';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { toast } from 'sonner';
-import { BarChart3, Loader2 } from 'lucide-react';
+import { BarChart3, Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   LineChart,
   Line,
@@ -25,18 +28,24 @@ const COLORS = [
   '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
 ];
 
-// Helper para obtener fecha local en formato YYYY-MM-DD
 const getLocalDateString = (date: Date): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
 export default function Estadisticas() {
   const [dashboard, setDashboard] = useState<any>(null);
+  const [resumenGeneral, setResumenGeneral] = useState<any>(null);
   const [tendencias, setTendencias] = useState<any[]>([]);
   const [animales, setAnimales] = useState<any[]>([]);
   const [horarios, setHorarios] = useState<any[]>([]);
   const [sucursales, setSucursales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const hoyStr = getLocalDateString(new Date());
+  const hace30DiasStr = getLocalDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+  const [fechaInicio, setFechaInicio] = useState(hace30DiasStr);
+  const [fechaFin, setFechaFin] = useState(hoyStr);
 
   useEffect(() => {
     cargarDatos();
@@ -46,75 +55,120 @@ export default function Estadisticas() {
     try {
       setIsLoading(true);
 
-      // Calcular fechas usando zona horaria local
-      const hoy = new Date();
-      const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const fechaFin = getLocalDateString(hoy);
-      const fechaInicio = getLocalDateString(hace30Dias);
+      // Cargar cada fuente de datos independientemente para evitar que un error afecte a todas
+      const cargarDashboard = async () => {
+        try {
+          const res = await estadisticasAPI.dashboard();
+          if (res.success && res.data) {
+            setDashboard(res.data.kpis || res.data);
+          }
+        } catch (e) {
+          console.error('Error cargando dashboard:', e);
+        }
+      };
 
-      const [
-        dashboardRes,
-        tendenciasRes,
-        animalesRes,
-        horariosRes,
-        sucursalesRes,
-      ] = await Promise.all([
-        estadisticasAPI.dashboard(),
-        estadisticasAPI.tendencias(7),
-        estadisticasAPI.animales({
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin,
-        }),
-        estadisticasAPI.horarios({
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin,
-        }),
-        estadisticasAPI.sucursales({
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin,
-        }),
+      const cargarResumen = async () => {
+        try {
+          const res = await estadisticasAPI.resumenGeneral();
+          if (res.success && res.data) {
+            setResumenGeneral(res.data);
+          }
+        } catch (e) {
+          console.error('Error cargando resumen general:', e);
+        }
+      };
+
+      const cargarTendencias = async () => {
+        try {
+          const res = await estadisticasAPI.tendencias(7);
+          if (res.success && res.data) {
+            const formateadas = (res.data.ventas_por_dia || []).map((t: any) => ({
+              ...t,
+              total_ventas: parseFloat(t.ventas) || 0,
+              total_pagado: 0
+            }));
+            setTendencias(formateadas);
+          }
+        } catch (e) {
+          console.error('Error cargando tendencias:', e);
+        }
+      };
+
+      const cargarAnimales = async () => {
+        try {
+          const res = await estadisticasAPI.animales({
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+          });
+          if (res.success && res.data) {
+            const formateados = (Array.isArray(res.data) ? res.data : []).slice(0, 10).map((a: any) => ({
+              ...a,
+              nombre: a.animal || a.VALOR || 'Sin nombre',
+              total_jugadas: parseInt(a.total_jugadas) || 0,
+              total_apostado: parseFloat(a.total_apostado) || 0,
+            }));
+            setAnimales(formateados);
+          }
+        } catch (e) {
+          console.error('Error cargando animales:', e);
+        }
+      };
+
+      const cargarHorarios = async () => {
+        try {
+          const res = await estadisticasAPI.horarios({
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+          });
+          if (res.success && res.data) {
+            const formateados = (Array.isArray(res.data) ? res.data : []).map((h: any) => ({
+              ...h,
+              descripcion: h.horario || h.DESCRIPCION || 'Sin descripción',
+              total_ventas: parseFloat(h.total_apostado) || 0,
+            }));
+            setHorarios(formateados);
+          }
+        } catch (e) {
+          console.error('Error cargando horarios:', e);
+        }
+      };
+
+      const cargarSucursales = async () => {
+        try {
+          const res = await estadisticasAPI.sucursales({
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+          });
+          if (res.success && res.data) {
+            const formateadas = (Array.isArray(res.data) ? res.data : []).map((s: any) => ({
+              ...s,
+              nombre: s.sucursal || s.BODEGA || 'Sin nombre',
+              total_ventas: parseFloat(s.total_ventas) || 0,
+            }));
+            setSucursales(formateadas);
+          }
+        } catch (e) {
+          console.error('Error cargando sucursales:', e);
+        }
+      };
+
+      await Promise.all([
+        cargarDashboard(),
+        cargarResumen(),
+        cargarTendencias(),
+        cargarAnimales(),
+        cargarHorarios(),
+        cargarSucursales(),
       ]);
-
-      if (dashboardRes.success) setDashboard(dashboardRes.data.kpis);
-      if (tendenciasRes.success) {
-        // Mapear los datos para que tengan los campos correctos del gráfico
-        const tendenciasFormateadas = (tendenciasRes.data.ventas_por_dia || []).map((t: any) => ({
-          ...t,
-          total_ventas: t.ventas || 0,
-          total_pagado: 0 // El endpoint de tendencias no incluye pagos por día, lo dejamos en 0
-        }));
-        setTendencias(tendenciasFormateadas);
-      }
-      if (animalesRes.success) {
-        // Mapear los datos para que tengan el campo 'nombre' que espera el gráfico
-        const animalesFormateados = (animalesRes.data || []).slice(0, 10).map((a: any) => ({
-          ...a,
-          nombre: a.animal || a.VALOR || 'Sin nombre'
-        }));
-        setAnimales(animalesFormateados);
-      }
-      if (horariosRes.success) {
-        // Mapear los datos para que tengan los campos correctos
-        const horariosFormateados = (horariosRes.data || []).map((h: any) => ({
-          ...h,
-          descripcion: h.horario || h.DESCRIPCION || 'Sin descripción',
-          total_ventas: h.total_apostado || 0
-        }));
-        setHorarios(horariosFormateados);
-      }
-      if (sucursalesRes.success) {
-        // Mapear los datos para que tengan el campo 'nombre'
-        const sucursalesFormateadas = (sucursalesRes.data || []).map((s: any) => ({
-          ...s,
-          nombre: s.sucursal || s.BODEGA || 'Sin nombre'
-        }));
-        setSucursales(sucursalesFormateadas);
-      }
     } catch (error: any) {
-      toast.error('Error al cargar estadísticas: ' + error.message);
+      toast.error('Error al cargar estadísticas: ' + (error.message || 'Error desconocido'));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefrescar = async () => {
+    await cargarDatos();
   };
 
   if (isLoading) {
@@ -141,8 +195,42 @@ export default function Estadisticas() {
             Análisis completo del sistema
           </p>
         </div>
+        <Button variant="outline" onClick={handleRefrescar}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualizar
+        </Button>
       </div>
 
+      {/* Filtros de periodo */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>Fecha Inicio</Label>
+              <Input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Fecha Fin</Label>
+              <Input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleRefrescar} className="w-full">
+                Consultar Periodo
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KPIs del día */}
       {dashboard && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -153,7 +241,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${(dashboard.total_ventas || 0).toLocaleString()}
+                ${(parseFloat(dashboard.total_ventas) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -166,7 +254,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {(dashboard.total_tickets || 0).toLocaleString()}
+                {(parseInt(dashboard.total_tickets) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -179,7 +267,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                ${(dashboard.total_pagado || 0).toLocaleString()}
+                ${(parseFloat(dashboard.total_pagado) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -192,7 +280,7 @@ export default function Estadisticas() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                ${(dashboard.utilidad_neta || 0).toLocaleString()}
+                ${(parseFloat(dashboard.utilidad_neta) || 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -200,6 +288,7 @@ export default function Estadisticas() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* Tendencia de ventas */}
         <Card>
           <CardHeader>
             <CardTitle>Tendencia de Ventas (Últimos 7 días)</CardTitle>
@@ -208,61 +297,68 @@ export default function Estadisticas() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={tendencias}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="fecha" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value: any) => `$${value.toLocaleString()}`}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="total_ventas"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  name="Ventas"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="total_pagado"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  name="Pagado"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {tendencias.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={tendencias}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="fecha" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: any) => `$${Number(value).toLocaleString()}`}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="total_ventas"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    name="Ventas"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay datos de tendencias disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Top animales */}
         <Card>
           <CardHeader>
             <CardTitle>Top 10 Animales Más Jugados</CardTitle>
             <CardDescription>
-              Animales con mayor cantidad de apuestas
+              Animales con mayor cantidad de apuestas en el periodo
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={animales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="nombre" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar
-                  dataKey="total_jugadas"
-                  fill="#3b82f6"
-                  name="Total Jugadas"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {animales.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={animales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="nombre" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar
+                    dataKey="total_jugadas"
+                    fill="#3b82f6"
+                    name="Total Jugadas"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay datos de animales disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* Ventas por horario */}
         <Card>
           <CardHeader>
             <CardTitle>Ventas por Horario</CardTitle>
@@ -271,25 +367,32 @@ export default function Estadisticas() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={horarios}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="descripcion" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value: any) => `$${value.toLocaleString()}`}
-                />
-                <Legend />
-                <Bar
-                  dataKey="total_ventas"
-                  fill="#22c55e"
-                  name="Total Ventas"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {horarios.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={horarios}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="descripcion" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: any) => `$${Number(value).toLocaleString()}`}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="total_ventas"
+                    fill="#22c55e"
+                    name="Total Ventas"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay datos de horarios disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Distribución por sucursal */}
         <Card>
           <CardHeader>
             <CardTitle>Distribución por Sucursal</CardTitle>
@@ -298,22 +401,22 @@ export default function Estadisticas() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {sucursales && sucursales.length > 0 ? (
+            {sucursales && sucursales.length > 0 && sucursales.some((s: any) => s.total_ventas > 0) ? (
               <>
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
-                      data={sucursales}
+                      data={sucursales.filter((s: any) => s.total_ventas > 0)}
                       dataKey="total_ventas"
                       nameKey="nombre"
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
                       label={(entry) =>
-                        `${entry.nombre} ($${entry.total_ventas.toLocaleString()})`
+                        `${entry.nombre}`
                       }
                     >
-                      {sucursales.map((_: any, index: number) => (
+                      {sucursales.filter((s: any) => s.total_ventas > 0).map((_: any, index: number) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -321,7 +424,7 @@ export default function Estadisticas() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: any) => `$${value.toLocaleString()}`}
+                      formatter={(value: any) => `$${Number(value).toLocaleString()}`}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -342,7 +445,7 @@ export default function Estadisticas() {
                         <span className="font-medium">{sucursal.nombre}</span>
                       </div>
                       <div className="text-sm font-semibold">
-                        ${sucursal.total_ventas.toLocaleString()}
+                        ${(sucursal.total_ventas || 0).toLocaleString()}
                       </div>
                     </div>
                   ))}
@@ -350,13 +453,14 @@ export default function Estadisticas() {
               </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No hay datos de sucursales
+                No hay datos de sucursales disponibles
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Resumen general del sistema */}
       <Card>
         <CardHeader>
           <CardTitle>Resumen General</CardTitle>
@@ -365,22 +469,22 @@ export default function Estadisticas() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Total Animales Activos
+                Animales Activos
               </div>
               <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {dashboard?.animales_activos || 0}
+                {resumenGeneral?.animales_activos || 0}
               </div>
             </div>
 
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="text-sm font-medium text-green-700 dark:text-green-300">
-                Total Horarios Activos
+                Horarios Activos
               </div>
               <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                {dashboard?.horarios_activos || 0}
+                {resumenGeneral?.horarios_activos || 0}
               </div>
             </div>
 
@@ -389,7 +493,16 @@ export default function Estadisticas() {
                 Total Sucursales
               </div>
               <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                {dashboard?.total_sucursales || 0}
+                {resumenGeneral?.total_sucursales || 0}
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                Sorteos Realizados
+              </div>
+              <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+                {(resumenGeneral?.total_sorteos_realizados || 0).toLocaleString()}
               </div>
             </div>
           </div>

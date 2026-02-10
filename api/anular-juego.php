@@ -263,11 +263,72 @@ try {
         sendResponse($result, $result['success'] ? 200 : 400);
     }
     
+    // GET: Listar tickets anulados (solo admin/superadmin)
+    elseif ($method === 'GET' && $action === 'anulados') {
+        // Solo admin y superadmin pueden ver el reporte
+        if (!isset($currentUser['tipo']) || !in_array($currentUser['tipo'], ['0', '1'])) {
+            sendError('No tiene permisos para ver este reporte', 403);
+        }
+
+        $fechaInicio = $_GET['fecha_inicio'] ?? null;
+        $fechaFin = $_GET['fecha_fin'] ?? null;
+        $sucursalFiltro = $_GET['sucursal'] ?? null;
+
+        $conditions = ["j.ESTADO = 'I'"];
+        $params = [];
+
+        if ($fechaInicio && $fechaFin) {
+            $conditions[] = "DATE(j.FECHA) >= ?";
+            $conditions[] = "DATE(j.FECHA) <= ?";
+            $params[] = $fechaInicio;
+            $params[] = $fechaFin;
+        }
+        if ($sucursalFiltro && $sucursalFiltro !== '0') {
+            $conditions[] = "j.SUCURSAL = ?";
+            $params[] = $sucursalFiltro;
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $conditions);
+
+        // Obtener tickets anulados
+        $sql = "
+            SELECT j.RADICADO, j.FECHA, j.HORA, j.SUCURSAL,
+                   j.TOTALJUEGO, j.MOTIVO_ANULACION, j.FECHA_ANULACION,
+                   j.USUARIO_ANULACION,
+                   b.BODEGA as NOMBRE_SUCURSAL
+            FROM jugarlotto j
+            LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
+            $whereClause
+            ORDER BY j.FECHA_ANULACION DESC, j.FECHA DESC
+            LIMIT 500
+        ";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $anulados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Calcular resumen
+        $totalAnulados = count($anulados);
+        $totalMonto = 0;
+        foreach ($anulados as $a) {
+            $totalMonto += floatval($a['TOTALJUEGO'] ?? 0);
+        }
+
+        sendResponse([
+            'success' => true,
+            'data' => $anulados,
+            'resumen' => [
+                'total_anulados' => $totalAnulados,
+                'total_monto' => $totalMonto
+            ]
+        ]);
+    }
+
     else {
         sendError('Endpoint no encontrado', 404, [
             'available_endpoints' => [
                 'GET /anular-juego/buscar?radicado=X&fecha=YYYY-MM-DD',
-                'POST /anular-juego/ejecutar'
+                'POST /anular-juego/ejecutar',
+                'GET /anular-juego/anulados?fecha_inicio=X&fecha_fin=Y&sucursal=Z'
             ]
         ]);
     }

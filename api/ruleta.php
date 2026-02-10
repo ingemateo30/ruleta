@@ -244,6 +244,109 @@ try {
         }
     }
 
+    // GET /api/ruleta.php/estadisticas-filtradas - Estadísticas con filtros
+    elseif ($method === 'GET' && end($uriParts) === 'estadisticas-filtradas') {
+        $fechaInicio = isset($_GET['fecha_inicio']) && $_GET['fecha_inicio'] !== '' ? $_GET['fecha_inicio'] : null;
+        $fechaFin = isset($_GET['fecha_fin']) && $_GET['fecha_fin'] !== '' ? $_GET['fecha_fin'] : null;
+        $sucursal = isset($_GET['sucursal']) && $_GET['sucursal'] !== '' && $_GET['sucursal'] !== '0' ? $_GET['sucursal'] : null;
+        $animal = isset($_GET['animal']) && $_GET['animal'] !== '' && $_GET['animal'] !== '0' ? $_GET['animal'] : null;
+
+        $conditions = ["hj.ESTADOP = 'A'", "j.ESTADO = 'A'"];
+        $params = [];
+
+        if ($fechaInicio && $fechaFin) {
+            $conditions[] = "DATE(j.FECHA) >= ?";
+            $conditions[] = "DATE(j.FECHA) <= ?";
+            $params[] = $fechaInicio;
+            $params[] = $fechaFin;
+        }
+        if ($sucursal) {
+            $conditions[] = "j.SUCURSAL = ?";
+            $params[] = $sucursal;
+        }
+        if ($animal) {
+            $conditions[] = "hj.CODANIMAL = ?";
+            $params[] = $animal;
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $conditions);
+
+        $sql = "
+            SELECT
+                COUNT(DISTINCT hj.RADICADO) as total_jugadas,
+                COALESCE(SUM(hj.VALOR), 0) as total_apostado,
+                COUNT(DISTINCT hj.CODANIMAL) as animales_jugados
+            FROM hislottojuego hj
+            JOIN jugarlotto j ON hj.RADICADO = j.RADICADO
+            $whereClause
+        ";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $totales = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Veces ganador
+        $condGanador = [];
+        $paramsGanador = [];
+        if ($fechaInicio && $fechaFin) {
+            $condGanador[] = "g.FECHA >= ?";
+            $condGanador[] = "g.FECHA <= ?";
+            $paramsGanador[] = $fechaInicio;
+            $paramsGanador[] = $fechaFin;
+        }
+        if ($animal) {
+            $condGanador[] = "g.CODIGOA = ?";
+            $paramsGanador[] = $animal;
+        }
+        $whereGanador = count($condGanador) > 0 ? 'WHERE ' . implode(' AND ', $condGanador) : '';
+        $stmt = $db->prepare("SELECT COUNT(*) as veces_ganador FROM ingresarganadores g $whereGanador");
+        $stmt->execute($paramsGanador);
+        $ganador = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Detalle por animal (top 10)
+        $sqlDetalle = "
+            SELECT l.NUM, l.VALOR as nombre, l.COLOR,
+                   COUNT(DISTINCT hj.RADICADO) as total_jugadas,
+                   COALESCE(SUM(hj.VALOR), 0) as total_apostado
+            FROM lottoruleta l
+            JOIN hislottojuego hj ON l.NUM = hj.CODANIMAL AND hj.ESTADOP = 'A'
+            JOIN jugarlotto j ON hj.RADICADO = j.RADICADO AND j.ESTADO = 'A'
+        ";
+        $condDetalle = [];
+        $paramsDetalle = [];
+        if ($fechaInicio && $fechaFin) {
+            $condDetalle[] = "DATE(j.FECHA) >= ?";
+            $condDetalle[] = "DATE(j.FECHA) <= ?";
+            $paramsDetalle[] = $fechaInicio;
+            $paramsDetalle[] = $fechaFin;
+        }
+        if ($sucursal) {
+            $condDetalle[] = "j.SUCURSAL = ?";
+            $paramsDetalle[] = $sucursal;
+        }
+        if ($animal) {
+            $condDetalle[] = "l.NUM = ?";
+            $paramsDetalle[] = $animal;
+        }
+        if (count($condDetalle) > 0) {
+            $sqlDetalle .= ' WHERE ' . implode(' AND ', $condDetalle);
+        }
+        $sqlDetalle .= " GROUP BY l.NUM, l.VALOR, l.COLOR ORDER BY total_apostado DESC LIMIT 10";
+        $stmt = $db->prepare($sqlDetalle);
+        $stmt->execute($paramsDetalle);
+        $detalle = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'total_jugadas' => intval($totales['total_jugadas']),
+                'total_apostado' => floatval($totales['total_apostado']),
+                'animales_jugados' => intval($totales['animales_jugados']),
+                'veces_ganador' => intval($ganador['veces_ganador']),
+                'detalle_animales' => $detalle
+            ]
+        ]);
+    }
+
     // GET /api/ruleta.php/estadisticas - Obtener estadísticas generales
     elseif ($method === 'GET' && end($uriParts) === 'estadisticas') {
         // Total de animales activos/inactivos

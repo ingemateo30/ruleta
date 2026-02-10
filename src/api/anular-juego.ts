@@ -52,6 +52,28 @@ class AnularJuegoService {
       };
     }
   }
+
+  async listarAnulados(params: {
+    fecha_inicio?: string;
+    fecha_fin?: string;
+    sucursal?: string;
+  }): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.fecha_inicio) queryParams.set('fecha_inicio', params.fecha_inicio);
+      if (params.fecha_fin) queryParams.set('fecha_fin', params.fecha_fin);
+      if (params.sucursal) queryParams.set('sucursal', params.sucursal);
+      const response = await apiClient.get<any>(
+        `${this.baseEndpoint}/anulados?${queryParams.toString()}`
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  }
 }
 
 // Instancia única del servicio
