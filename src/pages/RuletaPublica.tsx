@@ -49,6 +49,7 @@ const RuletaPublica = () => {
   const [fechaFiltro, setFechaFiltro] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mostrarInterrogacion, setMostrarInterrogacion] = useState(false);
   const [tiempoMostrandoGanador, setTiempoMostrandoGanador] = useState(0);
+  const [modoPrueba, setModoPrueba] = useState(false);
 
   const animacionEnProgreso = useRef(false);
   const ultimoHorarioConocido = useRef<number | null>(null);
@@ -99,6 +100,18 @@ const RuletaPublica = () => {
     const interval = setInterval(() => cargarDatos(), 10000);
     return () => clearInterval(interval);
   }, [cargarDatos]);
+
+  // Activar modo de prueba con Ctrl + Shift + T
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        setModoPrueba(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
 
   // Contador regresivo sincronizado con servidor
   useEffect(() => {
@@ -163,8 +176,25 @@ const RuletaPublica = () => {
     }
   }, [mostrarGanador, ultimoResultado]);
 
-  // Animacion de la ruleta al llegar a 0
-  const iniciarAnimacion = async () => {
+  // Función para probar la animación con un ganador aleatorio
+  const probarAnimacion = () => {
+    if (animacionEnProgreso.current) return;
+
+    // Seleccionar un animal aleatorio
+    const animalAleatorio = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+
+    const ganadorPrueba: Resultado = {
+      codigo_animal: parseInt(animalAleatorio.codigo),
+      animal: animalAleatorio.nombre,
+      horario: 'PRUEBA',
+      hora: '00:00:00'
+    };
+
+    iniciarAnimacionConGanador(ganadorPrueba);
+  };
+
+  // Animacion de la ruleta con un ganador específico
+  const iniciarAnimacionConGanador = (ganadorReal: Resultado | null) => {
     if (animacionEnProgreso.current) return;
 
     animacionEnProgreso.current = true;
@@ -172,30 +202,8 @@ const RuletaPublica = () => {
     setMostrarGanador(false);
     setMostrarInterrogacion(false);
 
-    // Obtener el ganador inmediatamente (sin delay)
-    let ganadorReal: Resultado | null = null;
-
-    // Intentar obtener el ganador con reintentos
-    for (let intento = 0; intento < 5; intento++) {
-      try {
-        const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
-        if (response.success && response.data?.ultimo_resultado) {
-          ganadorReal = response.data.ultimo_resultado;
-          break;
-        }
-      } catch (error) {
-        console.error(`Error al cargar ganador (intento ${intento + 1}):`, error);
-      }
-
-      // Esperar 3 segundos entre reintentos (excepto en el último)
-      if (intento < 4 && !ganadorReal) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-    }
-
-    // Animación tipo ruleta - pasa por todos los animales secuencialmente
-    // Excluir Ballena (00) y Delfín (0) para tener exactamente 36 animales
-    const animalesRuleta = ANIMALS.filter(a => a.codigo !== '00' && a.codigo !== '0');
+    // Animación tipo ruleta - TODOS los 37 animales
+    const animalesRuleta = [...ANIMALS];
 
     // Encontrar el índice del ganador en la ruleta
     const indiceGanador = ganadorReal
@@ -214,21 +222,26 @@ const RuletaPublica = () => {
 
     const animarSiguiente = () => {
       if (animalActual >= animalesARecorrer) {
-        // Animación completada - mostrar ganador
+        // Animación completada - mostrar ganador inmediatamente
         if (ganadorReal) {
           setAnimalAnimacion(ganadorReal.animal);
           setUltimoResultado(ganadorReal);
-        }
 
-        setTimeout(() => {
-          setMostrarGanador(true);
+          setTimeout(() => {
+            setMostrarGanador(true);
+            setIsAnimating(false);
+
+            setTimeout(() => {
+              animacionEnProgreso.current = false;
+            }, 1000);
+          }, 300);
+        } else {
+          // Si no hay ganador, terminar la animación
           setIsAnimating(false);
-          cargarDatos();
-
           setTimeout(() => {
             animacionEnProgreso.current = false;
           }, 1000);
-        }, 500);
+        }
         return;
       }
 
@@ -254,6 +267,48 @@ const RuletaPublica = () => {
 
     // Iniciar la animación
     animarSiguiente();
+  };
+
+  // Animacion de la ruleta al llegar a 0
+  const iniciarAnimacion = async () => {
+    if (animacionEnProgreso.current) return;
+
+    // Esperar 2 segundos para dar tiempo a que el backend registre el ganador
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Obtener el ganador del backend
+    let ganadorReal: Resultado | null = null;
+
+    try {
+      const response = await apiClient.get('/ruleta-publica.php/ultimo-resultado');
+      if (response.success && response.data) {
+        ganadorReal = response.data;
+      }
+    } catch (error) {
+      console.error('Error al cargar ganador:', error);
+    }
+
+    // Si no hay ganador, intentar de nuevo
+    if (!ganadorReal) {
+      try {
+        const response = await apiClient.get('/ruleta-publica.php/proximo-sorteo');
+        if (response.success && response.data?.ultimo_resultado) {
+          ganadorReal = response.data.ultimo_resultado;
+        }
+      } catch (error) {
+        console.error('Error al cargar ganador (retry):', error);
+      }
+    }
+
+    // Iniciar animación con el ganador obtenido
+    iniciarAnimacionConGanador(ganadorReal);
+
+    // Recargar datos después de la animación
+    if (ganadorReal) {
+      setTimeout(() => {
+        cargarDatos();
+      }, 5000);
+    }
   };
 
   const formatTiempo = (segundos: number): string => {
@@ -328,6 +383,22 @@ const RuletaPublica = () => {
           <p className="text-xl sm:text-2xl text-yellow-400 font-semibold mt-1">
             Una hora para ganar
           </p>
+          {modoPrueba && (
+            <div className="mt-4 space-y-2">
+              <Badge className="bg-orange-500 text-white">
+                Modo de Prueba Activado (Ctrl+Shift+T para desactivar)
+              </Badge>
+              <div>
+                <Button
+                  onClick={probarAnimacion}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isAnimating}
+                >
+                  🎯 Probar Animación de Ruleta
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Seccion principal - Reloj y Ultimo ganador */}
