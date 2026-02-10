@@ -55,8 +55,9 @@ function sendError($message, $statusCode = 400, $details = null) {
 function listarHorarios($conn) {
     try {
         $stmt = $conn->query(
-            "SELECT NUM, DESCRIPCION 
-             FROM horariojuego 
+            "SELECT NUM, DESCRIPCION
+             FROM horariojuego
+             WHERE ESTADO = 'A'
              ORDER BY NUM"
         );
         

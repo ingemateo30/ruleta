@@ -45,7 +45,7 @@ export default function InformeJuegos() {
     try {
       const [sucursalesRes, horariosRes] = await Promise.all([
         sucursalesAPI.listar(),
-        horariosAPI.listar(),
+        horariosAPI.activos(),
       ]);
 
       if (sucursalesRes.success) setSucursales(sucursalesRes.data);

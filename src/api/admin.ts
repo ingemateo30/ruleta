@@ -161,6 +161,15 @@ export const ruletaAPI = {
   estadisticas: async () => {
     return await apiClient.get<ApiResponse>('/ruleta.php/estadisticas');
   },
+
+  estadisticasFiltradas: async (params: {
+    fecha_inicio?: string;
+    fecha_fin?: string;
+    sucursal?: string;
+    animal?: string;
+  }) => {
+    return await apiClient.get<ApiResponse>('/ruleta.php/estadisticas-filtradas', { params });
+  },
 };
 
 // ============= PAGOS =============

@@ -4,8 +4,12 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import WinnersTable from "@/components/dashboard/WinnersTable";
 import ScheduleTable from "@/components/dashboard/ScheduleTable";
 import AnimalRoulette from "@/components/dashboard/AnimalRoulette";
+import { useAuth } from "@/hooks/use-auth";
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const esOperario = String(user?.tipo) === '2';
+
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6">
@@ -25,23 +29,42 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <QuickActions />
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Winners Table */}
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
-            <WinnersTable />
-          </div>
+        {esOperario ? (
+          /* Layout para operarios: Schedule y Animales lado a lado */
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Schedule Table */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
+                <ScheduleTable />
+              </div>
 
-          {/* Schedule Table */}
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
-            <ScheduleTable />
-          </div>
-        </div>
+              {/* Animal Roulette al lado del horario */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
+                <AnimalRoulette />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Layout para admin: Winners + Schedule, luego Animales */
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Winners Table */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
+                <WinnersTable />
+              </div>
 
-        {/* Animal Roulette */}
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
-          <AnimalRoulette />
-        </div>
+              {/* Schedule Table */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
+                <ScheduleTable />
+              </div>
+            </div>
+
+            {/* Animal Roulette */}
+            <div className="animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
+              <AnimalRoulette />
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );
