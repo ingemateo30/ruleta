@@ -63,6 +63,8 @@ class Database {
             ];
 
             $this->connection = new PDO($dsn, $dbuser, $dbpass, $options);
+            $this->connection->exec("SET time_zone = 'America/Bogota'");
+
 
         } catch (PDOException $e) {
             error_log("Error de conexión a la base de datos: " . $e->getMessage());
