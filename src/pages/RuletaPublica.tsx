@@ -141,41 +141,60 @@ const RuletaPublica = () => {
   }, [segundosRestantes, isAnimating, cargarDatos]);
 
   // Temporizador de 15 minutos para mostrar el último ganador
-  useEffect(() => {
-    if (mostrarGanador && ultimoResultado) {
-      // Resetear el contador
-      setTiempoMostrandoGanador(0);
-      setMostrarInterrogacion(false);
+useEffect(() => {
+    if (!ultimoResultado) {
+      setMostrarInterrogacion(true);
+      setMostrarGanador(false);
+      return;
+    }
 
-      // Limpiar temporizador anterior si existe
+    const ahora = new Date();
+    const [horaH, minH, segH] = (ultimoResultado.hora || '00:00:00').split(':').map(Number);
+    const horaSorteo = new Date();
+    horaSorteo.setHours(horaH, minH || 0, segH || 0, 0);
+    
+    // Calcular cuántos segundos han pasado desde el sorteo
+    const segundosPasados = Math.floor((ahora.getTime() - horaSorteo.getTime()) / 1000);
+    
+    // Si ya pasaron 15 minutos (900 segundos), mostrar interrogación
+    if (segundosPasados >= 900) {
+      setMostrarInterrogacion(true);
+      setMostrarGanador(false);
+      return;
+    }
+
+    // Si pasaron menos de 15 minutos, mostrar ganador y programar cambio
+    setMostrarGanador(true);
+    setMostrarInterrogacion(false);
+    setTiempoMostrandoGanador(segundosPasados);
+
+    // Limpiar temporizador anterior si existe
+    if (timerGanadorRef.current) {
+      clearInterval(timerGanadorRef.current);
+    }
+
+    // Iniciar temporizador desde donde quedó
+    timerGanadorRef.current = setInterval(() => {
+      setTiempoMostrandoGanador(prev => {
+        const nuevoTiempo = prev + 1;
+        // 15 minutos = 900 segundos
+        if (nuevoTiempo >= 900) {
+          setMostrarInterrogacion(true);
+          setMostrarGanador(false);
+          if (timerGanadorRef.current) {
+            clearInterval(timerGanadorRef.current);
+          }
+        }
+        return nuevoTiempo;
+      });
+    }, 1000);
+
+    return () => {
       if (timerGanadorRef.current) {
         clearInterval(timerGanadorRef.current);
       }
-
-      // Iniciar nuevo temporizador
-      timerGanadorRef.current = setInterval(() => {
-        setTiempoMostrandoGanador(prev => {
-          const nuevoTiempo = prev + 1;
-          // 15 minutos = 900 segundos
-          if (nuevoTiempo >= 900) {
-            setMostrarInterrogacion(true);
-            setMostrarGanador(false);
-            if (timerGanadorRef.current) {
-              clearInterval(timerGanadorRef.current);
-            }
-          }
-          return nuevoTiempo;
-        });
-      }, 1000);
-
-      return () => {
-        if (timerGanadorRef.current) {
-          clearInterval(timerGanadorRef.current);
-        }
-      };
-    }
-  }, [mostrarGanador, ultimoResultado]);
-
+    };
+  }, [ultimoResultado]);
   // Función para probar la animación con un ganador aleatorio
   const probarAnimacion = () => {
     if (animacionEnProgreso.current) return;
@@ -274,7 +293,7 @@ const RuletaPublica = () => {
     if (animacionEnProgreso.current) return;
 
     // Esperar 2 segundos para dar tiempo a que el backend registre el ganador
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Obtener el ganador del backend
     let ganadorReal: Resultado | null = null;
