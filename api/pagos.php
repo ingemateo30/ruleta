@@ -60,7 +60,7 @@ try {
                     ELSE 'PENDIENTE'
                 END as ESTADO_PAGO,
                 pg.FECHA_PAGO,
-                pg.USUARIO as USUARIO_PAGO
+                pg.USUARIO_PAGO
             FROM jugarlotto j
             JOIN hislottojuego h ON j.RADICADO = h.RADICADO AND h.FECHA = j.FECHA
             JOIN ingresarganadores g ON h.CODANIMAL = g.CODIGOA

@@ -152,7 +152,33 @@ function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = 
                 'error' => 'El juego ya se encuentra anulado'
             ];
         }
- 
+
+        // Verificar que no se pueda anular después de la hora del juego
+        $sqlHorarios = "
+            SELECT DISTINCT h.CODIGOJ, hj.HORA
+            FROM hislottojuego h
+            JOIN horariojuego hj ON h.CODIGOJ = hj.NUM
+            WHERE h.RADICADO = :radicado AND h.FECHA = :fecha
+        ";
+        $stmtHorarios = $conn->prepare($sqlHorarios);
+        $stmtHorarios->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+        $horarios = $stmtHorarios->fetchAll(PDO::FETCH_ASSOC);
+
+        $fechaJuego = date('Y-m-d', strtotime($fecha));
+        $ahora = new DateTime();
+
+        foreach ($horarios as $horario) {
+            $horaJuego = $horario['HORA'];
+            $fechaHoraJuego = new DateTime("$fechaJuego $horaJuego");
+
+            if ($ahora > $fechaHoraJuego) {
+                return [
+                    'success' => false,
+                    'error' => 'No se puede anular el juego después de la hora del juego (' . $horaJuego . ')'
+                ];
+            }
+        }
+
         // Iniciar transacción
         $conn->beginTransaction();
  

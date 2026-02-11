@@ -168,15 +168,17 @@ try {
                 if ($codigoSucursal) {
                     $sucursalesAProcesar = [$codigoSucursal];
                 } else {
-                    // Obtener todas las sucursales que tienen jugadas en este horario
+                    // Obtener todas las sucursales ACTIVAS que tienen jugadas en este horario
                     $sqlSucursales = "
                         SELECT DISTINCT j.SUCURSAL
                         FROM jugarlotto j
                         JOIN hislottojuego h ON j.RADICADO = h.RADICADO
+                        JOIN bodegas b ON j.SUCURSAL = b.CODIGO
                         WHERE h.CODIGOJ = ?
                         AND DATE(j.FECHA) = ?
                         AND h.ESTADOP = 'A'
                         AND h.ESTADOC = 'A'
+                        AND b.ESTADO = 'A'
                     ";
                     $stmt = $db->prepare($sqlSucursales);
                     $stmt->execute([$codigoHorario, $fecha]);
