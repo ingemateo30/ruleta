@@ -66,7 +66,7 @@ const AnularJugada = () => {
   const [filtrosAnulados, setFiltrosAnulados] = useState({
     fecha_inicio: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
     fecha_fin: getLocalDateString(new Date()),
-    sucursal: '',
+    sucursal: '0', // Por defecto muestra todas las sucursales
   });
 
   // Establecer fecha actual por defecto
