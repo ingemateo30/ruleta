@@ -82,10 +82,24 @@ const AnularJugada = () => {
     try {
       const response = await sucursalesAPI.listar();
       if (response.success) {
-        setSucursales(response.data || []);
+        const sucursalesList = response.data || [];
+        console.log('Sucursales cargadas:', sucursalesList.length, sucursalesList);
+        setSucursales(sucursalesList);
+      } else {
+        console.error('Error al cargar sucursales:', response);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las sucursales",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error al cargar sucursales:', error);
+      toast({
+        title: "Error",
+        description: "Error al cargar la lista de sucursales",
+        variant: "destructive",
+      });
     }
   };
 
