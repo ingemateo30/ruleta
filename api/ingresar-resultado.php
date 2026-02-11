@@ -15,7 +15,7 @@ require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/db.php';
 
 // Inicializar seguridad - Solo Admin y SuperAdmin pueden ingresar resultados
-$currentUser = initApiSecurity(true, ['0', '1','2']);
+$currentUser = initApiSecurity(true, ['0', '1']);
 
 /**
  * Responde con JSON y código de estado HTTP

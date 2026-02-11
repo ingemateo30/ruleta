@@ -74,14 +74,10 @@ export default function InformeVentas() {
   const cargarInforme = async (params: any) => {
     try {
       setIsLoading(true);
-      
-      console.log('Parámetros enviados al backend:', params); // Para debug
-      
+
       const response = await informesAPI.ventas(params);
 
       if (response.success) {
-        console.log('Respuesta del backend:', response.data); // Para debug
-        
         const apiData = response.data;
         const mappedData = {
           por_sucursal: (apiData.ventas_por_sucursal || []).map((v: any) => ({

@@ -1,7 +1,8 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// IMPORTANTE: Desactivado para producción por seguridad
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 /**
  * API Endpoint: Realizar Juego de Lotto Animal
  *

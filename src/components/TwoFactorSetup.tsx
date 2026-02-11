@@ -41,10 +41,8 @@ const TwoFactorSetup = ({ onClose }: TwoFactorSetupProps) => {
                     'X-User-Id': authService.getCurrentUser()?.id.toString() || '',
                 },
             });
-            console.log(authService.getCurrentUser()?.id.toString() || '');
 
             const data = await response.json();
-            console.log(data);
 
             if (data.success) {
                 setSecret(data.secret);
