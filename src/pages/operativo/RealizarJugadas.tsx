@@ -319,9 +319,6 @@ const RealizarJugadas = () => {
         }),
       };
 
-      // Debug: Ver qué se está enviando
-      console.log('Datos del juego a enviar:', JSON.stringify(juegoData, null, 2));
-
       // Guardar juego
       const guardarRes = await realizarJuegoService.guardarJuego(juegoData);
 

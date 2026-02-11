@@ -83,7 +83,6 @@ const AnularJugada = () => {
       const response = await sucursalesAPI.listar();
       if (response.success) {
         const sucursalesList = response.data || [];
-        console.log('Sucursales cargadas:', sucursalesList.length, sucursalesList);
         setSucursales(sucursalesList);
       } else {
         console.error('Error al cargar sucursales:', response);
