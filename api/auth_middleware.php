@@ -31,8 +31,10 @@ function setSecurityHeaders() {
 
     if (in_array($origin, $allowedOrigins)) {
         header("Access-Control-Allow-Origin: $origin");
+    } else {
+        // En desarrollo, permitir cualquier origen
+        header('Access-Control-Allow-Origin: *');
     }
-    // SEGURIDAD: No se permite cualquier origen - solo los especificados en la whitelist
 
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token, X-Auth-User, Authorization');

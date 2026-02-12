@@ -52,8 +52,8 @@ try {
             $stmt = $db->prepare("
                 SELECT
                     h.CODIGOJ,
-                    hj.HORAJUEGO,
-                    hj.DESJUEGO,
+                    hj.HORA,
+                    hj.DESCRIPCION,
                     COUNT(DISTINCT j.RADICADO) as total_jugadas,
                     COALESCE(SUM(h.VALOR), 0) as total_apostado
                 FROM jugarlotto j
@@ -63,7 +63,7 @@ try {
                 AND j.SUCURSAL = ?
                 AND h.ESTADOP = 'A'
                 AND h.ESTADOC = 'A'
-                GROUP BY h.CODIGOJ, hj.HORAJUEGO, hj.DESJUEGO
+                GROUP BY h.CODIGOJ, hj.HORA, hj.DESCRIPCION
             ");
             $stmt->execute([$fecha, $codigoSucursal]);
             $jugadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
