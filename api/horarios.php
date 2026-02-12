@@ -198,6 +198,33 @@ try {
         }
 
         if (isset($data['estado'])) {
+            // Si se está intentando marcar como inactivo/completado, validar que la hora ya haya pasado
+            if ($data['estado'] === 'I' || $data['estado'] === 'C') {
+                // Obtener la hora del horario
+                $stmt = $db->prepare("SELECT HORA, ESTADO FROM horariojuego WHERE NUM = ?");
+                $stmt->execute([$num]);
+                $horario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($horario) {
+                    // Solo validar si estaba activo antes
+                    if ($horario['ESTADO'] === 'A') {
+                        // Obtener la hora actual
+                        $horaActual = date('H:i:s');
+                        $horaJuego = $horario['HORA'];
+
+                        // Comparar las horas
+                        if ($horaActual < $horaJuego) {
+                            http_response_code(400);
+                            echo json_encode([
+                                'success' => false,
+                                'message' => 'No se puede marcar como completado un horario cuya hora de juego aún no ha pasado. Hora de juego: ' . substr($horaJuego, 0, 5) . ', Hora actual: ' . substr($horaActual, 0, 5)
+                            ]);
+                            exit;
+                        }
+                    }
+                }
+            }
+
             $fields[] = "ESTADO = ?";
             $values[] = $data['estado'];
         }
