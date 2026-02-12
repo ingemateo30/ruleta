@@ -373,12 +373,34 @@ const RealizarJugadas = () => {
           });
         }
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Error al guardar el juego",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Manejar errores de la API - verificar si es error de caja cerrada
+      if (error?.response?.data?.codigo_error === 'SUCURSAL_CERRADA') {
+        toast({
+          title: "Caja Cerrada",
+          description: error.response.data.error || "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
+          variant: "destructive",
+        });
+      } else if (error?.response?.status === 404) {
+        toast({
+          title: "Error de Conexión",
+          description: "No se pudo conectar con el servidor. Por favor, verifique su conexión e intente nuevamente.",
+          variant: "destructive",
+        });
+      } else if (error?.response?.status === 400) {
+        const errorMsg = error.response.data?.error || error.response.data?.message || "Error al procesar la solicitud";
+        toast({
+          title: "Error de Validación",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error?.response?.data?.error || error?.message || "Error al guardar el juego",
+          variant: "destructive",
+        });
+      }
     } finally {
       setGuardando(false);
     }
