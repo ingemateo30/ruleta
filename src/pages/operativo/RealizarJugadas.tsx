@@ -355,14 +355,23 @@ const RealizarJugadas = () => {
         });
         setJugadas([]);
       } else {
-        const errorMsg = guardarRes.details
-          ? guardarRes.details.join(', ')
-          : guardarRes.error || "Error al guardar el juego";
-        toast({
-          title: "Error",
-          description: errorMsg,
-          variant: "destructive",
-        });
+        // Verificar si es error de caja cerrada
+        if ((guardarRes as any).codigo_error === 'SUCURSAL_CERRADA') {
+          toast({
+            title: "Caja Cerrada",
+            description: guardarRes.error || "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
+            variant: "destructive",
+          });
+        } else {
+          const errorMsg = guardarRes.details
+            ? guardarRes.details.join(', ')
+            : guardarRes.error || "Error al guardar el juego";
+          toast({
+            title: "Error",
+            description: errorMsg,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       toast({

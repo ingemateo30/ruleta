@@ -83,19 +83,17 @@ const ScheduleTable = () => {
     return `${horas12}:${minutos} ${ampm}`;
   };
 
-  // Función para determinar si el operario puede ver el ganador
+  // Función para determinar si se puede ver el ganador (aplica para todos los usuarios)
   const puedeVerGanador = (horaJuego: string): boolean => {
-    if (!esOperario) return true; // Los no-operarios siempre pueden ver
-
     try {
       const ahora = horaActual;
       const [horas, minutos, segundos] = horaJuego.split(':').map(Number);
-      
+
       // Crear fecha del sorteo con la hora del día actual
       const horaSorteo = new Date();
       horaSorteo.setHours(horas, minutos, segundos || 0, 0);
 
-      // El operario solo puede ver si ya pasó la hora del sorteo
+      // Todos (admin y operario) solo pueden ver si ya pasó la hora del sorteo
       return ahora >= horaSorteo;
     } catch (error) {
       console.error('Error al validar hora:', error);
