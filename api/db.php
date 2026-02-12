@@ -63,7 +63,7 @@ class Database {
             ];
 
             $this->connection = new PDO($dsn, $dbuser, $dbpass, $options);
-            $this->connection->exec("SET time_zone = 'America/Bogota'");
+            $this->connection->exec("SET time_zone = '-05:00'");
 
 
         } catch (PDOException $e) {
