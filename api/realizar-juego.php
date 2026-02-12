@@ -249,6 +249,31 @@ function validarJuego($juegos, $minimo, $maximo) {
 }
 
 /**
+ * Verifica si una sucursal tiene un cierre registrado para la fecha actual
+ */
+function verificarCierreSucursal($conn, $codigoSucursal, $fecha) {
+    try {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) as total
+             FROM cierrejuego
+             WHERE CODIGO_SUCURSAL = :sucursal
+             AND FECHA = :fecha
+             AND ESTADO = 'C'"
+        );
+        $stmt->execute([
+            'sucursal' => $codigoSucursal,
+            'fecha' => $fecha
+        ]);
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['total'] > 0;
+    } catch (PDOException $e) {
+        // Si la tabla no existe o hay error, permitir el juego (no bloquear por error técnico)
+        return false;
+    }
+}
+
+/**
  * Guarda el juego completo en la base de datos
  * Replica: Guardar() y HisGuardar()
  */
@@ -264,12 +289,22 @@ function guardarJuego($conn, $data) {
                 ];
             }
         }
-        
+
         // Validar específicamente sucursal (no puede estar vacía)
         if (empty($data['sucursal']) || trim($data['sucursal']) === '') {
             return [
                 'success' => false,
                 'error' => 'El código de sucursal es obligatorio para guardar el juego'
+            ];
+        }
+
+        // VALIDACION CIERRE DE SUCURSAL
+        // Verificar si la sucursal ha sido cerrada para la fecha actual
+        if (verificarCierreSucursal($conn, $data['sucursal'], $data['fecha'])) {
+            return [
+                'success' => false,
+                'error' => 'No se pueden realizar jugadas. La sucursal ha sido cerrada para el día de hoy.',
+                'codigo_error' => 'SUCURSAL_CERRADA'
             ];
         }
         
