@@ -34,11 +34,14 @@ const TwoFactorSetup = ({ onClose }: TwoFactorSetupProps) => {
     const handleSetup2FA = async () => {
         setIsLoading(true);
         try {
+            const user = authService.getCurrentUser();
             const response = await fetch('/api/setup_2fa.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-User-Id': authService.getCurrentUser()?.id.toString() || '',
+                    'X-User-Id': user?.id.toString() || '',
+                    'X-Auth-Token': user?.id.toString() || '',
+                    'X-Auth-User': user?.id.toString() || '',
                 },
             });
 
@@ -86,11 +89,14 @@ const TwoFactorSetup = ({ onClose }: TwoFactorSetupProps) => {
 
         setIsLoading(true);
         try {
+            const user = authService.getCurrentUser();
             const response = await fetch('/api/activate_2fa.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-User-Id': authService.getCurrentUser()?.id.toString() || '',
+                    'X-User-Id': user?.id.toString() || '',
+                    'X-Auth-Token': user?.id.toString() || '',
+                    'X-Auth-User': user?.id.toString() || '',
                 },
                 body: JSON.stringify({ code: verificationCode }),
             });
@@ -144,11 +150,14 @@ const TwoFactorSetup = ({ onClose }: TwoFactorSetupProps) => {
 
         setIsLoading(true);
         try {
+            const user = authService.getCurrentUser();
             const response = await fetch('/api/disable_2fa.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-User-Id': authService.getCurrentUser()?.id.toString() || '',
+                    'X-User-Id': user?.id.toString() || '',
+                    'X-Auth-Token': user?.id.toString() || '',
+                    'X-Auth-User': user?.id.toString() || '',
                 },
                 body: JSON.stringify({ password: passwordForDisable }),
             });
