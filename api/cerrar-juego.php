@@ -303,9 +303,11 @@ try {
                     $stmt->execute([$codigoHorario, $fecha, $sucursal]);
                     $totalApostado = (float) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-                    if ($totalApostado == 0) {
-                        continue; // No hay apuestas en esta sucursal
-                    }
+                    // NOTA: Permitimos cerrar incluso sin jugadas para casos de cierre por percances
+                    // El cierre se registrará con valores en cero
+                    // if ($totalApostado == 0) {
+                    //     continue; // No hay apuestas en esta sucursal
+                    // }
 
                     // Calcular total apostado al animal ganador (para pagos potenciales)
                     $stmt = $db->prepare("
