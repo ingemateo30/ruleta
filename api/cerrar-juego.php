@@ -2,6 +2,20 @@
 require_once 'auth_middleware.php';
 require_once 'db.php';
 
+// Función auxiliar para diagnóstico
+function obtenerMensajeDiagnostico($diagnostico, $codigoSucursal) {
+    if (!$diagnostico['hay_ganadores']) {
+        return 'No hay ganadores registrados para esta fecha. Debe registrar los ganadores primero.';
+    }
+    if ($codigoSucursal && !$diagnostico['hay_jugadas']) {
+        return 'No hay jugadas para esta sucursal en esta fecha.';
+    }
+    if ($diagnostico['ya_cerrado']) {
+        return 'Esta sucursal ya fue cerrada para esta fecha.';
+    }
+    return 'Todo OK - Se puede cerrar';
+}
+
 // Solo admin y superadmin pueden cerrar juegos
 $currentUser = initApiSecurity(true, ['0', '1']);
 
@@ -12,8 +26,86 @@ $uriParts = explode('/', trim(parse_url($uri, PHP_URL_PATH), '/'));
 try {
     $db = Database::getInstance()->getConnection();
 
+    // GET /api/cerrar-juego.php/diagnostico - Diagnosticar por qué no se puede cerrar
+    if ($method === 'GET' && end($uriParts) === 'diagnostico') {
+        $fecha = $_GET['fecha'] ?? date('Y-m-d');
+        $codigoSucursal = $_GET['codigo_sucursal'] ?? null;
+
+        $diagnostico = [];
+
+        // 1. Verificar si hay ganadores registrados para la fecha
+        $stmt = $db->prepare("
+            SELECT h.NUM, h.DESCRIPCION, h.HORA, g.CODIGOA, g.ANIMAL
+            FROM horariojuego h
+            JOIN ingresarganadores g ON h.NUM = g.CODIGOH
+            WHERE g.FECHA = ?
+            AND h.ESTADO = 'A'
+            ORDER BY h.HORA ASC
+        ");
+        $stmt->execute([$fecha]);
+        $ganadores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $diagnostico['ganadores_registrados'] = $ganadores;
+        $diagnostico['hay_ganadores'] = !empty($ganadores);
+
+        // 2. Verificar si hay jugadas para la sucursal
+        if ($codigoSucursal) {
+            $stmt = $db->prepare("
+                SELECT
+                    h.CODIGOJ,
+                    hj.HORAJUEGO,
+                    hj.DESJUEGO,
+                    COUNT(DISTINCT j.RADICADO) as total_jugadas,
+                    COALESCE(SUM(h.VALOR), 0) as total_apostado
+                FROM jugarlotto j
+                JOIN hislottojuego h ON j.RADICADO = h.RADICADO
+                LEFT JOIN horariojuego hj ON h.CODIGOJ = hj.NUM
+                WHERE DATE(j.FECHA) = ?
+                AND j.SUCURSAL = ?
+                AND h.ESTADOP = 'A'
+                AND h.ESTADOC = 'A'
+                GROUP BY h.CODIGOJ, hj.HORAJUEGO, hj.DESJUEGO
+            ");
+            $stmt->execute([$fecha, $codigoSucursal]);
+            $jugadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $diagnostico['jugadas_sucursal'] = $jugadas;
+            $diagnostico['hay_jugadas'] = !empty($jugadas);
+        }
+
+        // 3. Verificar si ya hay cierres registrados
+        $sqlCierres = "SELECT * FROM cierrejuego WHERE FECHA = ?";
+        $params = [$fecha];
+        if ($codigoSucursal) {
+            $sqlCierres .= " AND CODIGO_SUCURSAL = ?";
+            $params[] = $codigoSucursal;
+        }
+        $stmt = $db->prepare($sqlCierres);
+        $stmt->execute($params);
+        $cierres = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $diagnostico['cierres_existentes'] = $cierres;
+        $diagnostico['ya_cerrado'] = !empty($cierres);
+
+        // 4. Información de la sucursal
+        if ($codigoSucursal) {
+            $stmt = $db->prepare("SELECT * FROM bodegas WHERE CODIGO = ?");
+            $stmt->execute([$codigoSucursal]);
+            $diagnostico['sucursal'] = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'fecha' => $fecha,
+            'codigo_sucursal' => $codigoSucursal,
+            'diagnostico' => $diagnostico,
+            'puede_cerrar' => $diagnostico['hay_ganadores'] &&
+                             (!$codigoSucursal || $diagnostico['hay_jugadas']) &&
+                             !$diagnostico['ya_cerrado'],
+            'mensaje' => obtenerMensajeDiagnostico($diagnostico, $codigoSucursal)
+        ]);
+        exit;
+    }
+
     // GET /api/cerrar-juego.php/verificar - Verificar estado de un juego
-    if ($method === 'GET' && end($uriParts) === 'verificar') {
+    elseif ($method === 'GET' && end($uriParts) === 'verificar') {
         $codigoHorario = $_GET['codigo_horario'] ?? '';
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
         $codigoSucursal = $_GET['codigo_sucursal'] ?? null;
