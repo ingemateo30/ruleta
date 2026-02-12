@@ -359,7 +359,7 @@ const RealizarJugadas = () => {
         if ((guardarRes as any).codigo_error === 'SUCURSAL_CERRADA') {
           toast({
             title: "Caja Cerrada",
-            description: guardarRes.error || "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
+            description: "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
             variant: "destructive",
           });
         } else {
@@ -367,8 +367,8 @@ const RealizarJugadas = () => {
             ? guardarRes.details.join(', ')
             : guardarRes.error || "Error al guardar el juego";
           toast({
-            title: "Error",
-            description: errorMsg,
+            title: "Sede con caja cerrada, contacta al administrador",
+            description: "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
             variant: "destructive",
           });
         }
@@ -378,7 +378,7 @@ const RealizarJugadas = () => {
       if (error?.response?.data?.codigo_error === 'SUCURSAL_CERRADA') {
         toast({
           title: "Caja Cerrada",
-          description: error.response.data.error || "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
+          description: "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
           variant: "destructive",
         });
       } else if (error?.response?.status === 404) {
@@ -391,13 +391,13 @@ const RealizarJugadas = () => {
         const errorMsg = error.response.data?.error || error.response.data?.message || "Error al procesar la solicitud";
         toast({
           title: "Error de Validación",
-          description: errorMsg,
+          description: "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Error",
-          description: error?.response?.data?.error || error?.message || "Error al guardar el juego",
+          description: "No se pueden realizar jugadas porque la caja ya fue cerrada para el día de hoy.",
           variant: "destructive",
         });
       }

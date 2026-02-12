@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/TOTP.php';
+require_once __DIR__ . '/db.php';
 
 // Inicializar seguridad REQUIRIENDO autenticación
 initApiSecurity(false);
@@ -12,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-require_once __DIR__ . '/db.php';
+
 
 $userId = $_SERVER['HTTP_X_USER_ID'] ?? null;
 $data = json_decode(file_get_contents('php://input'), true);

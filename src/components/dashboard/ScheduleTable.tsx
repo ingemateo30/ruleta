@@ -133,13 +133,20 @@ const ScheduleTable = () => {
                 </TableRow>
               ) : (
                 horarios.map((horario) => {
-                  const estadoConfig = estadoBadges[horario.estado];
                   const mostrarGanador = puedeVerGanador(horario.HORA);
+                  
+                  // Si tiene ganador pero aún no es hora de mostrarlo, forzar estado PENDIENTE
+                  let estadoReal = horario.estado;
+                  if (horario.ANIMAL && !mostrarGanador) {
+                    estadoReal = 'PENDIENTE';
+                  }
+                  
+                  const estadoConfig = estadoBadges[estadoReal];
                   
                   return (
                     <TableRow 
                       key={horario.NUM} 
-                      className={`${horario.estado === "PROXIMO" ? "bg-primary/5" : ""}`}
+                      className={`${estadoReal === "PROXIMO" ? "bg-primary/5" : ""}`}
                     >
                       <TableCell className="font-medium text-xs sm:text-sm">
                         {horario.DESCRIPCION}
