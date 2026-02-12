@@ -329,7 +329,7 @@ try {
                         SELECT COALESCE(SUM(VALOR_GANADO), 0) as total
                         FROM pagos
                         WHERE CODIGOJ = ?
-                        AND FECHA = ?
+                        AND FECHA_OLD = ?
                         AND SUCURSAL = ?
                         AND ESTADO = 'A'
                     ");
