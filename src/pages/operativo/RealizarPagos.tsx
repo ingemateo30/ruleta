@@ -445,7 +445,12 @@ export default function RealizarPagos() {
                             {formatCurrency(valorPagar)}
                           </TableCell>
                           <TableCell>
-                            {estado.diasRestantes === 0 ? (
+                            {jugada.ESTADO_PAGO === 'PAGADO' ? (
+                              <Badge className="flex items-center gap-1 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Cobrado
+                              </Badge>
+                            ) : estado.diasRestantes === 0 ? (
                               <Badge variant="destructive" className="flex items-center gap-1">
                                 <CalendarX className="h-3 w-3" />
                                 ÚLTIMO DÍA

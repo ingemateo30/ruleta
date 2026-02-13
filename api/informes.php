@@ -336,7 +336,7 @@ WHERE DATE(j.FECHA) >= ?
                 p.ESTADO
             FROM pagos p
             LEFT JOIN bodegas b ON p.SUCURSAL = b.CODIGO
-            WHERE p.FECHA_PAGO >= ? AND p.FECHA_PAGO <= ?
+            WHERE DATE(p.FECHA_PAGO) >= ? AND DATE(p.FECHA_PAGO) <= ?
         ";
 
         $params = [$fechaInicio, $fechaFin];
@@ -361,7 +361,7 @@ WHERE DATE(j.FECHA) >= ?
                 COALESCE(AVG(p.VALOR_GANADO), 0) as PROMEDIO_PAGO
             FROM pagos p
             JOIN bodegas b ON p.SUCURSAL = b.CODIGO
-            WHERE p.FECHA_PAGO >= ? AND p.FECHA_PAGO <= ? AND p.ESTADO = 'A'
+            WHERE DATE(p.FECHA_PAGO) >= ? AND DATE(p.FECHA_PAGO) <= ? AND p.ESTADO = 'A'
         ";
 
         $params = [$fechaInicio, $fechaFin];
