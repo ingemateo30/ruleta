@@ -33,38 +33,6 @@ import type { HorarioJugada, JugadaListada } from "@/api";
 import ReciboCaja from "@/components/ReciboCaja";
 import { useAuth } from "@/hooks/use-auth";
 
-/**
- * Verifica si un ticket puede ser reimpreso por un operario
- * Reglas de seguridad:
- * - No permite reimpresión de fechas pasadas
- * - No permite reimpresión si el horario del juego ya pasó
- */
-const puedeReimprimirTicket = (jugada: JugadaListada, fechaConsultada: string | null, _triggerTime?: Date): { permitido: boolean; motivo: string } => {
-  const ahora = new Date();
-  const fechaActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
-  const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`;
-
-  // Usar la fecha del ticket si está disponible, sino usar la fecha consultada
-  const fechaTicket = jugada.FECHA || fechaConsultada || fechaActual;
-
-  // No permitir fechas pasadas
-  if (fechaTicket < fechaActual) {
-    return { permitido: false, motivo: 'No se puede reimprimir tickets de fechas pasadas' };
-  }
-
-  // Si es del día actual, verificar que el horario del juego no haya vencido
-  if (fechaTicket === fechaActual && jugada.HORAJUEGO) {
-    // Normalizar formato de hora
-    const horaJuego = jugada.HORAJUEGO.length === 5 ? jugada.HORAJUEGO + ':00' : jugada.HORAJUEGO;
-
-    if (horaJuego <= horaActual) {
-      return { permitido: false, motivo: `El horario de juego (${jugada.HORAJUEGO}) ya venció` };
-    }
-  }
-
-  return { permitido: true, motivo: '' };
-};
-
 const ListarJugadas = () => {
   const { user } = useAuth();
   const esOperario = String(user?.tipo) === '2';
@@ -76,13 +44,6 @@ const ListarJugadas = () => {
   const [consultando, setConsultando] = useState(false);
   const [loadingHorarios, setLoadingHorarios] = useState(true);
   const [isRecent, setIsRecent] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Actualizar la hora cada minuto para reflejar cambios en permisos de reimpresión
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Estados para reimpresión
   const [mostrarRecibo, setMostrarRecibo] = useState(false);
@@ -386,7 +347,7 @@ const ListarJugadas = () => {
                       <TableHead>Juega a las</TableHead>
                       <TableHead className="hidden md:table-cell">Sucursal</TableHead>
                       <TableHead className="text-center">Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      {!esOperario && <TableHead className="text-right">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -427,52 +388,26 @@ const ListarJugadas = () => {
                             {jugada.ESTADOP === 'A' ? 'Activo' : 'Anulado'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {(() => {
-                            // Verificar si el operario puede reimprimir este ticket
-                            const fechaParaValidar = isRecent ? null : fechaConsulta;
-                            const validacion = esOperario
-                              ? puedeReimprimirTicket(jugada, fechaParaValidar, currentTime)
-                              : { permitido: true, motivo: '' };
-
-                            if (!validacion.permitido) {
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed">
-                                        <Ban className="h-4 w-4 text-destructive/70" />
-                                        <span className="hidden md:inline">Bloqueado</span>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left" className="max-w-[200px]">
-                                      <p className="text-xs">{validacion.motivo}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            }
-
-                            return (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
-                                onClick={() => handleReimprimir(jugada.RADICADO)}
-                                disabled={reimprimiendo === jugada.RADICADO}
-                              >
-                                {reimprimiendo === jugada.RADICADO ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Printer className="h-4 w-4 md:mr-2" />
-                                    <span className="hidden md:inline">Reimprimir</span>
-                                  </>
-                                )}
-                              </Button>
-                            );
-                          })()}
-                        </TableCell>
+                        {!esOperario && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => handleReimprimir(jugada.RADICADO)}
+                              disabled={reimprimiendo === jugada.RADICADO}
+                            >
+                              {reimprimiendo === jugada.RADICADO ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Printer className="h-4 w-4 md:mr-2" />
+                                  <span className="hidden md:inline">Reimprimir</span>
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
