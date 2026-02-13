@@ -375,7 +375,7 @@ try {
 
     // POST: Guardar resultado (solo Admin y SuperAdmin)
     elseif ($method === 'POST' && $action === 'guardar') {
-        if (!in_array((string)($currentUser['tipo'] ?? ''), ['0', '1'])) {
+        if (!in_array((string)($currentUser['TIPO'] ?? ''), ['0', '1'])) {
             sendError('No tiene permisos para ingresar resultados', 403);
         }
         $input = file_get_contents('php://input');

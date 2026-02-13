@@ -34,7 +34,7 @@ try {
         $stmt = $db->prepare("
             SELECT COALESCE(SUM(VALOR_GANADO), 0) as total_pagado
             FROM pagos
-            WHERE FECHA = ? AND ESTADO = 'A'
+            WHERE FECHA_SORTEO = ? AND ESTADO = 'A'
         ");
         $stmt->execute([$fecha]);
         $pagos = $stmt->fetch(PDO::FETCH_ASSOC);
