@@ -378,7 +378,7 @@ const ListarJugadas = () => {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                          {jugada.SUCURSAL}
+                          {jugada.NOMBRE_SUCURSAL || jugada.SUCURSAL}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge

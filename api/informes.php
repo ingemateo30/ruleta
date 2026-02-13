@@ -534,8 +534,25 @@ WHERE DATE(j.FECHA) >= ?
 
         $sql = "
             SELECT
-                c.*,
-                h.DESCRIPCION as NOMBRE_HORARIO,
+                c.CODIGOH,
+                c.FECHA,
+                c.CODIGO_SUCURSAL,
+                c.NOMBRE_SUCURSAL,
+                c.TOTAL_APOSTADO,
+                c.TOTAL_PAGADO_REAL                                          AS TOTAL_PAGADO,
+                (c.TOTAL_APOSTADO - c.TOTAL_PAGADO_REAL)                     AS UTILIDAD,
+                c.PAGO_ADMIN_SUCURSAL                                         AS COMISION_ADMIN,
+                0                                                             AS COMISION_SISTEMA,
+                c.UTILIDAD_REAL                                               AS GANANCIA_SUCURSAL,
+                c.PAGO_POTENCIAL_GANADORES,
+                c.PAGOS_PENDIENTES,
+                c.UTILIDAD_PROYECTADA,
+                c.CODANIMAL_GANADOR,
+                c.ANIMAL_GANADOR,
+                c.ESTADO,
+                c.FECHA_CIERRE,
+                c.USUARIO_CIERRE,
+                h.DESCRIPCION                                                 AS NOMBRE_HORARIO,
                 h.HORA
             FROM cierrejuego c
             JOIN horariojuego h ON c.CODIGOH = h.NUM
@@ -547,12 +564,12 @@ WHERE DATE(j.FECHA) >= ?
         $stmt->execute([$fechaInicio, $fechaFin]);
         $cierres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Resumen
+        // Resumen usando los alias correctos
         $totalApostado = array_sum(array_column($cierres, 'TOTAL_APOSTADO'));
         $totalPagado = array_sum(array_column($cierres, 'TOTAL_PAGADO'));
         $totalUtilidad = array_sum(array_column($cierres, 'UTILIDAD'));
         $totalComisionAdmin = array_sum(array_column($cierres, 'COMISION_ADMIN'));
-        $totalComisionSistema = array_sum(array_column($cierres, 'COMISION_SISTEMA'));
+        $totalComisionSistema = 0;
         $totalGananciaSucursal = array_sum(array_column($cierres, 'GANANCIA_SUCURSAL'));
 
         echo json_encode([

@@ -91,7 +91,7 @@ const WinnersTable = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Trophy className="h-5 w-5 text-chart-4" />
-            Lottos Ganadores
+            Tickets Ganadores
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
@@ -107,7 +107,7 @@ const WinnersTable = () => {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Trophy className="h-5 w-5 text-chart-4" />
-            Lottos Ganadores
+            Tickets Ganadores
           </CardTitle>
           <Badge variant="outline" className="bg-accent text-accent-foreground text-xs">
             <TrendingUp className="h-3 w-3 mr-1" />

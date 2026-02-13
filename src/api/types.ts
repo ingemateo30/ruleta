@@ -234,6 +234,7 @@ export interface JugadaListada {
   ANIMAL: string;
   VALOR: number;
   SUCURSAL: string;
+  NOMBRE_SUCURSAL?: string;
   HORA: string;
   ESTADOP: string;
   VALOR_FORMATEADO?: string;
