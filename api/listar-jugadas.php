@@ -97,9 +97,12 @@ function consultarJugadas($conn, $fecha, $codigoJuego, $sucursalOperario = null)
             ];
         }
 
-        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, HORAJUEGO, DESJUEGO, FECHA
-             FROM hislottojuego
-             WHERE CODIGOJ = :codigoJuego AND FECHA = :fecha";
+        $sql = "SELECT hj.RADICADO, hj.CODANIMAL, hj.ANIMAL, hj.VALOR, hj.SUCURSAL,
+                    COALESCE(b.BODEGA, hj.SUCURSAL) AS NOMBRE_SUCURSAL,
+                    hj.HORA, hj.ESTADOP, hj.HORAJUEGO, hj.DESJUEGO, hj.FECHA
+             FROM hislottojuego hj
+             LEFT JOIN bodegas b ON hj.SUCURSAL = b.CODIGO
+             WHERE hj.CODIGOJ = :codigoJuego AND hj.FECHA = :fecha";
 
         $params = [
             'codigoJuego' => $codigoJuego,
@@ -107,11 +110,11 @@ function consultarJugadas($conn, $fecha, $codigoJuego, $sucursalOperario = null)
         ];
 
         if ($sucursalOperario !== null) {
-            $sql .= " AND SUCURSAL = :sucursal";
+            $sql .= " AND hj.SUCURSAL = :sucursal";
             $params['sucursal'] = $sucursalOperario;
         }
 
-        $sql .= " ORDER BY HORA DESC";
+        $sql .= " ORDER BY hj.HORA DESC";
 
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
@@ -150,15 +153,18 @@ function obtenerJugadasRecientes($conn, $limite = 20, $sucursalOperario = null) 
     try {
         $fechaActual = date('Y-m-d');
 
-        $sql = "SELECT RADICADO, CODANIMAL, ANIMAL, VALOR, SUCURSAL, HORA, ESTADOP, DESJUEGO, HORAJUEGO, FECHA
-             FROM hislottojuego
-             WHERE FECHA = :fecha";
+        $sql = "SELECT hj.RADICADO, hj.CODANIMAL, hj.ANIMAL, hj.VALOR, hj.SUCURSAL,
+                    COALESCE(b.BODEGA, hj.SUCURSAL) AS NOMBRE_SUCURSAL,
+                    hj.HORA, hj.ESTADOP, hj.DESJUEGO, hj.HORAJUEGO, hj.FECHA
+             FROM hislottojuego hj
+             LEFT JOIN bodegas b ON hj.SUCURSAL = b.CODIGO
+             WHERE hj.FECHA = :fecha";
 
         if ($sucursalOperario !== null) {
-            $sql .= " AND SUCURSAL = :sucursal";
+            $sql .= " AND hj.SUCURSAL = :sucursal";
         }
 
-        $sql .= " ORDER BY HORA DESC, RADICADO DESC LIMIT :limite";
+        $sql .= " ORDER BY hj.HORA DESC, hj.RADICADO DESC LIMIT :limite";
 
         $stmt = $conn->prepare($sql);
         $stmt->bindValue(':fecha', $fechaActual, PDO::PARAM_STR);
