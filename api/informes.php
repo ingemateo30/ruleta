@@ -532,6 +532,15 @@ WHERE DATE(j.FECHA) >= ?
         $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d');
         $fechaFin = $_GET['fecha_fin'] ?? date('Y-m-d');
 
+        // Obtener parámetros de comisión
+        $stmtParams = $db->query("SELECT NOMBRE, VALOR FROM parametros WHERE NOMBRE IN ('PORCENTAJEADMINSUCURSAL','COMISIONSISTEMATIZACION','COMISIONADMINISTRACION')");
+        $parametros = [];
+        while ($row = $stmtParams->fetch(PDO::FETCH_ASSOC)) {
+            $parametros[$row['NOMBRE']] = floatval($row['VALOR']);
+        }
+        $porcentajeSistema      = $parametros['COMISIONSISTEMATIZACION'] ?? 20;
+        $porcentajeAdminEmpresa = $parametros['COMISIONADMINISTRACION'] ?? 80;
+
         $sql = "
             SELECT
                 c.CODIGOH,
@@ -539,20 +548,18 @@ WHERE DATE(j.FECHA) >= ?
                 c.CODIGO_SUCURSAL,
                 c.NOMBRE_SUCURSAL,
                 c.TOTAL_APOSTADO,
-                c.TOTAL_PAGADO_REAL                                          AS TOTAL_PAGADO,
-                (c.TOTAL_APOSTADO - c.TOTAL_PAGADO_REAL)                     AS UTILIDAD,
-                c.PAGO_ADMIN_SUCURSAL                                         AS COMISION_ADMIN,
-                0                                                             AS COMISION_SISTEMA,
-                c.UTILIDAD_REAL                                               AS GANANCIA_SUCURSAL,
+                c.PAGO_ADMIN_SUCURSAL,
+                c.TOTAL_PAGADO_REAL,
                 c.PAGO_POTENCIAL_GANADORES,
                 c.PAGOS_PENDIENTES,
                 c.UTILIDAD_PROYECTADA,
+                c.UTILIDAD_REAL,
                 c.CODANIMAL_GANADOR,
                 c.ANIMAL_GANADOR,
                 c.ESTADO,
                 c.FECHA_CIERRE,
                 c.USUARIO_CIERRE,
-                h.DESCRIPCION                                                 AS NOMBRE_HORARIO,
+                h.DESCRIPCION AS NOMBRE_HORARIO,
                 h.HORA
             FROM cierrejuego c
             JOIN horariojuego h ON c.CODIGOH = h.NUM
@@ -564,26 +571,44 @@ WHERE DATE(j.FECHA) >= ?
         $stmt->execute([$fechaInicio, $fechaFin]);
         $cierres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Resumen usando los alias correctos
-        $totalApostado = array_sum(array_column($cierres, 'TOTAL_APOSTADO'));
-        $totalPagado = array_sum(array_column($cierres, 'TOTAL_PAGADO'));
-        $totalUtilidad = array_sum(array_column($cierres, 'UTILIDAD'));
-        $totalComisionAdmin = array_sum(array_column($cierres, 'COMISION_ADMIN'));
-        $totalComisionSistema = 0;
-        $totalGananciaSucursal = array_sum(array_column($cierres, 'GANANCIA_SUCURSAL'));
+        // Calcular comisiones derivadas para cada cierre
+        // Fórmula: ingresos_netos = total_apostado - 7% admon sucursal - pagos ganadores
+        // Del total de ingresos netos: 20% sistemas y 80% administración
+        foreach ($cierres as &$cierre) {
+            $ingresosNetosReal       = floatval($cierre['UTILIDAD_REAL']);
+            $ingresosNetosProyectado = floatval($cierre['UTILIDAD_PROYECTADA']);
+            $cierre['COMISION_SISTEMA_REAL']        = round($ingresosNetosReal > 0 ? $ingresosNetosReal * ($porcentajeSistema / 100) : 0, 2);
+            $cierre['COMISION_ADMIN_REAL']           = round($ingresosNetosReal > 0 ? $ingresosNetosReal * ($porcentajeAdminEmpresa / 100) : 0, 2);
+            $cierre['COMISION_SISTEMA_PROYECTADA']  = round($ingresosNetosProyectado > 0 ? $ingresosNetosProyectado * ($porcentajeSistema / 100) : 0, 2);
+            $cierre['COMISION_ADMIN_PROYECTADA']    = round($ingresosNetosProyectado > 0 ? $ingresosNetosProyectado * ($porcentajeAdminEmpresa / 100) : 0, 2);
+        }
+        unset($cierre);
+
+        // Resumen
+        $totalApostado            = array_sum(array_column($cierres, 'TOTAL_APOSTADO'));
+        $totalPagadoReal          = array_sum(array_column($cierres, 'TOTAL_PAGADO_REAL'));
+        $totalPagoAdminSucursal   = array_sum(array_column($cierres, 'PAGO_ADMIN_SUCURSAL'));
+        $totalIngresosNetosReal   = array_sum(array_column($cierres, 'UTILIDAD_REAL'));
+        $totalComisionSistema     = array_sum(array_column($cierres, 'COMISION_SISTEMA_REAL'));
+        $totalComisionAdmin       = array_sum(array_column($cierres, 'COMISION_ADMIN_REAL'));
 
         echo json_encode([
             'success' => true,
             'data' => [
                 'cierres' => $cierres,
+                'porcentajes' => [
+                    'admon_sucursal' => $parametros['PORCENTAJEADMINSUCURSAL'] ?? 7,
+                    'sistemas' => $porcentajeSistema,
+                    'administracion' => $porcentajeAdminEmpresa
+                ],
                 'resumen' => [
                     'total_cierres' => count($cierres),
                     'total_apostado' => $totalApostado,
-                    'total_pagado' => $totalPagado,
-                    'total_utilidad' => $totalUtilidad,
-                    'total_comision_admin' => $totalComisionAdmin,
-                    'total_comision_sistema' => $totalComisionSistema,
-                    'total_ganancia_sucursal' => $totalGananciaSucursal
+                    'total_pago_admin_sucursal' => round($totalPagoAdminSucursal, 2),
+                    'total_pagado_ganadores' => round($totalPagadoReal, 2),
+                    'total_ingresos_netos' => round($totalIngresosNetosReal, 2),
+                    'total_comision_sistema' => round($totalComisionSistema, 2),
+                    'total_comision_admin' => round($totalComisionAdmin, 2)
                 ]
             ]
         ]);

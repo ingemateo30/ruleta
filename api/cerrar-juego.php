@@ -220,6 +220,8 @@ try {
 
             $puntosPago = (float) ($parametros['PUNTOSPAGO'] ?? 30);
             $porcentajeAdminSucursal = (float) ($parametros['PORCENTAJEADMINSUCURSAL'] ?? 7);
+            $porcentajeSistema = (float) ($parametros['COMISIONSISTEMATIZACION'] ?? 20);
+            $porcentajeAdminEmpresa = (float) ($parametros['COMISIONADMINISTRACION'] ?? 80);
 
             // Obtener todos los horarios con ganadores registrados del día
             $stmt = $db->prepare("
@@ -329,7 +331,7 @@ try {
                         SELECT COALESCE(SUM(VALOR_GANADO), 0) as total
                         FROM pagos
                         WHERE CODIGOJ = ?
-                        AND FECHA_OLD = ?
+                        AND FECHA_SORTEO = ?
                         AND SUCURSAL = ?
                         AND ESTADO = 'A'
                     ");
@@ -343,11 +345,19 @@ try {
                     // Pago admin sucursal (7% del total apostado)
                     $pagoAdminSucursal = ($totalApostado * $porcentajeAdminSucursal) / 100;
 
-                    // Utilidad proyectada (basada en pagos potenciales)
-                    $utilidadProyectada = $totalApostado - $pagoAdminSucursal - $pagoPotencialGanadores;
+                    // Ingresos netos = ventas - 7% admon sucursal - pagos a ganadores
+                    $ingresosNetosProyectados = $totalApostado - $pagoAdminSucursal - $pagoPotencialGanadores;
+                    $ingresosNetosReal = $totalApostado - $pagoAdminSucursal - $totalPagadoReal;
 
-                    // Utilidad real (basada en pagos realizados hasta ahora)
-                    $utilidadReal = $totalApostado - $pagoAdminSucursal - $totalPagadoReal;
+                    // Del total de ingresos netos: 20% sistemas y 80% administración
+                    $comisionSistemaProyectada = $ingresosNetosProyectados > 0 ? $ingresosNetosProyectados * ($porcentajeSistema / 100) : 0;
+                    $comisionAdminProyectada   = $ingresosNetosProyectados > 0 ? $ingresosNetosProyectados * ($porcentajeAdminEmpresa / 100) : 0;
+                    $comisionSistemaReal = $ingresosNetosReal > 0 ? $ingresosNetosReal * ($porcentajeSistema / 100) : 0;
+                    $comisionAdminReal   = $ingresosNetosReal > 0 ? $ingresosNetosReal * ($porcentajeAdminEmpresa / 100) : 0;
+
+                    // Utilidad proyectada y real (ingresos netos totales)
+                    $utilidadProyectada = $ingresosNetosProyectados;
+                    $utilidadReal = $ingresosNetosReal;
 
                     // Pagos pendientes (diferencia entre lo que se debe pagar y lo ya pagado)
                     $pagosPendientes = $pagoPotencialGanadores - $totalPagadoReal;
@@ -402,11 +412,18 @@ try {
                         'horario' => $horario['DESCRIPCION'],
                         'sucursal' => $nombreSucursal,
                         'total_apostado' => $totalApostado,
+                        'pago_admin_sucursal' => round($pagoAdminSucursal, 2),
                         'pago_potencial' => $pagoPotencialGanadores,
                         'pagado_real' => $totalPagadoReal,
                         'pendiente' => $pagosPendientes,
-                        'utilidad_proyectada' => $utilidadProyectada,
-                        'utilidad_real' => $utilidadReal
+                        'ingresos_netos_proyectados' => round($ingresosNetosProyectados, 2),
+                        'ingresos_netos_real' => round($ingresosNetosReal, 2),
+                        'comision_sistema_proyectada' => round($comisionSistemaProyectada, 2),
+                        'comision_admin_proyectada' => round($comisionAdminProyectada, 2),
+                        'comision_sistema_real' => round($comisionSistemaReal, 2),
+                        'comision_admin_real' => round($comisionAdminReal, 2),
+                        'utilidad_proyectada' => round($utilidadProyectada, 2),
+                        'utilidad_real' => round($utilidadReal, 2)
                     ];
                 }
             }
@@ -427,17 +444,31 @@ try {
             // Calcular resumen
             $resumen = array_reduce($cierresRealizados, function($acc, $cierre) {
                 $acc['total_apostado'] += $cierre['total_apostado'];
+                $acc['total_pago_admin_sucursal'] += $cierre['pago_admin_sucursal'];
                 $acc['total_pago_potencial'] += $cierre['pago_potencial'];
                 $acc['total_pagado_real'] += $cierre['pagado_real'];
                 $acc['total_pendiente'] += $cierre['pendiente'];
+                $acc['ingresos_netos_proyectados'] += $cierre['ingresos_netos_proyectados'];
+                $acc['ingresos_netos_real'] += $cierre['ingresos_netos_real'];
+                $acc['comision_sistema_proyectada'] += $cierre['comision_sistema_proyectada'];
+                $acc['comision_admin_proyectada'] += $cierre['comision_admin_proyectada'];
+                $acc['comision_sistema_real'] += $cierre['comision_sistema_real'];
+                $acc['comision_admin_real'] += $cierre['comision_admin_real'];
                 $acc['utilidad_proyectada_total'] += $cierre['utilidad_proyectada'];
                 $acc['utilidad_real_total'] += $cierre['utilidad_real'];
                 return $acc;
             }, [
                 'total_apostado' => 0,
+                'total_pago_admin_sucursal' => 0,
                 'total_pago_potencial' => 0,
                 'total_pagado_real' => 0,
                 'total_pendiente' => 0,
+                'ingresos_netos_proyectados' => 0,
+                'ingresos_netos_real' => 0,
+                'comision_sistema_proyectada' => 0,
+                'comision_admin_proyectada' => 0,
+                'comision_sistema_real' => 0,
+                'comision_admin_real' => 0,
                 'utilidad_proyectada_total' => 0,
                 'utilidad_real_total' => 0
             ]);
