@@ -103,22 +103,23 @@ try {
         $stmt->execute([$fecha]);
         $topAnimales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Últimos ganadores (solo mostrar 1 minuto después de la hora del sorteo)
+        // Tickets ganadores del día (Número de Ticket, Hora de Juego, Animal Ganador, Sucursal)
         $stmt = $db->prepare("
             SELECT
-                g.CODIGOA,
-                g.ANIMAL,
-                g.FECHA,
-                h.DESCRIPCION as horario,
-                h.HORA,
-                l.COLOR
-            FROM ingresarganadores g
-            JOIN horariojuego h ON g.CODIGOH = h.NUM
-            LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
-            WHERE g.FECHA = ?
-            AND (g.FECHA < CURDATE() OR ADDTIME(h.HORA, '00:01:00') <= CURTIME())
+                p.RADICADO as numero_ticket,
+                h.HORA as hora_juego,
+                lr.VALOR as animal_ganador,
+                b.BODEGA as sucursal,
+                lr.COLOR
+            FROM pagos p
+            JOIN jugarlotto j ON p.RADICADO = j.RADICADO
+            JOIN bodegas b ON j.SUCURSAL = b.CODIGO
+            JOIN horariojuego h ON p.CODIGOJ = h.NUM
+            JOIN lottoruleta lr ON p.CODANIMAL = lr.NUM
+            WHERE p.FECHA_SORTEO = ?
+            AND p.ESTADO = 'A'
+            AND (p.FECHA_SORTEO < CURDATE() OR ADDTIME(h.HORA, '00:01:00') <= CURTIME())
             ORDER BY h.HORA DESC
-            LIMIT 5
         ");
         $stmt->execute([$fecha]);
         $ultimosGanadores = $stmt->fetchAll(PDO::FETCH_ASSOC);

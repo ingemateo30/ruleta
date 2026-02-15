@@ -12,14 +12,15 @@ import {
 import { Trophy, TrendingUp, Loader2 } from "lucide-react";
 import { getAnimalByNombre } from "@/constants/animals";
 import { estadisticasAPI } from "@/api/admin";
+import { Ticket } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { USER_TYPES } from "@/api/types";
 
 interface Winner {
-  animal: string;
-  numero: number;
-  horario: string;
-  hora: string;
+  numero_ticket: string;
+  hora_juego: string;
+  animal_ganador: string;
+  sucursal: string;
   color?: string;
 }
 
@@ -54,10 +55,10 @@ const WinnersTable = () => {
       const response = await estadisticasAPI.dashboard();
       if (response.success && response.data?.ultimos_ganadores) {
         const ganadoresFormateados = response.data.ultimos_ganadores.map((g: any) => ({
-          animal: g.ANIMAL,
-          numero: parseInt(g.CODIGOA || g.numero || '0'),
-          horario: g.horario || g.DESCRIPCION,
-          hora: g.HORA,
+          numero_ticket: g.numero_ticket,
+          hora_juego: g.hora_juego,
+          animal_ganador: g.animal_ganador,
+          sucursal: g.sucursal,
           color: g.COLOR
         }));
         setWinners(ganadoresFormateados);
@@ -125,46 +126,45 @@ const WinnersTable = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-muted-foreground text-xs sm:text-sm">Horario</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">N° Ticket</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Hora de Juego</TableHead>
                 <TableHead className="text-muted-foreground text-xs sm:text-sm">Animal Ganador</TableHead>
-                <TableHead className="text-muted-foreground text-right text-xs sm:text-sm hidden sm:table-cell">Hora</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">Sucursal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {winners.map((winner, index) => (
                 <TableRow
-                  key={`${winner.hora}-${index}`}
+                  key={`${winner.numero_ticket}-${index}`}
                   className={`${index === 0 ? "bg-accent/30" : ""} animate-fade-in`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <TableCell className="font-medium text-xs sm:text-sm text-foreground">
-                    {winner.horario}
+                  <TableCell className="font-mono font-medium text-xs sm:text-sm text-foreground">
+                    <div className="flex items-center gap-1">
+                      <Ticket className="h-3 w-3 text-muted-foreground" />
+                      {winner.numero_ticket}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm">
+                    {formatHora(winner.hora_juego)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 sm:gap-2">
                       {(() => {
-                        const animalData = getAnimalByNombre(winner.animal);
+                        const animalData = getAnimalByNombre(winner.animal_ganador);
                         return animalData ? (
                           <img
                             src={animalData.imagen}
-                            alt={winner.animal}
-                            className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                            alt={winner.animal_ganador}
+                            className="w-7 h-7 sm:w-9 sm:h-9 object-contain"
                           />
                         ) : null;
                       })()}
-                      <span className="font-medium text-foreground text-xs sm:text-sm hidden sm:inline">{winner.animal}</span>
-                      {(() => {
-                        const animalData = getAnimalByNombre(winner.animal);
-                        return (
-                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                            #{animalData?.codigo || winner.numero.toString().padStart(2, "0")}
-                          </Badge>
-                        );
-                      })()}
+                      <span className="font-medium text-foreground text-xs sm:text-sm">{winner.animal_ganador}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
-                    {formatHora(winner.hora)}
+                  <TableCell className="text-xs sm:text-sm text-muted-foreground hidden sm:table-cell">
+                    {winner.sucursal}
                   </TableCell>
                 </TableRow>
               ))}
