@@ -2,6 +2,8 @@
 require_once 'auth_middleware.php';
 require_once 'db.php';
 
+date_default_timezone_set('America/Bogota');
+
 // Función auxiliar para diagnóstico
 function obtenerMensajeDiagnostico($diagnostico, $codigoSucursal) {
     if (!$diagnostico['hay_ganadores']) {

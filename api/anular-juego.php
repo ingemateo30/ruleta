@@ -110,7 +110,7 @@ function buscarJuego($conn, $radicado, $fecha, $sucursalOperario = null) {
 /**
  * Anula un juego cambiando su estado
  */
-function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = null, $sucursalOperario = null) {
+function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = null, $sucursalOperario = null, $esAdmin = false) {
     try {
         if (empty($radicado) || empty($fecha)) {
             return [
@@ -153,31 +153,33 @@ function ejecutarAnulacion($conn, $radicado, $fecha, $motivo = null, $usuario = 
             ];
         }
 
-        // Verificar que no se pueda anular después de la hora del juego
-        $sqlHorarios = "
-            SELECT DISTINCT h.CODIGOJ, hj.HORA
-            FROM hislottojuego h
-            JOIN horariojuego hj ON h.CODIGOJ = hj.NUM
-            WHERE h.RADICADO = :radicado AND h.FECHA = :fecha
-        ";
-        $stmtHorarios = $conn->prepare($sqlHorarios);
-        $stmtHorarios->execute(['radicado' => $radicado, 'fecha' => $fecha]);
-        $horarios = $stmtHorarios->fetchAll(PDO::FETCH_ASSOC);
+        
+       if (!$esAdmin) {
+    $sqlHorarios = "
+        SELECT DISTINCT h.CODIGOJ, hj.HORA
+        FROM hislottojuego h
+        JOIN horariojuego hj ON h.CODIGOJ = hj.NUM
+        WHERE h.RADICADO = :radicado AND h.FECHA = :fecha
+    ";
+    $stmtHorarios = $conn->prepare($sqlHorarios);
+    $stmtHorarios->execute(['radicado' => $radicado, 'fecha' => $fecha]);
+    $horarios = $stmtHorarios->fetchAll(PDO::FETCH_ASSOC);
 
-        $fechaJuego = date('Y-m-d', strtotime($fecha));
-        $ahora = new DateTime();
+    $fechaJuego = date('Y-m-d', strtotime($fecha));
+    $ahora = new DateTime();
 
-        foreach ($horarios as $horario) {
-            $horaJuego = $horario['HORA'];
-            $fechaHoraJuego = new DateTime("$fechaJuego $horaJuego");
+    foreach ($horarios as $horario) {
+        $horaJuego = $horario['HORA'];
+        $fechaHoraJuego = new DateTime("$fechaJuego $horaJuego");
 
-            if ($ahora > $fechaHoraJuego) {
-                return [
-                    'success' => false,
-                    'error' => 'No se puede anular el juego después de la hora del juego (' . $horaJuego . ')'
-                ];
-            }
+        if ($ahora >= $fechaHoraJuego) {
+            return [
+                'success' => false,
+                'error' => 'No se puede anular el juego después de la hora del juego (' . $horaJuego . ')'
+            ];
         }
+    }
+}
 
         // Iniciar transacción
         $conn->beginTransaction();
@@ -285,7 +287,8 @@ try {
         $motivo = $data['motivo'] ?? null;
         $usuario = $data['usuario'] ?? null;
 
-        $result = ejecutarAnulacion($conn, $radicado, $fecha, $motivo, $usuario, $sucursalOperario);
+        $esAdmin = in_array($currentUser['TIPO'] ?? '', ['0', '1']); // ajusta según tus roles de admin
+$result = ejecutarAnulacion($conn, $radicado, $fecha, $motivo, $usuario, $sucursalOperario, $esAdmin);
         sendResponse($result, $result['success'] ? 200 : 400);
     }
     

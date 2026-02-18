@@ -2,6 +2,7 @@
 require_once 'auth_middleware.php';
 require_once 'db.php';
 
+date_default_timezone_set('America/Bogota');
 // Inicializar seguridad - Solo Admin y SuperAdmin
 $currentUser = initApiSecurity(true, ['0', '1']);
 
