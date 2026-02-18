@@ -55,9 +55,8 @@ axiosInstance.interceptors.response.use(
     if (error.response) {
       // El servidor respondio con un codigo de estado fuera del rango 2xx
       const status = error.response.status;
-      const data = error.response.data as { message?: string; code?: string } | undefined;
-      const message = data?.message || error.message || `Error ${status}`;
-
+      const data = error.response.data as { message?: string; error?: string; code?: string } | undefined;
+      const message = data?.error || data?.message || error.message || `Error ${status}`;;
       // Si es error 401 (no autorizado), limpiar sesion y redirigir al login
       if (status === 401) {
         localStorage.removeItem('user');

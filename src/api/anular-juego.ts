@@ -36,22 +36,21 @@ class AnularJuegoService {
   /**
    * Ejecuta la anulación de un juego
    */
-  async ejecutarAnulacion(
-    data: AnularJuegoRequest
-  ): Promise<AnularJuegoResponse> {
-    try {
-      const response = await apiClient.post<AnularJuegoResponse>(
-        `${this.baseEndpoint}/ejecutar`,
-        data
-      );
-      return response;
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
-      };
-    }
+  async ejecutarAnulacion(data: AnularJuegoRequest): Promise<AnularJuegoResponse> {
+  try {
+    const response = await apiClient.post<AnularJuegoResponse>(
+      `${this.baseEndpoint}/ejecutar`,
+      data
+    );
+    return response;
+  } catch (error) {
+    // ApiError ya trae el mensaje real del backend
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
   }
+}
 
   async listarAnulados(params: {
     fecha_inicio?: string;
