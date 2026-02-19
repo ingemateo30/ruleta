@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Trophy, Loader2, Search, X, Calendar, Clock, CheckCircle2 } from "lucide-react";
 import { ingresarResultadoService } from "@/api";
 import type { AnimalResultado, HorarioResultado } from "@/api";
-import { animals,getAnimalByCodigo, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
+import { animals, getAnimalByCodigo, getAnimalByNumero, getAnimalByNombre, type Animal } from "@/constants/animals";
 
 interface AnimalMapeado extends Animal {
   codigoJuego: string;
@@ -40,15 +40,7 @@ const IngresarResultado = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
-  const [horaActual, setHoraActual] = useState(new Date());
 
-  // Actualizar hora actual cada 60 segundos
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setHoraActual(new Date());
-    }, 60000); // Revisar cada 60 segundos
-    return () => clearInterval(timer);
-  }, []);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -63,13 +55,13 @@ const IngresarResultado = () => {
               if (!animalAPI.CODIGOJUEGO || animalAPI.CODIGOJUEGO.trim() === '') {
                 return null;
               }
-              
+
               const codigoJuego = animalAPI.CODIGOJUEGO.trim();
-              
+
               // Buscar el animal local por CÓDIGO primero (más preciso), luego por nombre
-              const animalLocal = getAnimalByCodigo(codigoJuego) || 
-                                 getAnimalByNombre(animalAPI.VALOR);
-              
+              const animalLocal = getAnimalByCodigo(codigoJuego) ||
+                getAnimalByNombre(animalAPI.VALOR);
+
               return {
                 numero: animalAPI.NUM,
                 codigo: codigoJuego, // Agregamos este campo para que coincida con la interfaz Animal
@@ -80,7 +72,7 @@ const IngresarResultado = () => {
               } as AnimalMapeado;
             })
             .filter((animal): animal is AnimalMapeado => animal !== null);
-          
+
           setAnimalesAPI(animalesMapeados);
         } else {
           toast({
@@ -143,9 +135,7 @@ const IngresarResultado = () => {
             const horarioActual = horariosRes.data.find(
               (h: HorarioConEstado) => h.NUM.toString() === selectedHorario
             );
-            if (horarioActual?.estado === 'JUGADO' && horarioActual?.bloqueado) {
-              setSelectedHorario("");
-            }
+
           }
         }
       } catch (error) {
@@ -159,30 +149,6 @@ const IngresarResultado = () => {
   }, [fecha]);
 
   // Función para verificar si un horario está vencido
-  const isHorarioVencido = (horaStr: string) => {
-    if (!horaStr) return false;
-
-    // Si la fecha seleccionada es anterior a hoy, TODOS los horarios están vencidos
-    if (fecha < fechaHoy) {
-      return true;
-    }
-
-    // Si la fecha es hoy, verificar si la hora ya pasó
-    if (fecha === fechaHoy) {
-      try {
-        const fechaHorario = new Date();
-        const [horas, minutos] = horaStr.split(':').map(Number);
-        fechaHorario.setHours(horas, minutos || 0, 0, 0);
-        return horaActual >= fechaHorario;
-      } catch (e) {
-        console.error("Error al parsear hora", horaStr);
-        return false;
-      }
-    }
-
-    // Fecha futura (no debería llegar aquí por el max del input)
-    return false;
-  };
 
   const handleGuardarResultado = async () => {
     if (!selectedAnimal || !selectedHorario || !fecha) {
@@ -250,12 +216,12 @@ const IngresarResultado = () => {
   const filteredAnimals = animalesAPI.filter((animal) => {
     const search = searchTerm.toLowerCase().trim();
     if (!search) return true;
-    
+
     const numeroStr = animal.numero.toString();
     const numeroPadded = numeroStr.padStart(2, "0");
     const codigoJuego = animal.codigoJuego.toLowerCase();
     const nombreLower = animal.nombre.toLowerCase();
-    
+
     return (
       codigoJuego.includes(search) ||
       codigoJuego === search || // Búsqueda exacta
@@ -346,8 +312,8 @@ const IngresarResultado = () => {
                         onClick={() => setSelectedAnimal(animal)}
                       >
                         {animal.imagen && (
-                          <img 
-                            src={animal.imagen} 
+                          <img
+                            src={animal.imagen}
                             alt={animal.nombre}
                             className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                           />
@@ -371,8 +337,8 @@ const IngresarResultado = () => {
               {selectedAnimal && (
                 <div className="bg-accent/50 rounded-lg p-4 text-center border-2 border-yellow-500/30">
                   {selectedAnimal.imagen && (
-                    <img 
-                      src={selectedAnimal.imagen} 
+                    <img
+                      src={selectedAnimal.imagen}
                       alt={selectedAnimal.nombre}
                       className="w-20 h-20 mx-auto object-contain"
                     />
@@ -416,38 +382,18 @@ const IngresarResultado = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {horariosAPI.map((h) => {
-                      const esBloqueado = h.estado === 'JUGADO' && h.bloqueado === 1;
                       const tieneGanador = h.estado === 'JUGADO';
-                      const vencido = isHorarioVencido(h.HORA);
 
                       return (
                         <SelectItem
                           key={h.NUM}
                           value={h.NUM.toString()}
-                          disabled={esBloqueado || vencido}
-                          className={(esBloqueado || vencido) ? 'opacity-50' : ''}
                         >
                           <div className="flex items-center gap-2">
                             <span>{h.DESCRIPCION} - {h.HORA}</span>
-                            {vencido && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1 py-0 text-muted-foreground"
-                              >
-                                Cerrado
-                              </Badge>
-                            )}
-                            {tieneGanador && !vencido && (
-                              <Badge
-                                variant={esBloqueado ? "destructive" : "secondary"}
-                                className="text-[10px] px-1 py-0"
-                              >
-                                {esBloqueado ? `${h.ANIMAL} (bloqueado)` : `${h.ANIMAL}`}
-                              </Badge>
-                            )}
-                            {h.estado === 'PASADO' && !tieneGanador && !vencido && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                Sin resultado
+                            {tieneGanador && (
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                {h.ANIMAL}
                               </Badge>
                             )}
                           </div>

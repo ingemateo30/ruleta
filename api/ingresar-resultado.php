@@ -108,8 +108,6 @@ function listarHorariosConEstado($conn, $fecha) {
         $stmtTime = $conn->query("SELECT CURTIME() as hora_actual, CURDATE() as fecha_actual");
         $serverTime = $stmtTime->fetch(PDO::FETCH_ASSOC);
 
-        $esHoy = ($fecha === $serverTime['fecha_actual']);
-
         $stmt = $conn->prepare(
             "SELECT
                 h.NUM,
@@ -119,14 +117,10 @@ function listarHorariosConEstado($conn, $fecha) {
                 g.ANIMAL,
                 l.COLOR,
                 CASE
-                    WHEN g.CODIGOA IS NOT NULL THEN 'JUGADO'
-                    WHEN :esHoy = 1 AND h.HORA <= CURTIME() THEN 'PASADO'
-                    ELSE 'PENDIENTE'
-                END as estado,
-                CASE
-                    WHEN :esHoy2 = 1 AND h.HORA <= CURTIME() THEN 1
-                    ELSE 0
-                END as bloqueado
+    WHEN g.CODIGOA IS NOT NULL THEN 'JUGADO'
+    ELSE 'PENDIENTE'
+END as estado,
+                0 as bloqueado
              FROM horariojuego h
              LEFT JOIN ingresarganadores g ON h.NUM = g.CODIGOH AND g.FECHA = :fecha AND g.ESTADO = 'A'
              LEFT JOIN lottoruleta l ON g.CODIGOA = l.NUM
@@ -135,9 +129,7 @@ function listarHorariosConEstado($conn, $fecha) {
         );
 
         $stmt->execute([
-            'fecha' => $fecha,
-            'esHoy' => $esHoy ? 1 : 0,
-            'esHoy2' => $esHoy ? 1 : 0
+            'fecha' => $fecha
         ]);
 
         $horarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -203,13 +195,13 @@ function guardarResultado($conn, $data) {
             $fechaHoy = date('Y-m-d');
             $horaActual = date('H:i:s');
 
-            if ($data['fecha'] === $fechaHoy && $existente['HORA'] <= $horaActual) {
+            /*if ($data['fecha'] === $fechaHoy && $existente['HORA'] <= $horaActual) {
                 // La hora ya pasó, no se puede modificar
                 return [
                     'success' => false,
                     'error' => "No se puede modificar el resultado. El horario {$data['descripcionHorario']} ya pasó y tiene registrado como ganador: {$existente['ANIMAL']}"
                 ];
-            }
+            }*/
 
             // Si la hora no ha pasado, actualizar el ganador existente
             $stmtUpdate = $conn->prepare(
