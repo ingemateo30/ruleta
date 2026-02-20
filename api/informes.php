@@ -29,14 +29,12 @@ try {
                 j.TOTALJUEGO,
                 j.USUARIO,
                 j.ESTADO,
-                h.NUM as CODIGO_HORARIO,
-                h.DESCRIPCION as HORARIO,
+                GROUP_CONCAT(DISTINCT h.DESCRIPCION ORDER BY h.HORA SEPARATOR ', ') as HORARIO,
                 COUNT(DISTINCT hj.CODANIMAL) as CANTIDAD_ANIMALES,
                 GROUP_CONCAT(
-  DISTINCT CONCAT(hj.ANIMAL, ' ($', REPLACE(FORMAT(hj.VALOR, 0), ',', '.'), ')')
-  SEPARATOR ', '
-) as DETALLE_ANIMALES
-
+                    DISTINCT CONCAT(hj.ANIMAL, ' ($', REPLACE(FORMAT(hj.VALOR, 0), ',', '.'), ')')
+                    SEPARATOR ', '
+                ) as DETALLE_ANIMALES
             FROM jugarlotto j
             LEFT JOIN bodegas b ON j.SUCURSAL = b.CODIGO
             LEFT JOIN hislottojuego hj ON j.RADICADO = hj.RADICADO AND hj.ESTADOP = 'A'
@@ -56,7 +54,7 @@ try {
             $params[] = $horario;
         }
 
-        $sql .= " GROUP BY j.RADICADO, j.FECHA, j.HORA, j.SUCURSAL, b.BODEGA, j.TOTALJUEGO, j.USUARIO, j.ESTADO, h.NUM, h.DESCRIPCION";
+        $sql .= " GROUP BY j.RADICADO, j.FECHA, j.HORA, j.SUCURSAL, b.BODEGA, j.TOTALJUEGO, j.USUARIO, j.ESTADO";
         $sql .= " ORDER BY j.FECHA DESC, j.HORA DESC";
 
         $stmt = $db->prepare($sql);
