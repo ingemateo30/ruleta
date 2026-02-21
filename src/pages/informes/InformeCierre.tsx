@@ -74,7 +74,9 @@ export default function InformeCierre() {
   const formatMoney = (value: number | string) => {
     const num = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(num)) return '$0';
-    return '$' + num.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+    const abs = Math.abs(num);
+    const formatted = abs.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+    return num < 0 ? `-$${formatted}` : `$${formatted}`;
   };
 
   const formatHora = (hora: string): string => {

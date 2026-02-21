@@ -104,22 +104,34 @@ try {
         $stmt->execute([$fecha]);
         $topAnimales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Tickets ganadores del día (Número de Ticket, Hora de Juego, Animal Ganador, Sucursal)
+        // Tickets ganadores del día: todos los que jugaron el animal ganador,
+        // hayan sido pagados o no (se incluye campo 'pagado' para diferenciar)
         $stmt = $db->prepare("
-            SELECT
-                p.RADICADO as numero_ticket,
+            SELECT DISTINCT
+                hj.RADICADO as numero_ticket,
                 h.HORA as hora_juego,
                 lr.VALOR as animal_ganador,
                 b.BODEGA as sucursal,
-                lr.COLOR
-            FROM pagos p
-            JOIN jugarlotto j ON p.RADICADO = j.RADICADO
+                lr.COLOR,
+                CASE WHEN p.RADICADO IS NOT NULL THEN 1 ELSE 0 END as pagado
+            FROM ingresarganadores ig
+            JOIN horariojuego h ON ig.CODIGOH = h.NUM
+            JOIN lottoruleta lr ON ig.CODIGOA = lr.NUM
+            JOIN hislottojuego hj
+                ON hj.CODIGOJ = ig.CODIGOH
+                AND hj.FECHA = ig.FECHA
+                AND hj.CODANIMAL = ig.CODIGOA
+                AND hj.ESTADOP = 'A'
+            JOIN jugarlotto j ON hj.RADICADO = j.RADICADO AND j.ESTADO = 'A'
             JOIN bodegas b ON j.SUCURSAL = b.CODIGO
-            JOIN horariojuego h ON p.CODIGOJ = h.NUM
-            JOIN lottoruleta lr ON p.CODANIMAL = lr.NUM
-            WHERE p.FECHA_SORTEO = ?
-            AND p.ESTADO = 'A'
-            AND (p.FECHA_SORTEO < CURDATE() OR ADDTIME(h.HORA, '00:01:00') <= CURTIME())
+            LEFT JOIN pagos p
+                ON p.RADICADO = hj.RADICADO
+                AND p.CODIGOJ = ig.CODIGOH
+                AND p.FECHA_SORTEO = ig.FECHA
+                AND p.ESTADO = 'A'
+            WHERE ig.FECHA = ?
+            AND ig.ESTADO = 'A'
+            AND (ig.FECHA < CURDATE() OR h.HORA <= CURTIME())
             ORDER BY h.HORA DESC
         ");
         $stmt->execute([$fecha]);

@@ -22,6 +22,7 @@ interface Winner {
   animal_ganador: string;
   sucursal: string;
   color?: string;
+  pagado?: boolean;
 }
 
 const WinnersTable = () => {
@@ -59,7 +60,8 @@ const WinnersTable = () => {
           hora_juego: g.hora_juego,
           animal_ganador: g.animal_ganador,
           sucursal: g.sucursal,
-          color: g.COLOR
+          color: g.COLOR,
+          pagado: g.pagado === 1 || g.pagado === true
         }));
         setWinners(ganadoresFormateados);
       }
@@ -130,6 +132,7 @@ const WinnersTable = () => {
                 <TableHead className="text-muted-foreground text-xs sm:text-sm">Hora de Juego</TableHead>
                 <TableHead className="text-muted-foreground text-xs sm:text-sm">Animal Ganador</TableHead>
                 <TableHead className="text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">Sucursal</TableHead>
+                <TableHead className="text-muted-foreground text-xs sm:text-sm">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -165,6 +168,14 @@ const WinnersTable = () => {
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-muted-foreground hidden sm:table-cell">
                     {winner.sucursal}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={winner.pagado ? "default" : "outline"}
+                      className={`text-[10px] h-5 px-1.5 ${winner.pagado ? "bg-green-600 text-white" : "text-amber-600 border-amber-400"}`}
+                    >
+                      {winner.pagado ? "Pagado" : "Pendiente"}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

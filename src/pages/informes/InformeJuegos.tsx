@@ -307,7 +307,18 @@ export default function InformeJuegos() {
                       </TableCell>
                       <TableCell>{jugada.NOMBRE_SUCURSAL || '-'}</TableCell>
                       <TableCell className="font-mono">{jugada.HORARIO || jugada.HORA || '-'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{jugada.DETALLE_ANIMALES || jugada.ANIMALES || '-'}</TableCell>
+                      <TableCell className="min-w-[140px]">
+                        <div className="flex flex-col lg:flex-row lg:flex-wrap lg:gap-x-1">
+                          {(jugada.DETALLE_ANIMALES || jugada.ANIMALES || '-')
+                            .split(', ')
+                            .filter(Boolean)
+                            .map((item: string, i: number, arr: string[]) => (
+                              <span key={i} className="whitespace-nowrap text-sm">
+                                {item}{i < arr.length - 1 ? ',' : ''}
+                              </span>
+                            ))}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         ${parseFloat(jugada.TOTALJUEGO || jugada.TOTAL_APOSTADO || 0).toLocaleString()}
                       </TableCell>
