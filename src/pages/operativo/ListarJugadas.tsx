@@ -75,7 +75,7 @@ const ListarJugadas = () => {
 
         // Cargar recientes
         setConsultando(true);
-        const resRecientes = await listarJugadasService.obtenerRecientes(50);
+        const resRecientes = await listarJugadasService.obtenerRecientes(500);
         if (resRecientes.success && resRecientes.data) {
           setJugadas(resRecientes.data);
           setIsRecent(true);
