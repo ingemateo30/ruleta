@@ -26,7 +26,7 @@ try {
                 j.HORA,
                 j.SUCURSAL,
                 b.BODEGA as NOMBRE_SUCURSAL,
-                j.TOTALJUEGO,
+                COALESCE(SUM(hj.VALOR), 0) as TOTALJUEGO,
                 j.USUARIO,
                 j.ESTADO,
                 GROUP_CONCAT(DISTINCT h.DESCRIPCION ORDER BY h.HORA SEPARATOR ', ') as HORARIO,
@@ -54,7 +54,7 @@ try {
             $params[] = $horario;
         }
 
-        $sql .= " GROUP BY j.RADICADO, j.FECHA, j.HORA, j.SUCURSAL, b.BODEGA, j.TOTALJUEGO, j.USUARIO, j.ESTADO";
+        $sql .= " GROUP BY j.RADICADO, j.FECHA, j.HORA, j.SUCURSAL, b.BODEGA, j.USUARIO, j.ESTADO";
         $sql .= " ORDER BY j.FECHA DESC, j.HORA DESC";
 
         $stmt = $db->prepare($sql);
