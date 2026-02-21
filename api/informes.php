@@ -583,8 +583,8 @@ WHERE DATE(j.FECHA) >= ?
         // Del total de ingresos netos: 20% sistemas y 80% administración
         foreach ($cierres as &$cierre) {
             $utilidad = floatval($cierre['UTILIDAD']);
-            $cierre['COMISION_SISTEMA'] = round($utilidad > 0 ? $utilidad * ($porcentajeSistema / 100) : 0, 2);
-            $cierre['COMISION_ADMIN']   = round($utilidad > 0 ? $utilidad * ($porcentajeAdminEmpresa / 100) : 0, 2);
+            $cierre['COMISION_SISTEMA'] = round($utilidad * ($porcentajeSistema / 100), 2);
+            $cierre['COMISION_ADMIN']   = round($utilidad * ($porcentajeAdminEmpresa / 100), 2);
         }
         unset($cierre);
 

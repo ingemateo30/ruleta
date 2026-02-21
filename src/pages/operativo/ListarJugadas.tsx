@@ -419,9 +419,79 @@ const ListarJugadas = () => {
 
         {/* Resumen de Jugadas por Animalito - SOLO PARA NO OPERARIOS */}
         {!esOperario && jugadas.length > 0 && (() => {
-          const conteo = jugadas
-            .filter((j) => j.ESTADOP === 'A')
-            .reduce<Record<string, { animal: string; codigo: string; jugadas: number; total: number }>>((acc, j) => {
+          const jugadasActivas = jugadas.filter((j) => j.ESTADOP === 'A');
+
+          const renderConteoTable = (items: { animal: string; codigo: string; jugadas: number; total: number }[]) => (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-accent/50">
+                  <TableRow>
+                    <TableHead>Animalito</TableHead>
+                    <TableHead className="text-center">Jugadas</TableHead>
+                    <TableHead className="text-right">Total Apostado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-semibold">
+                        #{item.codigo} {item.animal}
+                      </TableCell>
+                      <TableCell className="text-center font-bold">
+                        {item.jugadas}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        ${item.total.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          );
+
+          if (isRecent) {
+            // Agrupar por horario (DESJUEGO) cuando se muestran jugadas recientes
+            const porHorario: Record<string, { desc: string; animales: Record<string, { animal: string; codigo: string; jugadas: number; total: number }> }> = {};
+            for (const j of jugadasActivas) {
+              const horDesc = j.DESJUEGO || 'Sin horario';
+              if (!porHorario[horDesc]) {
+                porHorario[horDesc] = { desc: horDesc, animales: {} };
+              }
+              const key = j.CODANIMAL || j.ANIMAL;
+              if (!porHorario[horDesc].animales[key]) {
+                porHorario[horDesc].animales[key] = { animal: j.ANIMAL, codigo: j.CODANIMAL, jugadas: 0, total: 0 };
+              }
+              porHorario[horDesc].animales[key].jugadas += 1;
+              porHorario[horDesc].animales[key].total += typeof j.VALOR === 'number' ? j.VALOR : parseFloat(j.VALOR) || 0;
+            }
+
+            const grupos = Object.values(porHorario);
+            if (grupos.length === 0) return null;
+
+            return (
+              <div className="space-y-4">
+                {grupos.map((grupo) => {
+                  const conteoArr = Object.values(grupo.animales).sort((a, b) => b.jugadas - a.jugadas);
+                  return (
+                    <Card key={grupo.desc} className="shadow-md">
+                      <CardHeader className="border-b pb-4">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <FileText className="h-5 w-5 text-primary" />
+                          Conteo por Animalito — {grupo.desc}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {renderConteoTable(conteoArr)}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          } else {
+            // Búsqueda por horario específico: conteo simple
+            const conteo = jugadasActivas.reduce<Record<string, { animal: string; codigo: string; jugadas: number; total: number }>>((acc, j) => {
               const key = j.CODANIMAL || j.ANIMAL;
               if (!acc[key]) {
                 acc[key] = { animal: j.ANIMAL, codigo: j.CODANIMAL, jugadas: 0, total: 0 };
@@ -430,46 +500,27 @@ const ListarJugadas = () => {
               acc[key].total += typeof j.VALOR === 'number' ? j.VALOR : parseFloat(j.VALOR) || 0;
               return acc;
             }, {});
-          const conteoArr = Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
-   
-          return (
-            <Card className="shadow-md">
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Conteo de Jugadas por Animalito
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-accent/50">
-                      <TableRow>
-                        <TableHead>Animalito</TableHead>
-                        <TableHead className="text-center">Jugadas</TableHead>
-                        <TableHead className="text-right">Total Apostado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {conteoArr.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-semibold">
-                            #{item.codigo} {item.animal}
-                          </TableCell>
-                          <TableCell className="text-center font-bold">
-                            {item.jugadas}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-primary">
-                            ${item.total.toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          );
+            const conteoArr = Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
+
+            return (
+              <Card className="shadow-md">
+                <CardHeader className="border-b pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Conteo de Jugadas por Animalito
+                    {horarioSeleccionado && (
+                      <span className="text-sm font-normal text-muted-foreground">
+                        — {horarioSeleccionado.DESCRIPCION}
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {renderConteoTable(conteoArr)}
+                </CardContent>
+              </Card>
+            );
+          }
         })()}
       </div>
 
