@@ -289,7 +289,7 @@ export default function InformeCierre() {
                         <TableHead>Animal Ganador</TableHead>
                         <TableHead className="text-right">Apostado</TableHead>
                         <TableHead className="text-right">Pagado</TableHead>
-                        <TableHead className="text-right">Pago Sucursal (7%)</TableHead>
+                        <TableHead className="text-right">Pago Sucursal (10%)</TableHead>
                         <TableHead className="text-right">Utilidad Bruta</TableHead>
                         <TableHead className="text-right">Sistemas (20%)</TableHead>
                         <TableHead className="text-right">Admin (80%)</TableHead>
@@ -359,7 +359,7 @@ export default function InformeCierre() {
                           <TableHead className="text-right">Cierres</TableHead>
                           <TableHead className="text-right">Total Apostado</TableHead>
                           <TableHead className="text-right">Total Pagado</TableHead>
-                          <TableHead className="text-right">Pago Sucursal (7%)</TableHead>
+                          <TableHead className="text-right">Pago Sucursal (10%)</TableHead>
                           <TableHead className="text-right">Utilidad Bruta</TableHead>
                           <TableHead className="text-right">Sistemas (20%)</TableHead>
                           <TableHead className="text-right">Admin (80%)</TableHead>
