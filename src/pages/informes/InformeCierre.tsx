@@ -232,7 +232,7 @@ export default function InformeCierre() {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <Building2 className="h-6 w-6 mx-auto text-emerald-600 mb-2" />
-                  <p className="text-xs text-muted-foreground font-semibold">Pago a Sucursal (7%)</p>
+                  <p className="text-xs text-muted-foreground font-semibold">Pago a Sucursales</p>
                   <p className="text-xl font-bold text-emerald-600">{formatMoney(datos.resumen.total_ganancia_sucursal)}</p>
                 </div>
               </CardContent>
