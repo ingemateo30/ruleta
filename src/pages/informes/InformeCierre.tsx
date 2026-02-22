@@ -484,137 +484,143 @@ export default function InformeCierre() {
 
       {/* Modal de detalle del cierre */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-5xl w-full">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <ZoomIn className="h-5 w-5 text-primary" />
-              Detalle del Cierre
-            </DialogTitle>
+        <DialogContent className="flex flex-col max-h-[90vh] w-[calc(100%-2rem)] sm:w-full sm:max-w-5xl overflow-hidden p-0 gap-0">
+          {/* Header fijo — el botón X de Radix siempre queda visible aquí */}
+          <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg pr-8">
+                <ZoomIn className="h-5 w-5 text-primary" />
+                Detalle del Cierre
+              </DialogTitle>
+              {selectedCierre && (
+                <DialogDescription className="text-sm">
+                  {selectedCierre.NOMBRE_HORARIO} — {selectedCierre.FECHA} — {selectedCierre.NOMBRE_SUCURSAL || 'Todas las sedes'} — Hora: {formatHora(selectedCierre.HORA)}
+                </DialogDescription>
+              )}
+            </DialogHeader>
+          </div>
+
+          {/* Cuerpo desplazable */}
+          <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-4">
+            {/* Info del cierre seleccionado */}
             {selectedCierre && (
-              <DialogDescription className="text-sm">
-                {selectedCierre.NOMBRE_HORARIO} — {selectedCierre.FECHA} — {selectedCierre.NOMBRE_SUCURSAL || 'Todas las sedes'} — Hora: {formatHora(selectedCierre.HORA)}
-              </DialogDescription>
-            )}
-          </DialogHeader>
-
-          {/* Info del cierre seleccionado */}
-          {selectedCierre && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2">
-              <div className="rounded-lg border bg-muted/40 p-3 text-center">
-                <p className="text-xs text-muted-foreground">Animal Ganador</p>
-                <p className="font-semibold mt-1">{selectedCierre.ANIMAL_GANADOR || '-'}</p>
-              </div>
-              <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
-                <p className="text-xs text-muted-foreground">Total Apostado</p>
-                <p className="font-semibold text-blue-700 dark:text-blue-400 mt-1">{formatMoney(selectedCierre.TOTAL_APOSTADO)}</p>
-              </div>
-              <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
-                <p className="text-xs text-muted-foreground">Total Pagado</p>
-                <p className="font-semibold text-red-600 dark:text-red-400 mt-1">{formatMoney(selectedCierre.TOTAL_PAGADO_REAL)}</p>
-              </div>
-              <div className={`rounded-lg border p-3 text-center ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
-                <p className="text-xs text-muted-foreground">Utilidad</p>
-                <p className={`font-semibold mt-1 ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {formatMoney(selectedCierre.UTILIDAD)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <Separator />
-
-          {modalLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Cargando tickets...</p>
-            </div>
-          ) : modalData ? (
-            <div className="space-y-4">
-              {/* Resumen de tickets */}
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Ticket className="h-4 w-4" />
-                  <span>
-                    <strong>{modalData.resumen.total_tickets}</strong> tickets &nbsp;|&nbsp;
-                    <strong>{modalData.resumen.total_jugadas}</strong> jugadas &nbsp;|&nbsp;
-                    Apostado: <strong>{formatMoney(modalData.resumen.total_apostado)}</strong>
-                  </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg border bg-muted/40 p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Animal Ganador</p>
+                  <p className="font-semibold mt-1">{selectedCierre.ANIMAL_GANADOR || '-'}</p>
+                </div>
+                <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Total Apostado</p>
+                  <p className="font-semibold text-blue-700 dark:text-blue-400 mt-1">{formatMoney(selectedCierre.TOTAL_APOSTADO)}</p>
+                </div>
+                <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Total Pagado</p>
+                  <p className="font-semibold text-red-600 dark:text-red-400 mt-1">{formatMoney(selectedCierre.TOTAL_PAGADO_REAL)}</p>
+                </div>
+                <div className={`rounded-lg border p-3 text-center ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                  <p className="text-xs text-muted-foreground">Utilidad</p>
+                  <p className={`font-semibold mt-1 ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatMoney(selectedCierre.UTILIDAD)}
+                  </p>
                 </div>
               </div>
+            )}
 
-              {/* Resumen por animal */}
-              {modalData.resumen_animales && modalData.resumen_animales.length > 0 && (
+            <Separator />
+
+            {modalLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Cargando tickets...</p>
+              </div>
+            ) : modalData ? (
+              <div className="space-y-4">
+                {/* Resumen de tickets */}
+                <div className="flex flex-wrap gap-3 items-center">
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Ticket className="h-4 w-4" />
+                    <span>
+                      <strong>{modalData.resumen.total_tickets}</strong> tickets &nbsp;|&nbsp;
+                      <strong>{modalData.resumen.total_jugadas}</strong> jugadas &nbsp;|&nbsp;
+                      Apostado: <strong>{formatMoney(modalData.resumen.total_apostado)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Resumen por animal */}
+                {modalData.resumen_animales && modalData.resumen_animales.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
+                      <BarChart2 className="h-3.5 w-3.5" />
+                      Apuestas por animal (activas)
+                    </p>
+                    <ScrollArea className="h-28">
+                      <div className="flex flex-wrap gap-2 pr-4">
+                        {modalData.resumen_animales.map((a: any) => (
+                          <div
+                            key={a.CODANIMAL}
+                            className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs bg-background"
+                          >
+                            <span className="font-medium">{a.ANIMAL}</span>
+                            <span className="text-muted-foreground">×{a.CANTIDAD}</span>
+                            <span className="font-semibold text-primary">{formatMoney(a.TOTAL_APOSTADO)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Tabla de tickets */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
-                    <BarChart2 className="h-3.5 w-3.5" />
-                    Apuestas por animal (activas)
+                    <Ticket className="h-3.5 w-3.5" />
+                    Tickets del sorteo
                   </p>
-                  <ScrollArea className="h-28">
-                    <div className="flex flex-wrap gap-2 pr-4">
-                      {modalData.resumen_animales.map((a: any) => (
-                        <div
-                          key={a.CODANIMAL}
-                          className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs bg-background"
-                        >
-                          <span className="font-medium">{a.ANIMAL}</span>
-                          <span className="text-muted-foreground">×{a.CANTIDAD}</span>
-                          <span className="font-semibold text-primary">{formatMoney(a.TOTAL_APOSTADO)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-
-              <Separator />
-
-              {/* Tabla de tickets */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
-                  <Ticket className="h-3.5 w-3.5" />
-                  Tickets del sorteo
-                </p>
-                <ScrollArea className="h-72">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Radicado</TableHead>
-                        <TableHead>Sede</TableHead>
-                        <TableHead>Animal</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Usuario</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {modalData.jugadas.length === 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                            No se encontraron tickets para este cierre
-                          </TableCell>
+                          <TableHead>Radicado</TableHead>
+                          <TableHead>Sede</TableHead>
+                          <TableHead>Animal</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Usuario</TableHead>
                         </TableRow>
-                      ) : (
-                        modalData.jugadas.map((jugada: any, idx: number) => (
-                          <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${idx}`}>
-                            <TableCell className="font-mono text-xs">{jugada.RADICADO}</TableCell>
-                            <TableCell className="text-sm">{jugada.NOMBRE_SUCURSAL || jugada.SUCURSAL}</TableCell>
-                            <TableCell className="text-sm">{jugada.ANIMAL}</TableCell>
-                            <TableCell className="text-right font-mono text-sm">{formatMoney(jugada.VALOR)}</TableCell>
-                            <TableCell>{estadoJugadaLabel(jugada.ESTADOP)}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{jugada.USUARIO || '-'}</TableCell>
+                      </TableHeader>
+                      <TableBody>
+                        {modalData.jugadas.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                              No se encontraron tickets para este cierre
+                            </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                        ) : (
+                          modalData.jugadas.map((jugada: any, idx: number) => (
+                            <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${idx}`}>
+                              <TableCell className="font-mono text-xs">{jugada.RADICADO}</TableCell>
+                              <TableCell className="text-sm">{jugada.NOMBRE_SUCURSAL || jugada.SUCURSAL}</TableCell>
+                              <TableCell className="text-sm">{jugada.ANIMAL}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">{formatMoney(jugada.VALOR)}</TableCell>
+                              <TableCell>{estadoJugadaLabel(jugada.ESTADOP)}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{jugada.USUARIO || '-'}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-muted-foreground text-sm">
-              No se pudo cargar la información del cierre.
-            </div>
-          )}
+            ) : (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No se pudo cargar la información del cierre.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
