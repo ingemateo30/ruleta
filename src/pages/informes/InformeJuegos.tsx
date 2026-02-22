@@ -203,37 +203,55 @@ export default function InformeJuegos() {
 
     if (hayFiltroHorario) {
       // ── Modo horario específico: conteo simple ──────────────────────────────
-      // Construimos el conteo desde las jugadas para asegurar consistencia
-      // con el filtro aplicado.
+      // SIEMPRE construimos desde las jugadas ya filtradas por la API.
+      // Nunca usamos conteoAnimales porque ese endpoint no filtra por horario.
       const conteo = jugadas.reduce<
         Record<string, { animal: string; codigo: string; jugadas: number; total: number }>
       >((acc, j) => {
-        const key = j.CODIGOJUEGO || j.CODANIMAL || j.ANIMAL;
-        if (!acc[key]) {
-          acc[key] = {
-            animal: j.ANIMAL || j.ANIMALES || key,
-            codigo: j.CODIGOJUEGO || j.CODANIMAL || key,
-            jugadas: 0,
-            total: 0,
-          };
+        // Cada fila del informe agrupa varios animales en DETALLE_ANIMALES.
+        // Hay que expandirlos individualmente igual que hace ListarJugadas
+        // (que recibe una fila por animal desde hislottojuego).
+        const tieneDetalle =
+          j.DETALLE_ANIMALES && typeof j.DETALLE_ANIMALES === 'string';
+
+        if (tieneDetalle) {
+          // Formato real: "Elefante ($2.000),Perro ($2.000)" — separador puede ser "," o ", "
+          j.DETALLE_ANIMALES.split(/,\s*/)
+            .filter(Boolean)
+            .forEach((parte: string) => {
+              // Extraer nombre y valor individual: "Elefante ($2.000)" → animal="Elefante", valor=2000
+              const matchValor = parte.match(/^(.+?)\s*\(\$([0-9.,]+)\)$/);
+              const animal = matchValor ? matchValor[1].trim() : parte.trim();
+              const valorStr = matchValor
+                ? matchValor[2].replace(/\./g, '').replace(',', '.')
+                : '0';
+              const valorAnimal = parseFloat(valorStr) || 0;
+              // Clave por nombre en minúsculas (no hay código en este formato)
+              const key = animal.toLowerCase();
+              if (!acc[key]) {
+                acc[key] = { animal, codigo: '', jugadas: 0, total: 0 };
+              }
+              acc[key].jugadas += 1;
+              // Usar el valor real de cada animal, no dividir el total de la jugada
+              acc[key].total += valorAnimal;
+            });
+        } else {
+          const key = j.CODIGOJUEGO || j.CODANIMAL || j.ANIMAL;
+          if (!acc[key]) {
+            acc[key] = {
+              animal: j.ANIMAL || j.ANIMALES || key,
+              codigo: j.CODIGOJUEGO || j.CODANIMAL || key,
+              jugadas: 0,
+              total: 0,
+            };
+          }
+          acc[key].jugadas += 1;
+          acc[key].total += parseFloat(j.TOTALJUEGO || j.TOTAL_APOSTADO || 0);
         }
-        acc[key].jugadas += 1;
-        acc[key].total += parseFloat(j.TOTALJUEGO || j.TOTAL_APOSTADO || 0);
         return acc;
       }, {});
 
-      // Si la API de conteoAnimales ya nos trae el dato listo, lo usamos directamente.
-      const conteoArr =
-        conteoAnimales.length > 0
-          ? conteoAnimales
-              .map((item: any) => ({
-                animal: item.ANIMAL,
-                codigo: item.CODIGOJUEGO || item.CODANIMAL || '',
-                jugadas: parseInt(item.TOTAL_JUGADAS),
-                total: parseFloat(item.TOTAL_APOSTADO),
-              }))
-              .sort((a, b) => b.jugadas - a.jugadas)
-          : Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
+      const conteoArr = Object.values(conteo).sort((a, b) => b.jugadas - a.jugadas);
 
       return (
         <Card className="shadow-md">
