@@ -247,6 +247,10 @@ export const informesAPI = {
     return await apiClient.get<ApiResponse>('/informes.php/cierres', { params });
   },
 
+  detalleCierre: async (params: { fecha: string; codigoH: string | number; sucursal?: string }) => {
+    return await apiClient.get<ApiResponse>('/informes.php/detalle-cierre', { params });
+  },
+
    conteoAnimales: async (params: {
     fecha_inicio: string;
     fecha_fin: string;

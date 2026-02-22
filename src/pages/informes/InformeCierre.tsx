@@ -19,10 +19,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { FileText, Download, TrendingUp, TrendingDown, DollarSign, Clock, Loader2, Search, Building2 } from 'lucide-react';
+import {
+  FileText,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Clock,
+  Loader2,
+  Search,
+  Building2,
+  ZoomIn,
+  Ticket,
+  BarChart2,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 
 export default function InformeCierre() {
@@ -34,6 +56,12 @@ export default function InformeCierre() {
     fecha_fin: format(new Date(), 'yyyy-MM-dd'),
     sucursal: '',
   });
+
+  // Estado del modal de detalle
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCierre, setSelectedCierre] = useState<any>(null);
+  const [modalData, setModalData] = useState<any>(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     cargarSucursales();
@@ -71,6 +99,33 @@ export default function InformeCierre() {
     }
   };
 
+  const handleVerDetalle = async (cierre: any) => {
+    setSelectedCierre(cierre);
+    setModalData(null);
+    setModalOpen(true);
+    setModalLoading(true);
+    try {
+      const params: any = {
+        fecha: cierre.FECHA,
+        codigoH: cierre.CODIGOH,
+      };
+      if (cierre.CODIGO_SUCURSAL) {
+        params.sucursal = cierre.CODIGO_SUCURSAL;
+      }
+      const response = await informesAPI.detalleCierre(params);
+      if (response.success) {
+        setModalData(response.data);
+      } else {
+        toast.error('No se pudo cargar el detalle del cierre');
+      }
+    } catch (error: any) {
+      console.error('Error al cargar detalle del cierre:', error);
+      toast.error('Error al cargar el detalle del cierre');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   const formatMoney = (value: number | string) => {
     const num = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(num)) return '$0';
@@ -88,6 +143,12 @@ export default function InformeCierre() {
     const ampm = h >= 12 ? 'PM' : 'AM';
     const horas12 = h % 12 || 12;
     return `${horas12}:${minutos} ${ampm}`;
+  };
+
+  const estadoJugadaLabel = (estadop: string) => {
+    if (estadop === 'A') return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Activo</Badge>;
+    if (estadop === 'I') return <Badge variant="destructive">Anulado</Badge>;
+    return <Badge variant="outline">{estadop}</Badge>;
   };
 
   const handleExportCSV = () => {
@@ -274,7 +335,8 @@ export default function InformeCierre() {
                   Detalle de Cierres por Horario
                 </CardTitle>
                 <CardDescription>
-                  {datos.resumen.total_cierres} cierres en el periodo seleccionado
+                  {datos.resumen.total_cierres} cierres en el periodo seleccionado — haz clic en{' '}
+                  <ZoomIn className="inline h-3.5 w-3.5" /> para ver los tickets de cada cierre
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -282,6 +344,7 @@ export default function InformeCierre() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10"></TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Sede</TableHead>
                         <TableHead>Horario</TableHead>
@@ -300,6 +363,17 @@ export default function InformeCierre() {
                         const utilidad = parseFloat(cierre.UTILIDAD || 0);
                         return (
                           <TableRow key={`${cierre.FECHA}-${cierre.CODIGOH}-${cierre.CODIGO_SUCURSAL}-${index}`}>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title="Ver detalle y tickets"
+                                onClick={() => handleVerDetalle(cierre)}
+                              >
+                                <ZoomIn className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                             <TableCell className="font-medium">
                               {cierre.FECHA}
                             </TableCell>
@@ -407,6 +481,142 @@ export default function InformeCierre() {
           </Card>
         )}
       </div>
+
+      {/* Modal de detalle del cierre */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-5xl w-full">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <ZoomIn className="h-5 w-5 text-primary" />
+              Detalle del Cierre
+            </DialogTitle>
+            {selectedCierre && (
+              <DialogDescription className="text-sm">
+                {selectedCierre.NOMBRE_HORARIO} — {selectedCierre.FECHA} — {selectedCierre.NOMBRE_SUCURSAL || 'Todas las sedes'} — Hora: {formatHora(selectedCierre.HORA)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {/* Info del cierre seleccionado */}
+          {selectedCierre && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2">
+              <div className="rounded-lg border bg-muted/40 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Animal Ganador</p>
+                <p className="font-semibold mt-1">{selectedCierre.ANIMAL_GANADOR || '-'}</p>
+              </div>
+              <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Total Apostado</p>
+                <p className="font-semibold text-blue-700 dark:text-blue-400 mt-1">{formatMoney(selectedCierre.TOTAL_APOSTADO)}</p>
+              </div>
+              <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Total Pagado</p>
+                <p className="font-semibold text-red-600 dark:text-red-400 mt-1">{formatMoney(selectedCierre.TOTAL_PAGADO_REAL)}</p>
+              </div>
+              <div className={`rounded-lg border p-3 text-center ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                <p className="text-xs text-muted-foreground">Utilidad</p>
+                <p className={`font-semibold mt-1 ${parseFloat(selectedCierre.UTILIDAD || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {formatMoney(selectedCierre.UTILIDAD)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {modalLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Cargando tickets...</p>
+            </div>
+          ) : modalData ? (
+            <div className="space-y-4">
+              {/* Resumen de tickets */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Ticket className="h-4 w-4" />
+                  <span>
+                    <strong>{modalData.resumen.total_tickets}</strong> tickets &nbsp;|&nbsp;
+                    <strong>{modalData.resumen.total_jugadas}</strong> jugadas &nbsp;|&nbsp;
+                    Apostado: <strong>{formatMoney(modalData.resumen.total_apostado)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Resumen por animal */}
+              {modalData.resumen_animales && modalData.resumen_animales.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <BarChart2 className="h-3.5 w-3.5" />
+                    Apuestas por animal (activas)
+                  </p>
+                  <ScrollArea className="h-28">
+                    <div className="flex flex-wrap gap-2 pr-4">
+                      {modalData.resumen_animales.map((a: any) => (
+                        <div
+                          key={a.CODANIMAL}
+                          className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs bg-background"
+                        >
+                          <span className="font-medium">{a.ANIMAL}</span>
+                          <span className="text-muted-foreground">×{a.CANTIDAD}</span>
+                          <span className="font-semibold text-primary">{formatMoney(a.TOTAL_APOSTADO)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Tabla de tickets */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-2">
+                  <Ticket className="h-3.5 w-3.5" />
+                  Tickets del sorteo
+                </p>
+                <ScrollArea className="h-72">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Radicado</TableHead>
+                        <TableHead>Sede</TableHead>
+                        <TableHead>Animal</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Usuario</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {modalData.jugadas.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                            No se encontraron tickets para este cierre
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        modalData.jugadas.map((jugada: any, idx: number) => (
+                          <TableRow key={`${jugada.RADICADO}-${jugada.CODANIMAL}-${idx}`}>
+                            <TableCell className="font-mono text-xs">{jugada.RADICADO}</TableCell>
+                            <TableCell className="text-sm">{jugada.NOMBRE_SUCURSAL || jugada.SUCURSAL}</TableCell>
+                            <TableCell className="text-sm">{jugada.ANIMAL}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{formatMoney(jugada.VALOR)}</TableCell>
+                            <TableCell>{estadoJugadaLabel(jugada.ESTADOP)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{jugada.USUARIO || '-'}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground text-sm">
+              No se pudo cargar la información del cierre.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

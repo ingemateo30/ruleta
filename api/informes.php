@@ -645,6 +645,98 @@ WHERE DATE(j.FECHA) >= ?
         ]);
     }
 
+    // GET /api/informes.php/detalle-cierre - Detalle de tickets para un cierre específico
+    elseif ($method === 'GET' && end($uriParts) === 'detalle-cierre') {
+        $fecha    = $_GET['fecha']    ?? date('Y-m-d');
+        $codigoH  = $_GET['codigoH'] ?? '';
+        $sucursal = $_GET['sucursal'] ?? '';
+
+        if (empty($codigoH)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'El código de horario es requerido']);
+            exit;
+        }
+
+        // Obtener jugadas que pertenecen a este cierre
+        $sql = "
+            SELECT
+                hj.RADICADO,
+                hj.CODANIMAL,
+                hj.ANIMAL,
+                hj.VALOR,
+                hj.SUCURSAL,
+                COALESCE(b.BODEGA, hj.SUCURSAL) AS NOMBRE_SUCURSAL,
+                hj.HORA,
+                hj.ESTADOP,
+                hj.HORAJUEGO,
+                hj.DESJUEGO,
+                hj.FECHA,
+                j.USUARIO,
+                j.ESTADO AS ESTADO_TICKET,
+                j.TOTALJUEGO
+            FROM hislottojuego hj
+            LEFT JOIN jugarlotto j ON hj.RADICADO = j.RADICADO
+            LEFT JOIN bodegas b ON hj.SUCURSAL = b.CODIGO
+            WHERE hj.CODIGOJ = ? AND hj.FECHA = ?
+        ";
+
+        $params = [$codigoH, $fecha];
+
+        if (!empty($sucursal) && $sucursal !== '0') {
+            $sql .= " AND hj.SUCURSAL = ?";
+            $params[] = $sucursal;
+        }
+
+        $sql .= " ORDER BY hj.RADICADO ASC, hj.HORA ASC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $jugadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Formatear valores numéricos
+        foreach ($jugadas as &$jugada) {
+            $jugada['VALOR']      = floatval($jugada['VALOR']);
+            $jugada['TOTALJUEGO'] = floatval($jugada['TOTALJUEGO'] ?? 0);
+        }
+        unset($jugada);
+
+        // Resumen por animal (solo jugadas activas)
+        $resumenAnimales = [];
+        foreach ($jugadas as $jugada) {
+            if ($jugada['ESTADOP'] !== 'A') continue;
+            $animal = $jugada['ANIMAL'];
+            if (!isset($resumenAnimales[$animal])) {
+                $resumenAnimales[$animal] = [
+                    'CODANIMAL'      => $jugada['CODANIMAL'],
+                    'ANIMAL'         => $animal,
+                    'CANTIDAD'       => 0,
+                    'TOTAL_APOSTADO' => 0.0,
+                ];
+            }
+            $resumenAnimales[$animal]['CANTIDAD']++;
+            $resumenAnimales[$animal]['TOTAL_APOSTADO'] += $jugada['VALOR'];
+        }
+        usort($resumenAnimales, fn($a, $b) => $b['TOTAL_APOSTADO'] <=> $a['TOTAL_APOSTADO']);
+
+        // Totales generales
+        $jugadasActivas = array_filter($jugadas, fn($j) => $j['ESTADOP'] === 'A');
+        $totalApostado  = array_sum(array_column(array_values($jugadasActivas), 'VALOR'));
+        $totalTickets   = count(array_unique(array_column($jugadas, 'RADICADO')));
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'jugadas'          => $jugadas,
+                'resumen_animales' => array_values($resumenAnimales),
+                'resumen' => [
+                    'total_jugadas'  => count($jugadas),
+                    'total_tickets'  => $totalTickets,
+                    'total_apostado' => round($totalApostado, 2),
+                ],
+            ],
+        ]);
+    }
+
     else {
         http_response_code(404);
         echo json_encode([
