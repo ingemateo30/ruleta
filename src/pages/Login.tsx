@@ -58,6 +58,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [accessRestricted, setAccessRestricted] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState(RATE_LIMIT_ATTEMPTS);
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
@@ -171,6 +172,7 @@ const Login = () => {
 
     setIsLoading(true);
     setError("");
+    setAccessRestricted(false);
 
     try {
       const encryptedPassword = encryptPassword(password);
@@ -199,6 +201,16 @@ const Login = () => {
           description: `Bienvenido, ${response.user.nombre}`,
         });
         navigate("/dashboard");
+      } else if (response.code === 'ACCESS_RESTRICTED') {
+        // El usuario existe y sus credenciales son correctas, pero tiene una
+        // restricción de acceso activa. No contar como intento fallido.
+        setAccessRestricted(true);
+        setError(response.message || "Acceso restringido por el administrador");
+        toast({
+          title: "Acceso restringido",
+          description: response.message || "Su cuenta tiene una restricción de acceso activa. Contacte al administrador.",
+          variant: "destructive",
+        });
       } else {
         recordAttempt(false);
         setError(response.message || "Error al iniciar sesión");
@@ -207,7 +219,7 @@ const Login = () => {
           description: response.message || "Usuario o contraseña incorrectos",
           variant: "destructive",
         });
-        
+
         // Si falla el código 2FA, limpiar el campo
         if (requires2FA) {
           setTotpCode("");
@@ -453,8 +465,20 @@ const Login = () => {
                       </div>
                     )}
 
-                    {/* Error message */}
-                    {error && !isLocked() && (
+                    {/* Restriction alert — more prominent than a generic error */}
+                    {accessRestricted && !isLocked() && (
+                      <div className="flex flex-col gap-1.5 py-3 px-3 bg-orange-500/8 rounded-lg border border-orange-500/20 animate-fade-in">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-orange-300 uppercase tracking-wider">Acceso restringido</span>
+                        </div>
+                        <span className="text-xs text-orange-200/80 pl-6">{error}</span>
+                        <span className="text-xs text-orange-400/60 pl-6">Comuníquese con el administrador del sistema.</span>
+                      </div>
+                    )}
+
+                    {/* Generic error message (wrong credentials, etc.) */}
+                    {error && !isLocked() && !accessRestricted && (
                       <div className="flex items-center gap-2 py-2.5 px-3 bg-red-500/5 rounded-lg border border-red-500/10 animate-fade-in">
                         <AlertCircle className="h-3.5 w-3.5 text-red-400/80 flex-shrink-0" />
                         <span className="text-xs text-red-400/90">{error}</span>

@@ -43,6 +43,7 @@ export const USER_TYPE_NAMES: Record<string, string> = {
 export interface LoginResponse {
   success: boolean;
   message: string;
+  code?: string;
   user?: User;
   requires2FA?: boolean;
   userId?: number;

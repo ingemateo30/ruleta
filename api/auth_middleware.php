@@ -6,6 +6,9 @@
  * y aplicar medidas de seguridad en las APIs.
  */
 
+// Zona horaria del sistema
+date_default_timezone_set('America/Bogota');
+
 // Configuracion de seguridad
 define('AUTH_TOKEN_HEADER', 'X-Auth-Token');
 define('AUTH_USER_HEADER', 'X-Auth-User');
@@ -338,28 +341,32 @@ function getOperatorSucursal($user) {
 function checkAccessRestriction($user, $db) {
     if (!$user) return null;
 
-    // SuperAdmin nunca es bloqueado
+    // SuperAdmin y Admin nunca son bloqueados por restricciones TODOS.
+    // Solo los Operarios (TIPO='2') son afectados por restricciones de tipo TODOS.
+    // Los Admin (TIPO='1') solo pueden ser bloqueados por restricciones USUARIO específicas.
     if (strval($user['TIPO']) === '0') return null;
 
     try {
-        // Obtener fecha y hora actuales del servidor de base de datos
-        $stmtNow = $db->query("SELECT CURDATE() as fecha_hoy, CURTIME() as hora_ahora, DAYOFWEEK(CURDATE()) as dia_mysql");
-        $now = $stmtNow->fetch(PDO::FETCH_ASSOC);
-        if (!$now) return null;
+        // Usar funciones PHP con zona horaria correcta (America/Bogota, ya establecida al inicio)
+        // en lugar de funciones MySQL que dependen de la timezone del servidor de BD.
+        $fechaHoy  = date('Y-m-d');
+        $horaAhora = date('H:i:s');
+        // date('N'): 1=Lunes ... 7=Domingo (formato ISO, igual al usado en DIA_SEMANA)
+        $diaISO    = (int) date('N');
 
-        $fechaHoy  = $now['fecha_hoy'];
-        $horaAhora = $now['hora_ahora'];
-        // MySQL DAYOFWEEK: 1=Dom,2=Lun,...,7=Sab → convertir a ISO: 1=Lun...7=Dom
-        $diaISO    = ($now['dia_mysql'] == 1) ? 7 : ($now['dia_mysql'] - 1);
-
-        // Traer restricciones activas que apliquen a todos o a este usuario
+        // Traer restricciones activas que apliquen a este usuario:
+        // - TODOS: solo aplica a Operarios (TIPO='2'); Admins quedan exentos.
+        // - USUARIO: aplica únicamente al usuario específico.
         $stmt = $db->prepare("
             SELECT ID, TIPO, FECHA_INICIO, FECHA_FIN, DIA_SEMANA, HORA_INICIO, HORA_FIN, MOTIVO
             FROM restricciones_acceso
             WHERE ACTIVO = 'A'
-              AND (TIPO = 'TODOS' OR (TIPO = 'USUARIO' AND USUARIO_ID = ?))
+              AND (
+                    (TIPO = 'TODOS' AND ? = '2')
+                 OR (TIPO = 'USUARIO' AND USUARIO_ID = ?)
+              )
         ");
-        $stmt->execute([$user['ID']]);
+        $stmt->execute([$user['TIPO'], $user['ID']]);
         $restricciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($restricciones as $r) {

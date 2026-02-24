@@ -39,9 +39,11 @@ class AuthService {
     } catch (error) {
       // Manejar errores de la API
       if (error instanceof ApiError) {
+        const responseData = error.response as Record<string, unknown> | undefined;
         return {
           success: false,
           message: error.message,
+          code: responseData?.code as string | undefined,
         };
       }
       return {

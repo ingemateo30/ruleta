@@ -2,8 +2,10 @@
 require_once 'auth_middleware.php';
 require_once 'db.php';
 
-// Inicializar seguridad - Requiere autenticacion y rol Admin o SuperAdmin
-$currentUser = initApiSecurity(true, ['0', '1']);
+// Inicializar seguridad - Requiere autenticacion y rol Admin o SuperAdmin.
+// Se omite la verificación de restricciones activas ($checkRestrictions = false) para que el
+// Admin siempre pueda gestionar usuarios sin quedar bloqueado por restricciones propias.
+$currentUser = initApiSecurity(true, ['0', '1'], false);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
