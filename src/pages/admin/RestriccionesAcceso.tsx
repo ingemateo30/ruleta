@@ -86,20 +86,35 @@ export default function RestriccionesAcceso() {
 
   const cargarDatos = async () => {
     setIsLoading(true);
-    try {
-      const [restricRes, diasRes, usuariosRes] = await Promise.all([
-        restriccionesAPI.listar(),
-        restriccionesAPI.diasSinSorteo.listar(),
-        usuariosAPI.listar(),
-      ]);
-      if (restricRes.success) setRestricciones(restricRes.data);
-      if (diasRes.success) setDiasSinSorteo(diasRes.data);
-      if (usuariosRes.success) setUsuarios(usuariosRes.data.filter((u: any) => u.TIPO !== 0));
-    } catch (e: any) {
-      toast.error('Error al cargar datos: ' + e.message);
-    } finally {
-      setIsLoading(false);
+
+    // Ejecutar cada llamada de forma independiente para evitar que un fallo
+    // cancele las demás y deje la pantalla en blanco.
+    const [restricRes, diasRes, usuariosRes] = await Promise.allSettled([
+      restriccionesAPI.listar(),
+      restriccionesAPI.diasSinSorteo.listar(),
+      usuariosAPI.listar(),
+    ]);
+
+    if (restricRes.status === 'fulfilled' && restricRes.value.success) {
+      setRestricciones(restricRes.value.data);
+    } else if (restricRes.status === 'rejected') {
+      toast.error('No se pudieron cargar las restricciones de acceso.');
     }
+
+    if (diasRes.status === 'fulfilled' && diasRes.value.success) {
+      setDiasSinSorteo(diasRes.value.data);
+    } else if (diasRes.status === 'rejected') {
+      toast.error('No se pudieron cargar los días sin sorteo.');
+    }
+
+    if (usuariosRes.status === 'fulfilled' && usuariosRes.value.success) {
+      // Excluir SuperAdmins (TIPO '0') del selector de usuarios
+      setUsuarios(usuariosRes.value.data.filter((u: any) => String(u.TIPO) !== '0'));
+    } else if (usuariosRes.status === 'rejected') {
+      toast.error('No se pudo cargar la lista de usuarios.');
+    }
+
+    setIsLoading(false);
   };
 
   // ----------------------------------------------------------------
@@ -147,40 +162,53 @@ export default function RestriccionesAcceso() {
       usuario_id: formData.tipo === 'USUARIO' ? formData.usuario_id : null,
     };
 
+    const destinatario = formData.tipo === 'TODOS'
+      ? 'todos los operarios'
+      : (usuarios.find((u: any) => String(u.ID) === String(formData.usuario_id))?.NICK || `usuario #${formData.usuario_id}`);
+
     try {
       if (editingId) {
         await restriccionesAPI.actualizar(editingId, payload);
-        toast.success('Restricción actualizada');
+        toast.success(`Restricción #${editingId} actualizada correctamente para ${destinatario}.`);
       } else {
         await restriccionesAPI.crear(payload);
-        toast.success('Restricción creada');
+        toast.success(`Restricción creada para ${destinatario}.${formData.motivo ? ` Motivo: ${formData.motivo}` : ''}`);
       }
       setIsDialogOpen(false);
       cargarDatos();
     } catch (e: any) {
-      toast.error(e.message || 'Error al guardar restricción');
+      toast.error(`Error al guardar restricción para ${destinatario}: ${e.message || 'error desconocido'}`);
     }
   };
 
   const eliminarRestr = async (id: number) => {
-    if (!confirm('¿Eliminar esta restricción?')) return;
+    const restr = restricciones.find((r: any) => r.ID === id);
+    const desc = restr
+      ? (restr.TIPO === 'TODOS' ? 'todos los operarios' : (restr.USUARIO_NICK || `#${restr.USUARIO_ID}`))
+      : `#${id}`;
+    if (!confirm(`¿Eliminar la restricción para ${desc}?`)) return;
     try {
       await restriccionesAPI.eliminar(id);
-      toast.success('Restricción eliminada');
+      toast.success(`Restricción para ${desc} eliminada correctamente.`);
       cargarDatos();
     } catch (e: any) {
-      toast.error((e as any).message || 'Error al eliminar');
+      toast.error(`Error al eliminar la restricción para ${desc}: ${(e as any).message || 'error desconocido'}`);
     }
   };
 
   const toggleActivoRestr = async (r: any) => {
     const nuevoActivo = r.ACTIVO === 'A' ? 'I' : 'A';
+    const desc = r.TIPO === 'TODOS' ? 'todos los operarios' : (r.USUARIO_NICK || `#${r.USUARIO_ID}`);
     try {
       await restriccionesAPI.actualizar(r.ID, { activo: nuevoActivo });
-      toast.success(nuevoActivo === 'A' ? 'Restricción activada' : 'Restricción desactivada');
+      if (nuevoActivo === 'A') {
+        toast.success(`Restricción para ${desc} activada. Los accesos serán bloqueados según los criterios definidos.`);
+      } else {
+        toast.success(`Restricción para ${desc} desactivada. Los accesos procederán con normalidad.`);
+      }
       cargarDatos();
     } catch (e: any) {
-      toast.error((e as any).message || 'Error al cambiar estado');
+      toast.error(`Error al cambiar estado de la restricción para ${desc}: ${(e as any).message || 'error desconocido'}`);
     }
   };
 
@@ -203,26 +231,28 @@ export default function RestriccionesAcceso() {
     try {
       if (editingDiaId) {
         await restriccionesAPI.diasSinSorteo.actualizar(editingDiaId, formDia);
-        toast.success('Día sin sorteo actualizado');
+        toast.success(`Día sin sorteo del ${formDia.fecha} actualizado correctamente.`);
       } else {
         await restriccionesAPI.diasSinSorteo.crear(formDia);
-        toast.success('Día sin sorteo registrado');
+        toast.success(`Día sin sorteo registrado: ${formDia.fecha}.${formDia.motivo ? ` Motivo: ${formDia.motivo}` : ''}`);
       }
       setIsDialogDiaOpen(false);
       cargarDatos();
     } catch (e: any) {
-      toast.error((e as any).message || 'Error al guardar');
+      toast.error(`Error al guardar el día sin sorteo (${formDia.fecha}): ${(e as any).message || 'error desconocido'}`);
     }
   };
 
   const eliminarDia = async (id: number) => {
-    if (!confirm('¿Eliminar este día sin sorteo?')) return;
+    const dia = diasSinSorteo.find((d: any) => d.ID === id);
+    const fechaDesc = dia ? dia.FECHA : `#${id}`;
+    if (!confirm(`¿Eliminar el día sin sorteo del ${fechaDesc}?`)) return;
     try {
       await restriccionesAPI.diasSinSorteo.eliminar(id);
-      toast.success('Eliminado correctamente');
+      toast.success(`Día sin sorteo del ${fechaDesc} eliminado correctamente.`);
       cargarDatos();
     } catch (e: any) {
-      toast.error((e as any).message || 'Error al eliminar');
+      toast.error(`Error al eliminar el día sin sorteo del ${fechaDesc}: ${(e as any).message || 'error desconocido'}`);
     }
   };
 
@@ -394,8 +424,9 @@ export default function RestriccionesAcceso() {
               <CardContent className="text-sm text-blue-700/80 dark:text-blue-300/80 space-y-1">
                 <p>• Una restricción bloquea el acceso cuando <strong>todos</strong> los criterios que define coinciden con la fecha/hora actual.</p>
                 <p>• Puedes combinar criterios: por ejemplo, <em>solo los martes y miércoles entre las 10 PM y 6 AM</em>.</p>
-                <p>• Tipo <strong>"Todos los usuarios"</strong> aplica a Administradores y Operarios (jamás a SuperAdmins).</p>
-                <p>• Tipo <strong>"Usuario específico"</strong> aplica únicamente al usuario seleccionado.</p>
+                <p>• Tipo <strong>"Todos los usuarios"</strong> aplica únicamente a <strong>Operarios</strong>. Los Administradores y SuperAdministradores nunca son bloqueados por este tipo.</p>
+                <p>• Tipo <strong>"Usuario específico"</strong> aplica únicamente al usuario seleccionado (puede ser Operario o Administrador).</p>
+                <p>• Las horas usan la zona horaria de Colombia (America/Bogota).</p>
               </CardContent>
             </Card>
           </TabsContent>
