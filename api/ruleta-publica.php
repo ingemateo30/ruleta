@@ -21,6 +21,34 @@ function sendResponse($data, $statusCode = 200) {
     exit();
 }
 
+/**
+ * Verifica si una fecha dada está marcada como día sin sorteos.
+ *
+ * @param PDO    $conn       Conexión activa
+ * @param string $fecha      Fecha en formato Y-m-d
+ * @return array|null        null si hay sorteos, o ['sin_sorteos'=>true, 'motivo'=>'...']
+ */
+function checkDiaSinSorteo($conn, $fecha) {
+    try {
+        $stmt = $conn->prepare("
+            SELECT MOTIVO FROM dias_sin_sorteo
+            WHERE FECHA = ? AND ACTIVO = 'A'
+            LIMIT 1
+        ");
+        $stmt->execute([$fecha]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return [
+                'sin_sorteos' => true,
+                'motivo'      => $row['MOTIVO'] ?: 'No hay sorteos programados para este día'
+            ];
+        }
+        return null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
 try {
     $conn = getDBConnection();
 
@@ -42,6 +70,22 @@ try {
         $tiempoServidor = $stmtHora->fetch(PDO::FETCH_ASSOC);
         $horaActual = $tiempoServidor['hora_actual'];
         $fechaActual = $tiempoServidor['fecha_actual'];
+
+        // Verificar si hoy es un día sin sorteos
+        $diaSinSorteo = checkDiaSinSorteo($conn, $fechaActual);
+        if ($diaSinSorteo) {
+            sendResponse([
+                'success' => true,
+                'sin_sorteos' => true,
+                'motivo'      => $diaSinSorteo['motivo'],
+                'data' => [
+                    'proximo_sorteo'   => null,
+                    'ultimo_resultado' => null,
+                    'hora_servidor'    => $horaActual,
+                    'fecha_servidor'   => $fechaActual
+                ]
+            ]);
+        }
 
         // Buscar el próximo horario que aún no ha pasado hoy
         // Usamos TIME_TO_SEC para calcular segundos de forma precisa
@@ -220,6 +264,17 @@ try {
 
         $hoy = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : $tiempoServer['fecha_actual'];
         $esHoy = ($hoy === $tiempoServer['fecha_actual']);
+
+        // Verificar si la fecha consultada es un día sin sorteos
+        $diaSinSorteo = checkDiaSinSorteo($conn, $hoy);
+        if ($diaSinSorteo) {
+            sendResponse([
+                'success'     => true,
+                'sin_sorteos' => true,
+                'motivo'      => $diaSinSorteo['motivo'],
+                'data'        => []
+            ]);
+        }
 
         // Usar la hora del servidor MySQL para consistencia
         $stmt = $conn->prepare("

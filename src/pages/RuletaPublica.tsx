@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Timer, Trophy, Clock, Loader2, Calendar, Search, HelpCircle } from "lucide-react";
+import { Timer, Trophy, Clock, Loader2, Calendar, Search, HelpCircle, CalendarOff } from "lucide-react";
 import { apiClient } from "@/api/client";
 import { getAnimalByNombre, animals as ANIMALS } from "@/constants/animals";
 import logoLottoAnimal from "@/logo/LOGO LOTTO ANIMAL PNG.png";
@@ -49,6 +49,11 @@ const RuletaPublica = () => {
   const [fechaFiltro, setFechaFiltro] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mostrarInterrogacion, setMostrarInterrogacion] = useState(false);
   const [modoPrueba, setModoPrueba] = useState(false);
+  // Estado para día sin sorteo
+  const [sinSorteoHoy, setSinSorteoHoy] = useState(false);
+  const [motivoSinSorteo, setMotivoSinSorteo] = useState<string>("");
+  const [sinSorteoFiltro, setSinSorteoFiltro] = useState(false);
+  const [motivoSinSorteoFiltro, setMotivoSinSorteoFiltro] = useState<string>("");
 
   const animacionEnProgreso = useRef(false);
   const ultimoResultadoConocidoId = useRef<string | null>(null);
@@ -112,7 +117,16 @@ const RuletaPublica = () => {
         apiClient.get('/ruleta-publica.php/horarios', { params: { fecha: fechaConsulta } })
       ]);
 
-      if (proximoRes.success && proximoRes.data) {
+      // Verificar si hoy es día sin sorteo
+      if (proximoRes.sin_sorteos) {
+        setSinSorteoHoy(true);
+        setMotivoSinSorteo(proximoRes.motivo || 'No hay sorteos programados para hoy');
+        setProximoSorteo(null);
+        setUltimoResultado(null);
+        setSegundosRestantes(0);
+      } else if (proximoRes.success && proximoRes.data) {
+        setSinSorteoHoy(false);
+        setMotivoSinSorteo('');
         const nuevoSorteo = proximoRes.data.proximo_sorteo;
         setProximoSorteo(nuevoSorteo);
 
@@ -146,7 +160,14 @@ const RuletaPublica = () => {
         }
       }
 
-      if (horariosRes.success && horariosRes.data) {
+      // Verificar si la fecha filtrada es día sin sorteo
+      if (horariosRes.sin_sorteos) {
+        setSinSorteoFiltro(true);
+        setMotivoSinSorteoFiltro(horariosRes.motivo || 'No hay sorteos en esta fecha');
+        setHorarios([]);
+      } else if (horariosRes.success && horariosRes.data) {
+        setSinSorteoFiltro(false);
+        setMotivoSinSorteoFiltro('');
         setHorarios(horariosRes.data);
       }
     } catch (error) {
@@ -367,6 +388,19 @@ const RuletaPublica = () => {
           )}
         </div>
 
+        {/* Banner: Día sin sorteos */}
+        {sinSorteoHoy && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl bg-orange-500/20 border-2 border-orange-400/50 p-6 text-center backdrop-blur-md"
+          >
+            <CalendarOff className="h-12 w-12 text-orange-400 mx-auto mb-3" />
+            <h2 className="text-2xl font-bold text-white mb-1">Hoy no hay sorteos</h2>
+            <p className="text-orange-200 text-base">{motivoSinSorteo}</p>
+          </motion.div>
+        )}
+
         {/* Seccion principal - Reloj y Ultimo ganador */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Contador regresivo parametrizado */}
@@ -374,9 +408,9 @@ const RuletaPublica = () => {
             <CardHeader className="text-center">
               <CardTitle className="text-white flex items-center justify-center gap-2 text-xl">
                 <Timer className="h-6 w-6 text-yellow-400" />
-                Proximo Sorteo
+                {sinSorteoHoy ? 'Sin Sorteos Hoy' : 'Proximo Sorteo'}
               </CardTitle>
-              {proximoSorteo && (
+              {!sinSorteoHoy && proximoSorteo && (
                 <>
                   <p className="text-white/90 text-base font-semibold">
                     {proximoSorteo.descripcion}
@@ -391,12 +425,21 @@ const RuletaPublica = () => {
               )}
             </CardHeader>
             <CardContent className="text-center">
-              <div className="text-7xl font-bold text-white font-mono tracking-wider mb-4">
-                {formatTiempo(segundosRestantes)}
-              </div>
-              <p className="text-white/60 text-sm">
-                {segundosRestantes > 0 ? 'Tiempo restante para el sorteo' : isAnimating ? 'Sorteo en curso...' : 'Esperando proximo sorteo'}
-              </p>
+              {sinSorteoHoy ? (
+                <div className="py-8">
+                  <CalendarOff className="h-16 w-16 text-orange-400 mx-auto mb-3 opacity-70" />
+                  <p className="text-white/60 text-sm">No hay sorteos programados para hoy</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-7xl font-bold text-white font-mono tracking-wider mb-4">
+                    {formatTiempo(segundosRestantes)}
+                  </div>
+                  <p className="text-white/60 text-sm">
+                    {segundosRestantes > 0 ? 'Tiempo restante para el sorteo' : isAnimating ? 'Sorteo en curso...' : 'Esperando proximo sorteo'}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -545,6 +588,13 @@ const RuletaPublica = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {sinSorteoFiltro ? (
+              <div className="text-center py-10">
+                <CalendarOff className="h-14 w-14 text-orange-400 mx-auto mb-3 opacity-80" />
+                <p className="text-white text-lg font-semibold">No hay sorteos para esta fecha</p>
+                <p className="text-white/50 text-sm mt-1">{motivoSinSorteoFiltro}</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {horarios.map((horario) => {
                 const animalData = horario.ANIMAL ? getAnimalByNombre(horario.ANIMAL) : null;
@@ -601,6 +651,7 @@ const RuletaPublica = () => {
                 );
               })}
             </div>
+            )}
           </CardContent>
         </Card>
 

@@ -1,6 +1,40 @@
 import {apiClient} from './client';
 import { ApiResponse } from './types';
 
+// ============= RESTRICCIONES DE ACCESO =============
+export const restriccionesAPI = {
+  listar: async () => {
+    return await apiClient.get<ApiResponse>('/restricciones.php/listar');
+  },
+  obtener: async (id: number) => {
+    return await apiClient.get<ApiResponse>(`/restricciones.php/obtener/${id}`);
+  },
+  crear: async (data: Record<string, any>) => {
+    return await apiClient.post<ApiResponse>('/restricciones.php/crear', data);
+  },
+  actualizar: async (id: number, data: Record<string, any>) => {
+    return await apiClient.put<ApiResponse>(`/restricciones.php/actualizar/${id}`, data);
+  },
+  eliminar: async (id: number) => {
+    return await apiClient.delete<ApiResponse>(`/restricciones.php/eliminar/${id}`);
+  },
+
+  diasSinSorteo: {
+    listar: async () => {
+      return await apiClient.get<ApiResponse>('/restricciones.php/dias-sin-sorteo/listar');
+    },
+    crear: async (data: { fecha: string; motivo?: string }) => {
+      return await apiClient.post<ApiResponse>('/restricciones.php/dias-sin-sorteo/crear', data);
+    },
+    actualizar: async (id: number, data: { fecha?: string; motivo?: string; activo?: string }) => {
+      return await apiClient.put<ApiResponse>(`/restricciones.php/dias-sin-sorteo/actualizar/${id}`, data);
+    },
+    eliminar: async (id: number) => {
+      return await apiClient.delete<ApiResponse>(`/restricciones.php/dias-sin-sorteo/eliminar/${id}`);
+    },
+  },
+};
+
 
 interface UserData {
   nick: string;

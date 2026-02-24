@@ -15,6 +15,7 @@ import ListarJugadas from "./pages/operativo/ListarJugadas";
 import RealizarPagos from "./pages/operativo/RealizarPagos";
 import CerrarJuego from "./pages/operativo/CerrarJuego";
 import IngresarResultado from "./pages/admin/IngresarResultado";
+import RestriccionesAcceso from "./pages/admin/RestriccionesAcceso";
 import Usuarios from "./pages/config/Usuarios";
 import Sucursales from "./pages/config/Sucursales";
 import Parametros from "./pages/config/Parametros";
@@ -91,6 +92,11 @@ const App = () => (
             <Route path="/admin/ingresar-resultados" element={
               <AdminRoute>
                 <IngresarResultado />
+              </AdminRoute>
+            } />
+            <Route path="/admin/restricciones" element={
+              <AdminRoute>
+                <RestriccionesAcceso />
               </AdminRoute>
             } />
 

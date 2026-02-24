@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Users,
   BarChart3,
+  ShieldOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -131,6 +132,7 @@ const getMenuItems = (userType: string): MenuItem[] => {
       requiredRole: [USER_TYPES.SUPER_ADMIN, USER_TYPES.ADMIN],
       children: [
         { title: "Ingresar Resultados", icon: <Edit className="h-4 w-4" />, href: "/admin/ingresar-resultados" },
+        { title: "Control de Acceso", icon: <ShieldOff className="h-4 w-4" />, href: "/admin/restricciones" },
       ],
     },
     // Informes - Solo SuperAdmin
