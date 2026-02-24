@@ -322,6 +322,91 @@ function getOperatorSucursal($user) {
 }
 
 /**
+ * Verifica si el usuario tiene una restricción de acceso activa en el momento actual.
+ *
+ * Los SuperAdmins (TIPO = '0') nunca son bloqueados por restricciones.
+ * Evalúa las restricciones de tipo 'TODOS' y las específicas para el usuario.
+ * Una restricción aplica cuando TODOS los criterios presentes coinciden:
+ *   - Fecha/rango de fechas (FECHA_INICIO / FECHA_FIN)
+ *   - Día de la semana (DIA_SEMANA, lista ISO: 1=Lun ... 7=Dom)
+ *   - Franja horaria (HORA_INICIO / HORA_FIN)
+ *
+ * @param array $user      Datos del usuario autenticado
+ * @param PDO   $db        Conexión activa a la base de datos
+ * @return array|null      null si no hay restricción, o ['bloqueado'=>true, 'motivo'=>...] si la hay
+ */
+function checkAccessRestriction($user, $db) {
+    if (!$user) return null;
+
+    // SuperAdmin nunca es bloqueado
+    if (strval($user['TIPO']) === '0') return null;
+
+    try {
+        // Obtener fecha y hora actuales del servidor de base de datos
+        $stmtNow = $db->query("SELECT CURDATE() as fecha_hoy, CURTIME() as hora_ahora, DAYOFWEEK(CURDATE()) as dia_mysql");
+        $now = $stmtNow->fetch(PDO::FETCH_ASSOC);
+        if (!$now) return null;
+
+        $fechaHoy  = $now['fecha_hoy'];
+        $horaAhora = $now['hora_ahora'];
+        // MySQL DAYOFWEEK: 1=Dom,2=Lun,...,7=Sab → convertir a ISO: 1=Lun...7=Dom
+        $diaISO    = ($now['dia_mysql'] == 1) ? 7 : ($now['dia_mysql'] - 1);
+
+        // Traer restricciones activas que apliquen a todos o a este usuario
+        $stmt = $db->prepare("
+            SELECT ID, TIPO, FECHA_INICIO, FECHA_FIN, DIA_SEMANA, HORA_INICIO, HORA_FIN, MOTIVO
+            FROM restricciones_acceso
+            WHERE ACTIVO = 'A'
+              AND (TIPO = 'TODOS' OR (TIPO = 'USUARIO' AND USUARIO_ID = ?))
+        ");
+        $stmt->execute([$user['ID']]);
+        $restricciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($restricciones as $r) {
+            $aplica = true;
+
+            // --- Criterio de fecha ---
+            if (!empty($r['FECHA_INICIO'])) {
+                if ($fechaHoy < $r['FECHA_INICIO']) {
+                    $aplica = false;
+                } elseif (!empty($r['FECHA_FIN']) && $fechaHoy > $r['FECHA_FIN']) {
+                    $aplica = false;
+                }
+            }
+
+            // --- Criterio de día de la semana ---
+            if ($aplica && !empty($r['DIA_SEMANA'])) {
+                $diasPermitidos = array_map('trim', explode(',', $r['DIA_SEMANA']));
+                if (!in_array((string)$diaISO, $diasPermitidos)) {
+                    $aplica = false;
+                }
+            }
+
+            // --- Criterio de horario ---
+            if ($aplica && !empty($r['HORA_INICIO']) && !empty($r['HORA_FIN'])) {
+                if ($horaAhora < $r['HORA_INICIO'] || $horaAhora > $r['HORA_FIN']) {
+                    $aplica = false;
+                }
+            }
+
+            if ($aplica) {
+                return [
+                    'bloqueado' => true,
+                    'motivo'    => $r['MOTIVO'] ?: 'Acceso restringido por el administrador'
+                ];
+            }
+        }
+
+        return null;
+
+    } catch (Exception $e) {
+        // Si hay error al verificar restricciones, no bloquear (fail open para no romper el servicio)
+        error_log('Error al verificar restricciones de acceso: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
  * Inicializa la seguridad para un endpoint de API
  *
  * @param bool $requireAuth Si se requiere autenticacion
@@ -340,6 +425,26 @@ function initApiSecurity($requireAuth = false, $allowedRoles = []) {
 
         if (!empty($allowedRoles)) {
             validateRole($user, $allowedRoles);
+        }
+
+        // Verificar restricciones de acceso activas para el usuario
+        if ($user) {
+            try {
+                $db = Database::getInstance()->getConnection();
+                $restriccion = checkAccessRestriction($user, $db);
+                if ($restriccion) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => $restriccion['motivo'],
+                        'code'    => 'ACCESS_RESTRICTED'
+                    ]);
+                    exit();
+                }
+            } catch (Exception $e) {
+                // No bloquear si hay error de conexión al verificar restricciones
+                error_log('Error en checkAccessRestriction: ' . $e->getMessage());
+            }
         }
     }
 

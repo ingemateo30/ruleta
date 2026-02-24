@@ -115,6 +115,18 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($user) {
+        // Verificar restricciones de acceso activas (antes de 2FA)
+        $restriccion = checkAccessRestriction($user, $pdo);
+        if ($restriccion) {
+            http_response_code(403);
+            echo json_encode([
+                'success'  => false,
+                'message'  => $restriccion['motivo'],
+                'code'     => 'ACCESS_RESTRICTED'
+            ]);
+            exit();
+        }
+
         // Verificar si el usuario tiene 2FA activado
         if ($user['TOTP_ENABLED'] == 1 && !empty($user['TOTP_SECRET'])) {
             // 2FA está activado - se requiere código TOTP
