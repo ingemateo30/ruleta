@@ -21,8 +21,10 @@ require_once 'auth_middleware.php';
 require_once 'db.php';
 date_default_timezone_set('America/Bogota');
 
-// Solo Admin y SuperAdmin pueden gestionar restricciones
-$currentUser = initApiSecurity(true, ['0', '1']);
+// Solo Admin y SuperAdmin pueden gestionar restricciones.
+// Se omite la verificación de restricciones activas ($checkRestrictions = false) para que el
+// Admin siempre pueda administrar restricciones sin quedar auto-bloqueado.
+$currentUser = initApiSecurity(true, ['0', '1'], false);
 
 $method  = $_SERVER['REQUEST_METHOD'];
 $uri     = $_SERVER['REQUEST_URI'];

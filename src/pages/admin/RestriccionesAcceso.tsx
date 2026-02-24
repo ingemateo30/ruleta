@@ -158,7 +158,7 @@ export default function RestriccionesAcceso() {
       setIsDialogOpen(false);
       cargarDatos();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al guardar restricción');
+      toast.error(e.message || 'Error al guardar restricción');
     }
   };
 
@@ -169,7 +169,7 @@ export default function RestriccionesAcceso() {
       toast.success('Restricción eliminada');
       cargarDatos();
     } catch (e: any) {
-      toast.error('Error al eliminar');
+      toast.error((e as any).message || 'Error al eliminar');
     }
   };
 
@@ -180,7 +180,7 @@ export default function RestriccionesAcceso() {
       toast.success(nuevoActivo === 'A' ? 'Restricción activada' : 'Restricción desactivada');
       cargarDatos();
     } catch (e: any) {
-      toast.error('Error al cambiar estado');
+      toast.error((e as any).message || 'Error al cambiar estado');
     }
   };
 
@@ -211,7 +211,7 @@ export default function RestriccionesAcceso() {
       setIsDialogDiaOpen(false);
       cargarDatos();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al guardar');
+      toast.error((e as any).message || 'Error al guardar');
     }
   };
 
@@ -222,7 +222,7 @@ export default function RestriccionesAcceso() {
       toast.success('Eliminado correctamente');
       cargarDatos();
     } catch (e: any) {
-      toast.error('Error al eliminar');
+      toast.error((e as any).message || 'Error al eliminar');
     }
   };
 

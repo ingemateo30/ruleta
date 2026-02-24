@@ -409,11 +409,14 @@ function checkAccessRestriction($user, $db) {
 /**
  * Inicializa la seguridad para un endpoint de API
  *
- * @param bool $requireAuth Si se requiere autenticacion
- * @param array $allowedRoles Roles permitidos (vacio = todos los autenticados)
+ * @param bool  $requireAuth           Si se requiere autenticacion
+ * @param array $allowedRoles          Roles permitidos (vacio = todos los autenticados)
+ * @param bool  $checkRestrictions     Si se deben verificar restricciones de acceso activas.
+ *                                     Pasar false en endpoints de gestión de restricciones para
+ *                                     evitar que el Admin quede bloqueado mientras las administra.
  * @return array|null Usuario autenticado o null
  */
-function initApiSecurity($requireAuth = false, $allowedRoles = []) {
+function initApiSecurity($requireAuth = false, $allowedRoles = [], $checkRestrictions = true) {
     setSecurityHeaders();
     handleOptionsRequest();
     validateRequestSize();
@@ -428,7 +431,7 @@ function initApiSecurity($requireAuth = false, $allowedRoles = []) {
         }
 
         // Verificar restricciones de acceso activas para el usuario
-        if ($user) {
+        if ($user && $checkRestrictions) {
             try {
                 $db = Database::getInstance()->getConnection();
                 $restriccion = checkAccessRestriction($user, $db);
