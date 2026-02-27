@@ -165,7 +165,7 @@ export default function InformeJuegos() {
           {items.map((item, idx) => (
             <TableRow key={idx}>
               <TableCell className="font-semibold">
-                #{item.codigo} {item.animal}
+                {item.codigo ? `#${item.codigo} ` : ''}{item.animal}
               </TableCell>
               <TableCell className="text-center font-bold">
                 {item.jugadas.toLocaleString()}
@@ -297,30 +297,28 @@ export default function InformeJuegos() {
           j.DETALLE_ANIMALES && typeof j.DETALLE_ANIMALES === 'string';
 
         if (tieneDetalle) {
-          // Formato esperado: "01-Perro, 02-Gato" — tomamos el código del prefijo
-          j.DETALLE_ANIMALES.split(', ')
+          // Formato real: "Elefante ($2.000), Perro ($2.000)" — separador puede ser "," o ", "
+          j.DETALLE_ANIMALES.split(/,\s*/)
             .filter(Boolean)
             .forEach((parte: string) => {
-              const [cod, ...nombreParts] = parte.split('-');
-              const codigo = cod?.trim() || parte;
-              const animal = nombreParts.join('-').trim() || parte;
-              const key = codigo;
+              const matchValor = parte.match(/^(.+?)\s*\(\$([0-9.,]+)\)$/);
+              const animal = matchValor ? matchValor[1].trim() : parte.trim();
+              const valorStr = matchValor
+                ? matchValor[2].replace(/\./g, '').replace(',', '.')
+                : '0';
+              const valorAnimal = parseFloat(valorStr) || 0;
+              const key = animal.toLowerCase();
 
               if (!porHorario[horDesc].animales[key]) {
                 porHorario[horDesc].animales[key] = {
                   animal,
-                  codigo,
+                  codigo: '',
                   jugadas: 0,
                   total: 0,
                 };
               }
-              // El valor del animal individual no lo tenemos desglosado aquí,
-              // así que dividimos el total entre la cantidad de animales de la jugada.
-              const numAnimales =
-                j.DETALLE_ANIMALES.split(', ').filter(Boolean).length || 1;
               porHorario[horDesc].animales[key].jugadas += 1;
-              porHorario[horDesc].animales[key].total +=
-                parseFloat(j.TOTALJUEGO || j.TOTAL_APOSTADO || 0) / numAnimales;
+              porHorario[horDesc].animales[key].total += valorAnimal;
             });
         } else {
           // Fila con un solo animal
