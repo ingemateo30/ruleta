@@ -30,9 +30,10 @@ try {
                 j.USUARIO,
                 j.ESTADO,
                 GROUP_CONCAT(DISTINCT h.DESCRIPCION ORDER BY h.HORA SEPARATOR ', ') as HORARIO,
-                COUNT(DISTINCT hj.CODANIMAL) as CANTIDAD_ANIMALES,
+                COUNT(hj.CODANIMAL) as CANTIDAD_ANIMALES,
                 GROUP_CONCAT(
-                    DISTINCT CONCAT(hj.ANIMAL, ' ($', REPLACE(FORMAT(hj.VALOR, 0), ',', '.'), ')')
+                    CONCAT(hj.ANIMAL, ' ($', REPLACE(FORMAT(hj.VALOR, 0), ',', '.'), ')')
+                    ORDER BY hj.ANIMAL
                     SEPARATOR ', '
                 ) as DETALLE_ANIMALES
             FROM jugarlotto j
