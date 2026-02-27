@@ -335,7 +335,6 @@ export default function RestriccionesAcceso() {
                   </CardTitle>
                   <CardDescription>
                     Define cuándo los usuarios no pueden iniciar sesión (por fecha, día de la semana u horario).
-                    Los SuperAdministradores nunca son bloqueados.
                   </CardDescription>
                 </div>
                 <Button onClick={() => abrirDialogRestr()}>
@@ -424,7 +423,7 @@ export default function RestriccionesAcceso() {
               <CardContent className="text-sm text-blue-700/80 dark:text-blue-300/80 space-y-1">
                 <p>• Una restricción bloquea el acceso cuando <strong>todos</strong> los criterios que define coinciden con la fecha/hora actual.</p>
                 <p>• Puedes combinar criterios: por ejemplo, <em>solo los martes y miércoles entre las 10 PM y 6 AM</em>.</p>
-                <p>• Tipo <strong>"Todos los usuarios"</strong> aplica únicamente a <strong>Operarios</strong>. Los Administradores y SuperAdministradores nunca son bloqueados por este tipo.</p>
+                <p>• Tipo <strong>"Todos los usuarios"</strong> aplica únicamente a <strong>Operarios</strong>. Los Administradores nunca son bloqueados por este tipo.</p>
                 <p>• Tipo <strong>"Usuario específico"</strong> aplica únicamente al usuario seleccionado (puede ser Operario o Administrador).</p>
                 <p>• Las horas usan la zona horaria de Colombia (America/Bogota).</p>
               </CardContent>
