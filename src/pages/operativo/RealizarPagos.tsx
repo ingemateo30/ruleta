@@ -62,7 +62,9 @@ export default function RealizarPagos() {
       const fechaLimiteCobro = new Date(year, month - 1, day + DIAS_LIMITE_COBRO, 23, 59, 59);
       const ahora = new Date();
 
-      const diasRestantes = Math.ceil((fechaLimiteCobro.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24));
+      const hoyMidnight = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+      const limiteMidnight = new Date(year, month - 1, day + DIAS_LIMITE_COBRO);
+      const diasRestantes = Math.round((limiteMidnight.getTime() - hoyMidnight.getTime()) / (1000 * 60 * 60 * 24));
       const estaVencido = ahora > fechaLimiteCobro;
       const puedeMostrar = ahora >= fechaPermitidaMostrar;
       const puedePagar = puedeMostrar && !estaVencido;
